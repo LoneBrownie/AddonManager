@@ -6,7 +6,7 @@ import './Settings.css';
 // ✅ Security: Use secure Electron API access
 const electronAPI = window.electronAPI;
 
-function Settings({ alwaysExpanded = false }) {
+function Settings({ alwaysExpanded = false, hideTitle = false }) {
   const [settings, setSettings] = useState({ wowPath: '', tempPath: '' });
   const [isOpen, setIsOpen] = useState(alwaysExpanded);
   const [error, setError] = useState('');
@@ -128,11 +128,9 @@ function Settings({ alwaysExpanded = false }) {
 
       {isOpen && (
         <div className="settings-content">
-          {alwaysExpanded && <h2>⚙️ Settings</h2>}
-          {!alwaysExpanded && <h3>Application Settings</h3>}
-          
-          <div className="form-group">
-            <label htmlFor="wow-path">WoW Installation Directory</label>
+          <div className="settings-section">
+            <div className="form-group">
+              <label htmlFor="wow-path">WoW Installation Directory</label>
             <div className="path-input-group">
               <input
                 id="wow-path"
@@ -163,16 +161,30 @@ function Settings({ alwaysExpanded = false }) {
           {error && <div className="error">{error}</div>}
           {success && <div className="success">{success}</div>}
 
-          <div className="settings-actions">
-            <button 
-              className="button"
-              onClick={handleSave}
-            >
-              Save Settings
-            </button>
+            <div className="settings-actions">
+              <button 
+                className="button"
+                onClick={handleSave}
+              >
+                Save Settings
+              </button>
+            </div>
           </div>
 
-          <div className="app-update-section">
+          <div className="settings-help">
+            <h4>Help</h4>
+            <ul>
+              <li>Select your main World of Warcraft installation folder</li>
+              <li>This should be the folder containing "WoW.exe" or "World of Warcraft.exe"</li>
+              <li>Common locations:
+                <ul>
+                  <li><code>C:\Program Files (x86)\World of Warcraft</code></li>
+                  <li><code>C:\Games\World of Warcraft</code></li>
+                </ul>
+              </li>
+              <li>Addons will be installed to the "Interface\AddOns" subfolder</li>
+            </ul>
+          </div>          <div className="app-update-section">
             <h4>Application Updates</h4>
             <div className="version-info">
               <div className="current-version">
@@ -213,21 +225,6 @@ function Settings({ alwaysExpanded = false }) {
               <p><strong>Note:</strong> The application automatically checks for updates every 6 hours.</p>
               <p>Updates are downloaded and installed in the background.</p>
             </div>
-          </div>
-
-          <div className="settings-help">
-            <h4>Help</h4>
-            <ul>
-              <li>Select your main World of Warcraft installation folder</li>
-              <li>This should be the folder containing "WoW.exe" or "World of Warcraft.exe"</li>
-              <li>Common locations:
-                <ul>
-                  <li><code>C:\Program Files (x86)\World of Warcraft</code></li>
-                  <li><code>C:\Games\World of Warcraft</code></li>
-                </ul>
-              </li>
-              <li>Addons will be installed to the "Interface\AddOns" subfolder</li>
-            </ul>
           </div>
         </div>
       )}

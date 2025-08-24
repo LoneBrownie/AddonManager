@@ -1,6 +1,6 @@
 {
   "name": "wow-addon-manager",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A Windows desktop application for managing WoW addons from GitHub and GitLab",
   "author": "LoneBrownie",
   "main": "public/electron.js",
@@ -34,8 +34,8 @@
     "publish": "npm run build && electron-builder --publish=always"
   },
   "build": {
-    "appId": "com.example.wow-addon-manager",
-    "productName": "WoW Addon Manager",
+    "appId": "com.example.brownies-addon-manager",
+    "productName": "Brownie's Addon Manager",
     "directories": {
       "output": "dist"
     },
@@ -47,7 +47,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico",
+      "icon": "src/img/Logo.png",
       "signAndEditExecutable": false,
       "signDlls": false,
       "publish": ["github"]

@@ -90,8 +90,10 @@ function AddonListItem({ addon, onUpdate, onRemove, loading }) {
         )}
         {addon.installedFolders && addon.installedFolders.length > 0 && (
           <span className="folder-count" title={`Managed folders: ${addon.installedFolders.join(', ')}`}>
-            {addon.installedFolders.length} folder{addon.installedFolders.length !== 1 ? 's' : ''}
-            {addon.installedFolders.length > 1 && ` (${addon.installedFolders.join(', ')})`}
+            {addon.installedFolders.length > 3 
+              ? `${addon.installedFolders.length} folders (${addon.installedFolders.slice(0, 2).join(', ')}, ...)`
+              : `${addon.installedFolders.length} folder${addon.installedFolders.length !== 1 ? 's' : ''}`
+            }
           </span>
         )}
       </div>

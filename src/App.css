@@ -1,3 +1,206 @@
+/* Main App Layout */
+.app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background: var(--background-color);
+  position: relative;
+}
+
+/* Sidebar */
+.app-sidebar {
+  width: 250px;
+  min-width: 250px;
+  background: var(--surface-color);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.app-title {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.app-logo {
+  max-width: 100%;
+  height: auto;
+  max-height: 80px;
+  margin: 0 0 8px 0;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.app-title p {
+  font-size: 14px;
+  color: var(--text-secondary-color);
+  margin: 0;
+}
+
+/* Sidebar Navigation */
+.sidebar-navigation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  color: var(--text-secondary-color);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.nav-button:hover {
+  background: var(--surface-hover-color);
+  color: var(--text-primary-color);
+}
+
+.nav-button.active {
+  background: var(--primary-bg-color);
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.nav-text {
+  flex: 1;
+}
+
+/* Main Content Area */
+.app-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+/* Custom Scrollbar */
+.main-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.main-content::-webkit-scrollbar-track {
+  background: var(--background-color);
+  border-radius: 4px;
+}
+
+.main-content::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.main-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary-color);
+}
+
+/* Page Headers */
+.page-header {
+  margin-bottom: 12px;
+}
+
+.page-header-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.page-header-text {
+  flex: 1;
+}
+
+/* Addon List Divider */
+.addon-list-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin-bottom: 12px;
+}
+
+/* Addon List Toolbar */
+.addon-list-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 4px 0;
+}
+
+.addon-counter {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.addon-count {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.addon-count-label {
+  font-size: 14px;
+  color: var(--text-secondary-color);
+  font-weight: 500;
+}
+
+.addon-list-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.page-header h2 {
+  margin: 0 0 4px 0;
+  color: var(--text-primary-color);
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--text-secondary-color);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Page Content Container */
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Manage Existing Section */
+.manage-existing-section {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--surface-color);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
 .error-banner {
   background-color: #e74c3c;
   color: white;
@@ -7,88 +210,63 @@
   font-weight: bold;
 }
 
-.existing-addons-section {
-  margin: 20px 0;
-}
-
 .button.full-width {
   width: 100%;
 }
 
-/* Tab Navigation */
-.tab-navigation {
-  display: flex;
-  gap: 0;
-  margin-top: 20px;
-  border-bottom: 2px solid var(--border-color);
-}
-
-.tab-button {
-  background: none;
-  border: none;
-  color: var(--text-secondary-color);
-  padding: 12px 24px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: 500;
-  border-bottom: 3px solid transparent;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.tab-button:hover {
-  color: var(--text-primary-color);
-  background-color: var(--surface-hover-color);
-}
-
-.tab-button.active {
-  color: var(--primary-color);
-  border-bottom-color: var(--primary-color);
-  background-color: var(--primary-bg-color);
-}
-
-/* Tab Content */
-.tab-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  padding: 20px 0;
-}
-
-/* Addons tab layout */
-.tab-content .sidebar-content {
-  background: var(--surface-color);
-  padding: 20px;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-}
-
-/* Handy Addons tab full width */
-.tab-content .handy-addons {
-  width: 100%;
-}
-
-/* Settings tab */
-.tab-content .settings {
-  max-width: 600px;
-  margin: 0 auto;
-}
-
 /* Responsive design */
+@media (max-width: 1024px) {
+  .app-sidebar {
+    width: 200px;
+    min-width: 200px;
+  }
+}
+
 @media (max-width: 768px) {
-  .tab-navigation {
+  .app {
     flex-direction: column;
   }
   
-  .tab-button {
-    text-align: center;
-    border-bottom: none;
-    border-right: 3px solid transparent;
+  .app-sidebar {
+    width: 100%;
+    min-width: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 15px;
   }
   
-  .tab-button.active {
-    border-bottom: none;
-    border-right-color: var(--primary-color);
+  .app-title {
+    margin-bottom: 15px;
+  }
+  
+  .sidebar-navigation {
+    flex-direction: row;
+    justify-content: center;
+    gap: 5px;
+  }
+  
+  .nav-button {
+    flex: 1;
+    justify-content: center;
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+  
+  .main-content {
+    padding: 15px;
+  }
+  
+  .page-header-content {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+  }
+  
+  .page-header-actions {
+    margin-top: 8px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 }
+
+/* Legacy CSS removed - old tab navigation styles no longer needed */

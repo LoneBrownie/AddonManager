@@ -6,24 +6,29 @@
 
 :root {
   --background-color: #1a1a1a;
-  --surface-color: #2c3e50;
-  --surface-hover-color: #34495e;
-  --border-color: #7f8c8d;
+  --surface-color: #2d2d2d;
+  --surface-hover-color: #3a3a3a;
+  --border-color: #555555;
   --text-primary-color: #ffffff;
-  --text-secondary-color: #bdc3c7;
-  --primary-color: #3498db;
-  --primary-hover-color: #2980b9;
-  --primary-bg-color: rgba(52, 152, 219, 0.1);
-  --success-color: #27ae60;
-  --success-hover-color: #229954;
-  --info-color: #17a2b8;
-  --info-bg-color: rgba(23, 162, 184, 0.1);
-  --danger-color: #e74c3c;
-  --danger-bg-color: rgba(231, 76, 60, 0.1);
-  --warning-color: #f39c12;
-  --warning-bg-color: rgba(243, 156, 18, 0.1);
-  --disabled-color: #7f8c8d;
-  --input-bg-color: #2c3e50;
+  --text-secondary-color: #b0b0b0;
+  --primary-color: #a78bfa;
+  --primary-hover-color: #8b5cf6;
+  --primary-bg-color: rgba(167, 139, 250, 0.1);
+  --success-color: #10b981;
+  --success-hover-color: #059669;
+  --info-color: #c084fc;
+  --info-bg-color: rgba(192, 132, 252, 0.1);
+  --danger-color: #ef4444;
+  --danger-bg-color: rgba(239, 68, 68, 0.1);
+  --warning-color: #f59e0b;
+  --warning-bg-color: rgba(245, 158, 11, 0.1);
+  --disabled-color: #6b7280;
+  --input-bg-color: #2d2d2d;
+}
+
+html {
+  height: 100vh;
+  overflow: hidden;
 }
 
 body {
@@ -35,22 +40,30 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--background-color);
   color: var(--text-primary-color);
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
 }
 
 .app {
-  min-height: 100vh;
-  padding: 20px;
+  height: 100vh;
   display: flex;
-  flex-direction: column;
+  background-color: var(--background-color);
+  color: var(--text-primary-color);
+  overflow: hidden;
 }
 
 .app-header {
   text-align: center;
   margin-bottom: 30px;
   padding: 20px;
-  background: linear-gradient(135deg, #2c3e50, #3498db);
+  background: linear-gradient(135deg, #2d2d2d, #a78bfa);
   border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
 .app-header h1 {
@@ -60,18 +73,11 @@ body {
 }
 
 .app-header p {
-  color: #ecf0f1;
+  color: #e0e0e0;
   font-size: 1.1em;
 }
 
-.main-content {
-  display: flex;
-  flex-direction: column;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 20px;
-  flex: 1;
-}
+/* Legacy main-content styles removed - now handled in App.css */
 
 .sidebar {
   background-color: var(--surface-color);
@@ -88,33 +94,50 @@ body {
 }
 
 .button {
-  background-color: #3498db;
+  background-color: var(--primary-color);
   color: white;
   border: none;
   padding: 10px 20px;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 16px;
-  transition: background-color 0.3s;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .button:hover {
-  background-color: #2980b9;
+  background-color: var(--primary-hover-color);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(167, 139, 250, 0.3);
 }
 
 .button:disabled {
-  background-color: #7f8c8d;
+  background-color: var(--disabled-color);
   cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.button.primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.button.primary:hover {
+  background-color: var(--primary-hover-color);
+  box-shadow: 0 2px 8px rgba(167, 139, 250, 0.3);
 }
 
 .button.secondary {
-  background-color: #95a5a6;
-  color: white;
+  background-color: var(--surface-color);
+  color: var(--text-primary-color);
+  border: 1px solid var(--border-color);
 }
 
 .button.secondary:hover {
-  background-color: #7f8c8d;
-  color: white;
+  background-color: var(--surface-hover-color);
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(85, 85, 85, 0.2);
 }
 
 .button.success {
@@ -129,13 +152,14 @@ body {
 }
 
 .button.danger {
-  background-color: #e74c3c;
+  background-color: var(--danger-color);
   color: white;
 }
 
 .button.danger:hover {
-  background-color: #c0392b;
+  background-color: #dc2626;
   color: white;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 .input {
@@ -155,7 +179,7 @@ body {
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .form-group label {

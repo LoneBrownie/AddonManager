@@ -8,7 +8,9 @@ function AddonList({
   onUpdateAll, 
   onCheckUpdates, 
   onRemoveAddon, 
-  loading 
+  loading,
+  hideHeader = false,
+  hideCheckUpdates = false
 }) {
   const updatableAddons = addons.filter(addon => addon.needsUpdate);
   const hasUpdates = updatableAddons.length > 0;
@@ -26,28 +28,30 @@ function AddonList({
 
   return (
     <div className="addon-list">
-      <div className="addon-list-header">
-        <h2>Your Addons ({addons.length})</h2>
-        <div className="addon-list-actions">
-          <button
-            className="button secondary"
-            onClick={onCheckUpdates}
-            disabled={loading}
-          >
-            {loading ? 'Checking...' : 'Check for Updates'}
-          </button>
-          
-          {hasUpdates && (
+      {!hideHeader && (
+        <div className="addon-list-header">
+          <h2>Your Addons ({addons.length})</h2>
+          <div className="addon-list-actions">
             <button
-              className="button success"
-              onClick={onUpdateAll}
+              className="button secondary"
+              onClick={onCheckUpdates}
               disabled={loading}
             >
-              {loading ? 'Updating...' : `Update All (${updatableAddons.length})`}
+              {loading ? 'Checking...' : 'Check for Updates'}
             </button>
-          )}
+            
+            {hasUpdates && (
+              <button
+                className="button success"
+                onClick={onUpdateAll}
+                disabled={loading}
+              >
+                {loading ? 'Updating...' : `Update All (${updatableAddons.length})`}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {hasUpdates && (
         <div className="update-banner">

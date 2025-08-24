@@ -6,7 +6,7 @@ on:
       release_notes:
         description: 'Release notes'
         required: false
-        default: 'New release of WoW Addon Manager'
+        default: 'New release of Brownie''s Addon Manager'
   push:
     branches: [ main ]
     paths: [ 'package.json' ]
@@ -72,6 +72,36 @@ jobs:
         echo "version=v$version" >> $env:GITHUB_OUTPUT
         echo "raw_version=$version" >> $env:GITHUB_OUTPUT
         
+    - name: Generate release notes from commits
+      id: release-notes
+      run: |
+        # Get the latest release tag
+        $latestTag = git describe --tags --abbrev=0 2>$null
+        if ($LASTEXITCODE -ne 0) {
+          $latestTag = ""
+        }
+        
+        # Generate commit messages since last release
+        if ($latestTag) {
+          $commits = git log "$latestTag..HEAD" --pretty=format:"- %s" --no-merges
+        } else {
+          $commits = git log --pretty=format:"- %s" --no-merges -n 10
+        }
+        
+        if ($commits) {
+          $releaseNotes = @"
+        ### Changes in this release:
+        
+        $commits
+        "@
+        } else {
+          $releaseNotes = "- Initial release"
+        }
+        
+        # Escape for GitHub output
+        $releaseNotes = $releaseNotes -replace "`r`n", "%0A" -replace "`n", "%0A"
+        echo "notes=$releaseNotes" >> $env:GITHUB_OUTPUT
+        
     - name: Install dependencies
       run: npm install
       
@@ -87,16 +117,16 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.package-version.outputs.version }}
-        name: WoW Addon Manager ${{ steps.package-version.outputs.version }}
+        name: Brownie's Addon Manager ${{ steps.package-version.outputs.version }}
         body: |
-          ## WoW Addon Manager ${{ steps.package-version.outputs.version }}
+          ## Brownie's Addon Manager ${{ steps.package-version.outputs.version }}
           
-          ${{ github.event.inputs.release_notes || 'Automatic release triggered by version change' }}
+          ${{ github.event.inputs.release_notes || steps.release-notes.outputs.notes }}
           
           ### Installation
           1. Download the installer below
           2. Run the .exe file to install
-          3. Launch WoW Addon Manager
+          3. Launch Brownie's Addon Manager
           4. Configure your WoW installation path in Settings
           5. Start managing your addons!
         draft: false

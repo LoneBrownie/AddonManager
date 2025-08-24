@@ -1,27 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useAddons } from '../hooks/useAddons';
 
-const ExistingAddonManager = ({ wowPath, onClose }) => {
-  const { existingAddons, addExistingAddon, scanForExistingAddons, loading: addonsLoading } = useAddons();
+const ExistingAddonManager = ({ wowPath, existingAddons: propExistingAddons, onClose }) => {
+  const { addExistingAddon, scanForExistingAddons } = useAddons();
   const [scanning, setScanning] = useState(false);
   const [adding, setAdding] = useState(new Set());
   const [selectedAddon, setSelectedAddon] = useState(null);
   const [repoUrl, setRepoUrl] = useState('');
   const [urlError, setUrlError] = useState('');
+  const [localExistingAddons, setLocalExistingAddons] = useState(propExistingAddons || []);
 
+  // No automatic scanning - rely entirely on the scan triggered by App.js
+  // The existingAddons state from the hook should already be populated when this component opens
+
+  // Update local state when props change
   useEffect(() => {
-    if (wowPath && !addonsLoading && !scanning) {
-      handleScan();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [wowPath]);
+    setLocalExistingAddons(propExistingAddons || []);
+  }, [propExistingAddons]);
 
   const handleScan = async () => {
     if (!wowPath) return;
     
     try {
       setScanning(true);
-      await scanForExistingAddons(wowPath);
+      const scannedResults = await scanForExistingAddons();
+      setLocalExistingAddons(scannedResults);
     } catch (error) {
       console.error('Failed to scan for existing addons:', error);
     } finally {
@@ -58,6 +61,9 @@ const ExistingAddonManager = ({ wowPath, onClose }) => {
       // Reset form
       setSelectedAddon(null);
       setRepoUrl('');
+      
+      // Refresh the scan to update the list
+      await handleScan();
     } catch (error) {
       setUrlError(error.message || 'Failed to add addon');
     } finally {
@@ -231,18 +237,18 @@ const ExistingAddonManager = ({ wowPath, onClose }) => {
           </button>
         </div>
 
-        {existingAddons.length === 0 ? (
+        {localExistingAddons.length === 0 ? (
           <p style={{ color: '#888', textAlign: 'center', padding: '20px' }}>
             {scanning ? 'Scanning for addons...' : 'No unmanaged addons found. Click "Scan Addons" to refresh.'}
           </p>
         ) : (
           <div>
             <p style={{ color: '#ccc', marginBottom: '15px' }}>
-              Found {existingAddons.length} addon{existingAddons.length !== 1 ? 's' : ''} that aren't being managed:
+              Found {localExistingAddons.length} addon{localExistingAddons.length !== 1 ? 's' : ''} that aren't being managed:
             </p>
             
             <div style={{ display: 'grid', gap: '10px' }}>
-              {existingAddons.map((addon) => {
+              {localExistingAddons.map((addon) => {
                 const addonKey = typeof addon === 'object' ? addon.folderPath : addon;
                 return (
                   <div 

@@ -16,9 +16,10 @@ let mainWindow;
 function createWindow() {
   // Create the browser window with secure configurations
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1440,  // 1200 * 1.2 = 1440
+    height: 960,  // 800 * 1.2 = 960
     autoHideMenuBar: true, // Hide the File/Edit/View/Window/Help menu bar
+    icon: path.join(__dirname, 'Logo.png'), // Application icon
     webPreferences: {
       // ✅ Security: Disable Node.js integration in renderer
       nodeIntegration: false,
@@ -37,7 +38,6 @@ function createWindow() {
       // ✅ Security: Disable allowRunningInsecureContent
       allowRunningInsecureContent: false
     },
-    icon: path.join(__dirname, 'icon.png'),
     show: false,
     // ✅ Security: Set minimum window size
     minWidth: 800,

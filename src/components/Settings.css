@@ -1,17 +1,17 @@
 .settings {
-  margin-top: 30px;
-  border-top: 1px solid #34495e;
-  padding-top: 20px;
+  margin-top: 0;
+  border-top: none;
+  padding-top: 0;
 }
 
 .settings-header {
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
 .settings-toggle {
   background: none;
   border: none;
-  color: #3498db;
+  color: var(--primary-color);
   font-size: 16px;
   cursor: pointer;
   padding: 5px 0;
@@ -21,20 +21,31 @@
 }
 
 .settings-toggle:hover {
-  color: #2980b9;
+  color: var(--primary-hover-color);
 }
 
 .settings-content {
-  background-color: #34495e;
-  padding: 20px;
+  background-color: var(--surface-color);
+  padding: 16px;
   border-radius: 8px;
-  margin-top: 10px;
+  margin-top: 0;
 }
 
 .settings-content h3 {
-  color: #ecf0f1;
-  margin-bottom: 20px;
-  font-size: 1.3em;
+  color: var(--text-primary-color);
+  margin-bottom: 16px;
+  font-size: 1.2em;
+}
+
+.settings-section {
+  margin-bottom: 16px;
+}
+
+.settings-section h4 {
+  color: var(--text-primary-color);
+  margin-bottom: 12px;
+  font-size: 1.1em;
+  font-weight: 600;
 }
 
 .path-input-group {
@@ -53,21 +64,21 @@
 }
 
 .path-info {
-  margin-top: 10px;
-  padding: 10px;
-  background-color: #2c3e50;
+  margin-top: 8px;
+  padding: 8px;
+  background-color: var(--surface-color);
   border-radius: 5px;
   font-size: 14px;
 }
 
 .path-info p {
-  color: #95a5a6;
-  margin-bottom: 5px;
+  color: var(--text-secondary-color);
+  margin-bottom: 4px;
 }
 
 .path-info code {
-  color: #e74c3c;
-  background-color: #1a1a1a;
+  color: var(--primary-color);
+  background-color: var(--background-color);
   padding: 4px 8px;
   border-radius: 3px;
   font-family: 'Courier New', monospace;
@@ -76,34 +87,34 @@
 }
 
 .success {
-  color: #27ae60;
+  color: var(--success-color);
   font-size: 14px;
   margin-top: 5px;
   font-weight: bold;
 }
 
 .settings-actions {
-  margin: 20px 0;
+  margin: 16px 0;
   display: flex;
   justify-content: flex-end;
 }
 
 .settings-help {
-  margin-top: 20px;
-  padding: 15px;
-  background-color: #2c3e50;
+  margin-top: 16px;
+  padding: 12px;
+  background-color: var(--surface-color);
   border-radius: 5px;
-  border-left: 4px solid #3498db;
+  border-left: 4px solid var(--info-color);
 }
 
 .settings-help h4 {
-  color: #3498db;
+  color: var(--info-color);
   margin-bottom: 10px;
   font-size: 1.1em;
 }
 
 .settings-help ul {
-  color: #bdc3c7;
+  color: var(--text-secondary-color);
   font-size: 14px;
 }
 
@@ -118,8 +129,8 @@
 }
 
 .settings-help code {
-  background-color: #1a1a1a;
-  color: #e74c3c;
+  background-color: var(--background-color);
+  color: var(--primary-color);
   padding: 2px 6px;
   border-radius: 3px;
   font-family: 'Courier New', monospace;
@@ -142,21 +153,21 @@
 
 /* App Update Section */
 .app-update-section {
-  margin: 30px 0;
-  padding: 20px;
-  background-color: #2c3e50;
+  margin: 20px 0 0 0;
+  padding: 16px;
+  background-color: var(--surface-color);
   border-radius: 8px;
-  border: 1px solid #34495e;
+  border: 1px solid var(--border-color);
 }
 
 .app-update-section h4 {
-  color: #ecf0f1;
-  margin-bottom: 15px;
-  font-size: 1.2em;
+  color: var(--text-primary-color);
+  margin-bottom: 12px;
+  font-size: 1.1em;
 }
 
 .version-info {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .current-version {
@@ -167,15 +178,15 @@
 }
 
 .version-label {
-  color: #bdc3c7;
+  color: var(--text-secondary-color);
   font-weight: 500;
 }
 
 .version-number {
-  color: #3498db;
+  color: var(--primary-color);
   font-weight: bold;
   font-family: 'Courier New', monospace;
-  background-color: #1a1a1a;
+  background-color: var(--background-color);
   padding: 4px 8px;
   border-radius: 4px;
 }
@@ -188,18 +199,18 @@
 }
 
 .update-message.available {
-  background-color: #f39c12;
-  color: #2c3e50;
+  background-color: var(--warning-color);
+  color: var(--background-color);
 }
 
 .update-message.error {
-  background-color: #e74c3c;
+  background-color: var(--danger-color);
   color: white;
 }
 
 .update-message:not(.available):not(.error) {
-  background-color: #34495e;
-  color: #bdc3c7;
+  background-color: var(--surface-hover-color);
+  color: var(--text-secondary-color);
 }
 
 .update-actions {
@@ -215,11 +226,11 @@
 .update-info {
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid #34495e;
+  border-top: 1px solid var(--border-color);
 }
 
 .update-info p {
-  color: #95a5a6;
+  color: var(--text-secondary-color);
   font-size: 14px;
   margin: 5px 0;
 }

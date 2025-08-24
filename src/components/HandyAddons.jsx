@@ -140,7 +140,7 @@ const CATEGORIES = [
   'Interface'
 ];
 
-function HandyAddons({ onAddAddon, installedAddons, loading }) {
+function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [installing, setInstalling] = useState(new Set());
 
@@ -183,11 +183,6 @@ function HandyAddons({ onAddAddon, installedAddons, loading }) {
 
   return (
     <div className="handy-addons">
-      <h2>Handy Addons</h2>
-      <p className="section-description">
-        Install curated WoW addons with a single click. These are specially selected addons optimized for Classic and WotLK.
-      </p>
-
       <div className="category-filters">
         {CATEGORIES.map(category => (
           <button
@@ -198,6 +193,11 @@ function HandyAddons({ onAddAddon, installedAddons, loading }) {
             {category}
           </button>
         ))}
+        {addButton && (
+          <div className="add-addon-button-wrapper">
+            {addButton}
+          </div>
+        )}
       </div>
 
       <div className="handy-addons-grid">
@@ -208,7 +208,6 @@ function HandyAddons({ onAddAddon, installedAddons, loading }) {
           return (
             <div key={addon.id} className="handy-addon-card">
               <div className="addon-header">
-                <span className="addon-icon">{addon.icon}</span>
                 <div className="addon-title-info">
                   <h3 className="addon-title">{addon.name}</h3>
                   <span className="addon-category">{addon.category}</span>

@@ -116,7 +116,12 @@ function AddonCard({ addon, onUpdate, onRemove, loading }) {
         {addon.installedFolders && addon.installedFolders.length > 0 && (
           <div className="info-row">
             <span className="label">Folders:</span>
-            <span className="folders">{addon.installedFolders.join(', ')}</span>
+            <span className="folders" title={addon.installedFolders.join(', ')}>
+              {addon.installedFolders.length > 3 
+                ? `${addon.installedFolders.length} folders (${addon.installedFolders.slice(0, 2).join(', ')}, ...)`
+                : addon.installedFolders.join(', ')
+              }
+            </span>
           </div>
         )}
       </div>

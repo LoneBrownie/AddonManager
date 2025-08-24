@@ -311,9 +311,11 @@ export function useAddons() {
       );
       
       setExistingAddons(unmanaged);
+      return unmanaged; // Return the results
     } catch (err) {
       console.error('Failed to scan for existing addons:', err);
       setError(err.message || 'Failed to scan for existing addons');
+      return []; // Return empty array on error
     } finally {
       setLoading(false);
     }
