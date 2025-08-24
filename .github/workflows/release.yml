@@ -1,0 +1,95 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+      release_notes:
+        description: 'Release notes'
+        required: false
+        default: 'New release of WoW Addon Manager'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build React app
+      run: npm run build
+      
+    - name: Build Electron app
+      run: npm run dist
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Find installer file
+      id: find_installer
+      run: |
+        $installerFile = Get-ChildItem -Path "dist" -Filter "*.exe" | Select-Object -First 1
+        if ($installerFile) {
+          echo "installer_path=$($installerFile.FullName)" >> $env:GITHUB_OUTPUT
+          echo "installer_name=$($installerFile.Name)" >> $env:GITHUB_OUTPUT
+          echo "Found installer: $($installerFile.Name)"
+        } else {
+          echo "No installer file found!"
+          exit 1
+        }
+      shell: powershell
+      
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.event.inputs.version }}
+        release_name: WoW Addon Manager ${{ github.event.inputs.version }}
+        body: |
+          ## WoW Addon Manager ${{ github.event.inputs.version }}
+          
+          ${{ github.event.inputs.release_notes }}
+          
+          ### Features
+          - 🔗 Add addons from GitHub/GitLab URLs
+          - 📦 Automatic installation and updates
+          - 🎯 Tab-based interface with curated addons
+          - 💾 Persistent storage across app updates
+          - 🔍 Import existing addons from your WoW directory
+          
+          ### Installation
+          1. Download the installer below
+          2. Run the .exe file to install
+          3. Launch WoW Addon Manager
+          4. Configure your WoW installation path in Settings
+          5. Start managing your addons!
+          
+          ### Requirements
+          - Windows 10 or later
+          - World of Warcraft installation
+        draft: false
+        prerelease: false
+        
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ steps.find_installer.outputs.installer_path }}
+        asset_name: ${{ steps.find_installer.outputs.installer_name }}
+        asset_content_type: application/octet-stream
