@@ -86,6 +86,14 @@ const HANDY_ADDONS = [
     category: 'Questing',
     icon: '❓',
     customFolderName: 'Questie-335'
+  },
+  {
+    id: 'dragonflightui',
+    name: 'DragonflightUI',
+    description: 'Modern Dragonflight-style user interface for Classic WoW with updated visuals and functionality.',
+    repoUrl: 'https://github.com/TheLinuxITGuy/Chromie-Dragonflight',
+    category: 'Interface',
+    icon: '🐉'
   }
 ];
 
@@ -95,7 +103,8 @@ const CATEGORIES = [
   'Raid Frames',
   'Healing',
   'Management',
-  'Questing'
+  'Questing',
+  'Interface'
 ];
 
 function HandyAddons({ onAddAddon, installedAddons, loading }) {
