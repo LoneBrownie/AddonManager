@@ -20,6 +20,7 @@ function createWindow() {
     height: 960,  // 800 * 1.2 = 960
     autoHideMenuBar: true, // Hide the File/Edit/View/Window/Help menu bar
     icon: path.join(__dirname, 'Logo.png'), // Application icon
+    title: "Brownie's Addon Manager", // Set window title
     webPreferences: {
       // ✅ Security: Disable Node.js integration in renderer
       nodeIntegration: false,
@@ -87,6 +88,11 @@ function createWindow() {
 
 // App event handlers
 app.whenReady().then(() => {
+  // Set the app icon for taskbar and app lists
+  if (process.platform === 'win32') {
+    app.setAppUserModelId("com.brownies.addon-manager");
+  }
+  
   createWindow();
   
   // Configure auto-updater (only for production builds)

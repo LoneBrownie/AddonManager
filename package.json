@@ -1,6 +1,6 @@
 {
   "name": "wow-addon-manager",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A Windows desktop application for managing WoW addons from GitHub and GitLab",
   "author": "LoneBrownie",
   "main": "public/electron.js",
@@ -47,7 +47,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "src/img/Logo.png",
+      "icon": "build/icons/icon.png",
       "signAndEditExecutable": false,
       "signDlls": false,
       "publish": ["github"]
