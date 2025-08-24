@@ -20,6 +20,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveUserData: (key, data) => ipcRenderer.invoke('save-user-data', key, data),
   loadUserData: (key) => ipcRenderer.invoke('load-user-data', key),
   
+  // App update functionality
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  installUpdate: () => ipcRenderer.invoke('install-update'),
+  onUpdateStatus: (callback) => ipcRenderer.on('update-status', callback),
+  onUpdateProgress: (callback) => ipcRenderer.on('update-progress', callback),
+  removeUpdateListeners: () => {
+    ipcRenderer.removeAllListeners('update-status');
+    ipcRenderer.removeAllListeners('update-progress');
+  },
+  
   // Version information (safe to expose)
   versions: {
     node: () => process.versions.node,

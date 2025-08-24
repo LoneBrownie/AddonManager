@@ -94,6 +94,39 @@ const HANDY_ADDONS = [
     repoUrl: 'https://github.com/TheLinuxITGuy/Chromie-Dragonflight',
     category: 'Interface',
     icon: '🐉'
+  },
+  {
+    id: 'atlasloot-epoch',
+    name: 'AtlasLoot Epoch',
+    description: 'Complete loot browser for Classic WoW showing items, locations, and drop rates.',
+    repoUrl: 'https://github.com/Raynbock/AtlaslootProjectEpoch',
+    category: 'Interface',
+    icon: '💰'
+  },
+  {
+    id: 'bagnon',
+    name: 'Bagnon',
+    description: 'All-in-one bag replacement addon that merges all your bags into one frame.',
+    repoUrl: 'https://github.com/RichSteini/Bagnon-3.3.5',
+    category: 'Interface',
+    icon: '🎒'
+  },
+  {
+    id: 'notplater',
+    name: 'NotPlater',
+    description: 'Advanced nameplate addon with extensive customization options.',
+    repoUrl: 'https://github.com/RichSteini/NotPlater',
+    category: 'Interface',
+    icon: '📋',
+    customFolderName: 'NotPlater-3.3.5'
+  },
+  {
+    id: 'framesort',
+    name: 'FrameSort',
+    description: 'Sort and organize unit frames and raid frames for better group management.',
+    repoUrl: 'https://gitlab.com/Tsoukie/framesort-3.3.5',
+    category: 'Raid Frames',
+    icon: '📋'
   }
 ];
 

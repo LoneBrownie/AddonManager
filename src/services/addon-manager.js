@@ -85,7 +85,17 @@ async function findAddonFoldersRecursive(searchPath, basePath) {
     if (hasTocFiles) {
       // This is an addon folder, add relative path from base
       const relativePath = searchPath.replace(basePath, '').replace(/^[\\//]/, '');
-      addonFolders.push(relativePath || '.');
+      const folderName = relativePath || '.';
+      
+      // Skip optional folders for specific addons
+      const skipFolders = ['AnyIDTooltip']; // Optional AtlasLoot component
+      const shouldSkip = skipFolders.some(skipFolder => 
+        folderName.includes(skipFolder) || folderName.endsWith(skipFolder)
+      );
+      
+      if (!shouldSkip) {
+        addonFolders.push(folderName);
+      }
     } else {
       // No .toc files here, search subdirectories
       for (const item of items) {
@@ -314,6 +324,36 @@ async function findTocFiles(addonDir) {
 function generateAddonId(repoUrl) {
   const repoInfo = parseRepoFromUrl(repoUrl);
   return `${repoInfo.platform}-${repoInfo.owner}-${repoInfo.repo}`;
+}
+
+/**
+ * Get display name from repository URL
+ * @param {string} url - Repository URL
+ * @returns {string} Display name (e.g., "owner/repo")
+ */
+function getRepoDisplayName(url) {
+  try {
+    // Special case for AtlasLoot Epoch
+    if (url.toLowerCase().includes('atlaslootprojectepoch') || 
+        url.toLowerCase().includes('raynbock/atlasloot')) {
+      return 'AtlasLoot Epoch';
+    }
+    
+    // Special case for Questie Epoch
+    if (url.toLowerCase().includes('questie-epoch') || 
+        url.toLowerCase().includes('esurm/questie')) {
+      return 'Questie Epoch';
+    }
+    
+    const urlObj = new URL(url);
+    const pathParts = urlObj.pathname.split('/').filter(part => part);
+    if (pathParts.length >= 2) {
+      return pathParts[1]; // Just the repo name without owner for cleaner display
+    }
+  } catch {
+    // fallback
+  }
+  return url;
 }
 
 /**
@@ -578,8 +618,9 @@ export async function scanExistingAddons(settings = null) {
 
     // Get all directories in AddOns folder
     const items = await fileSystem.readdir(addonsPath);
-    const existingAddons = [];
+    const addonFolders = [];
 
+    // First pass: collect all addon folders with their data
     for (const item of items) {
       // Skip if it's not a directory
       if (!item.isDirectory) continue;
@@ -612,8 +653,7 @@ export async function scanExistingAddons(settings = null) {
           // Get folder stats for last modified time
           const stats = await fileSystem.stat(folderPath);
 
-          // Create existing addon object
-          const existingAddon = {
+          addonFolders.push({
             folderName,
             folderPath,
             tocData,
@@ -624,9 +664,7 @@ export async function scanExistingAddons(settings = null) {
             interface: tocData.interface || 'Unknown',
             lastModified: stats ? stats.mtime : new Date(),
             suggestedRepos: await suggestRepositories(tocData, folderName)
-          };
-
-          existingAddons.push(existingAddon);
+          });
         }
       } catch (error) {
         console.error(`Error scanning addon folder ${folderName}:`, error);
@@ -634,11 +672,288 @@ export async function scanExistingAddons(settings = null) {
       }
     }
 
-    return existingAddons;
+    // Second pass: group related addons
+    const groupedAddons = groupRelatedAddons(addonFolders);
+    
+    return groupedAddons;
   } catch (error) {
     console.error('Error scanning AddOns directory:', error);
     throw new Error('Failed to scan existing addons');
   }
+}
+
+/**
+ * Group related addon folders together (e.g., Scrap, Scrap_Merchant, Scrap_Options)
+ * @param {Array} addonFolders - Array of individual addon folder data
+ * @returns {Array} Array of grouped addon objects
+ */
+function groupRelatedAddons(addonFolders) {
+  const grouped = [];
+  const processed = new Set();
+
+  // Sort by folder name length (shorter names first, likely to be main addons)
+  const sortedAddons = [...addonFolders].sort((a, b) => a.folderName.length - b.folderName.length);
+
+  for (const addon of sortedAddons) {
+    if (processed.has(addon.folderName)) continue;
+
+    // Find all potentially related addons
+    const relatedAddons = findRelatedAddons(addon, addonFolders, processed);
+
+    if (relatedAddons.length > 1) {
+      // Multiple related folders - create a grouped addon
+      const mainAddon = findMainAddon(relatedAddons);
+
+      // Collect suggested repositories from all related addons
+      const allSuggestedRepos = new Set();
+      relatedAddons.forEach(addon => {
+        if (addon.suggestedRepos && Array.isArray(addon.suggestedRepos)) {
+          addon.suggestedRepos.forEach(repo => allSuggestedRepos.add(repo));
+        }
+      });
+
+      const groupedAddon = {
+        ...mainAddon,
+        isGrouped: true,
+        relatedFolders: relatedAddons.map(a => a.folderName),
+        title: mainAddon.title,
+        notes: `Multi-folder addon with ${relatedAddons.length} components: ${relatedAddons.map(a => a.folderName).join(', ')}`,
+        suggestedRepos: Array.from(allSuggestedRepos)
+      };
+
+      grouped.push(groupedAddon);
+      relatedAddons.forEach(a => processed.add(a.folderName));
+    } else {
+      // Single folder - add as-is
+      grouped.push(addon);
+      processed.add(addon.folderName);
+    }
+  }
+
+  // Sort grouped addons alphabetically by title/name
+  grouped.sort((a, b) => {
+    const nameA = (a.title || a.folderName).toLowerCase();
+    const nameB = (b.title || b.folderName).toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+  
+  return grouped;
+}
+
+/**
+ * Find addons related to the given addon
+ * @param {Object} addon - The addon to find relations for
+ * @param {Array} allAddons - All available addons
+ * @param {Set} processed - Already processed addon names
+ * @returns {Array} Array of related addons including the original
+ */
+function findRelatedAddons(addon, allAddons, processed) {
+  const related = [];
+  const addonName = addon.folderName;
+
+  for (const other of allAddons) {
+    if (processed.has(other.folderName)) continue;
+    
+    if (areAddonsRelated(addonName, other.folderName)) {
+      related.push(other);
+    }
+  }
+
+  return related;
+}
+
+/**
+ * Determine if two addon folder names are related
+ * @param {string} name1 - First addon name
+ * @param {string} name2 - Second addon name
+ * @returns {boolean} True if the addons are related
+ */
+function areAddonsRelated(name1, name2) {
+  const n1 = name1.toLowerCase();
+  const n2 = name2.toLowerCase();
+
+  // Exact match
+  if (n1 === n2) return true;
+
+  // Check for version/variant suffixes that indicate separate addons
+  const versionSuffixes = [
+    'classic', 'tbc', 'wotlk', 'cata', 'mop', 'wod', 'legion', 'bfa', 'sl', 'df',
+    'epoch', 'vanilla', 'burning', 'crusade', 'lich', 'king', 'cataclysm',
+    'pandaria', 'draenor', 'isles', 'azeroth', 'shadowlands', 'dragonflight',
+    'v1', 'v2', 'v3', 'v4', 'v5', '335', '243', '434', '548'
+  ];
+
+  // If both names contain version indicators, they're likely separate addons
+  const hasVersion1 = versionSuffixes.some(suffix => n1.includes(suffix));
+  const hasVersion2 = versionSuffixes.some(suffix => n2.includes(suffix));
+  
+  if (hasVersion1 && hasVersion2) {
+    // Both have version indicators - they're separate addon variants
+    return false;
+  }
+
+  // Check if one is a prefix of the other with common separators
+  const separators = ['_', '-', ' '];
+  for (const sep of separators) {
+    // name1 is prefix of name2 (e.g., "WeakAuras" and "WeakAuras_Options")
+    if (n2.startsWith(n1 + sep)) {
+      // Additional check: make sure the suffix isn't a version indicator
+      const suffix = n2.substring((n1 + sep).length);
+      if (versionSuffixes.includes(suffix)) {
+        return false; // This is a version variant, not a component
+      }
+      return true;
+    }
+    // name2 is prefix of name1
+    if (n1.startsWith(n2 + sep)) {
+      // Additional check: make sure the suffix isn't a version indicator
+      const suffix = n1.substring((n2 + sep).length);
+      if (versionSuffixes.includes(suffix)) {
+        return false; // This is a version variant, not a component
+      }
+      return true;
+    }
+  }
+
+  // Check for common base names with different suffixes
+  const commonBase = findCommonBase(n1, n2);
+  if (commonBase && commonBase.length >= 4) { // Minimum 4 chars for meaningful base
+    const suffix1 = n1.substring(commonBase.length);
+    const suffix2 = n2.substring(commonBase.length);
+    
+    // Remove leading separators from suffixes
+    const cleanSuffix1 = suffix1.replace(/^[-_\s]+/, '');
+    const cleanSuffix2 = suffix2.replace(/^[-_\s]+/, '');
+    
+    // If either suffix is a version indicator, they're separate addons
+    if (versionSuffixes.includes(cleanSuffix1) || versionSuffixes.includes(cleanSuffix2)) {
+      return false;
+    }
+    
+    // Check if both have addon-like suffixes
+    const addonSuffixes = [
+      '', '_core', '_main', '_options', '_config', '_configuration', '_locale', '_locales',
+      '_merchant', '_vendor', '_auction', '_guild', '_broker', '_data', '_lib', '_library',
+      '_frames', '_frame', '_unit', '_units', '_raid', '_party', '_solo', '_pvp', '_pve',
+      '_archive', '_archives', '_templates', '_template', '_modelpaths', '_paths', '_models',
+      '_sounds', '_sound', '_textures', '_texture', '_media', '_resources', '_resource',
+      '-core', '-main', '-options', '-config', '-configuration', '-locale', '-locales',
+      '-merchant', '-vendor', '-auction', '-guild', '-broker', '-data', '-lib', '-library',
+      '-frames', '-frame', '-unit', '-units', '-raid', '-party', '-solo', '-pvp', '-pve',
+      '-archive', '-archives', '-templates', '-template', '-modelpaths', '-paths', '-models',
+      '-sounds', '-sound', '-textures', '-texture', '-media', '-resources', '-resource',
+      'core', 'main', 'options', 'config', 'configuration', 'locale', 'locales',
+      'merchant', 'vendor', 'auction', 'guild', 'broker', 'data', 'lib', 'library',
+      'frames', 'frame', 'unit', 'units', 'raid', 'party', 'solo', 'pvp', 'pve',
+      'archive', 'archives', 'templates', 'template', 'modelpaths', 'paths', 'models',
+      'sounds', 'sound', 'textures', 'texture', 'media', 'resources', 'resource'
+    ];
+    
+    if (addonSuffixes.includes(suffix1) && addonSuffixes.includes(suffix2)) {
+      return true;
+    }
+  }
+
+  // Check for space-separated words (e.g., "Shadowed Unit Frames" variants)
+  const words1 = n1.split(/[\s_-]+/);
+  const words2 = n2.split(/[\s_-]+/);
+  
+  if (words1.length > 1 && words2.length > 1) {
+    // Check if any word is a version indicator
+    const hasVersionWord1 = words1.some(word => versionSuffixes.includes(word));
+    const hasVersionWord2 = words2.some(word => versionSuffixes.includes(word));
+    
+    if (hasVersionWord1 && hasVersionWord2) {
+      return false; // Both have version words, they're separate addons
+    }
+    
+    // Check if they share significant common words
+    const commonWords = words1.filter(word => 
+      word.length > 2 && words2.some(w => w === word)
+    );
+    
+    // If they share 2+ meaningful words, they're likely related
+    if (commonWords.length >= 2) return true;
+    
+    // Or if they share all but one word and that word is addon-like
+    if (Math.abs(words1.length - words2.length) <= 1) {
+      const allWords1 = new Set(words1);
+      const allWords2 = new Set(words2);
+      const intersection = new Set([...allWords1].filter(x => allWords2.has(x)));
+      
+      // If most words are shared, they're likely related
+      if (intersection.size >= Math.min(allWords1.size, allWords2.size) - 1) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Find the common base between two strings
+ * @param {string} str1 - First string
+ * @param {string} str2 - Second string
+ * @returns {string} Common base string
+ */
+function findCommonBase(str1, str2) {
+  let i = 0;
+  while (i < str1.length && i < str2.length && str1[i] === str2[i]) {
+    i++;
+  }
+  return str1.substring(0, i);
+}
+
+/**
+ * Find the main addon from a group of related addons
+ * @param {Array} relatedAddons - Array of related addon objects
+ * @returns {Object} The main addon object
+ */
+function findMainAddon(relatedAddons) {
+  // Prefer addon with shortest name (likely the base name)
+  let mainAddon = relatedAddons[0];
+  
+  for (const addon of relatedAddons) {
+    // Prefer shorter names
+    if (addon.folderName.length < mainAddon.folderName.length) {
+      mainAddon = addon;
+      continue;
+    }
+    
+    // If same length, prefer names without common suffixes
+    if (addon.folderName.length === mainAddon.folderName.length) {
+      const hasNoSuffix = !hasCommonSuffix(addon.folderName.toLowerCase());
+      const mainHasNoSuffix = !hasCommonSuffix(mainAddon.folderName.toLowerCase());
+      
+      if (hasNoSuffix && !mainHasNoSuffix) {
+        mainAddon = addon;
+      }
+    }
+  }
+  
+  return mainAddon;
+}
+
+/**
+ * Check if a folder name has a common addon suffix
+ * @param {string} name - Folder name (lowercase)
+ * @returns {boolean} True if it has a common suffix
+ */
+function hasCommonSuffix(name) {
+  const suffixes = [
+    '_core', '_main', '_options', '_config', '_configuration', '_locale', '_locales',
+    '_merchant', '_vendor', '_auction', '_guild', '_broker', '_data', '_lib', '_library',
+    '_archive', '_archives', '_templates', '_template', '_modelpaths', '_paths', '_models',
+    '_sounds', '_sound', '_textures', '_texture', '_media', '_resources', '_resource',
+    '-core', '-main', '-options', '-config', '-configuration', '-locale', '-locales',
+    '-merchant', '-vendor', '-auction', '-guild', '-broker', '-data', '-lib', '-library',
+    '-archive', '-archives', '-templates', '-template', '-modelpaths', '-paths', '-models',
+    '-sounds', '-sound', '-textures', '-texture', '-media', '-resources', '-resource',
+    'core', 'main', 'options', 'config', 'locale', 'data', 'archive', 'templates', 'modelpaths'
+  ];
+  
+  return suffixes.some(suffix => name.endsWith(suffix));
 }
 
 /**
@@ -696,16 +1011,34 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl) {
     // Get release info from API
     const release = await getLatestRelease(approvedRepoUrl);
     
+    // Determine addon name - prefer special cases, then .toc title, then repo name
+    let addonName;
+    const repoDisplayName = getRepoDisplayName(approvedRepoUrl);
+    
+    // Check if this is a special case that should override .toc title
+    const isSpecialCase = approvedRepoUrl.toLowerCase().includes('atlaslootprojectepoch') || 
+                         approvedRepoUrl.toLowerCase().includes('raynbock/atlasloot') ||
+                         approvedRepoUrl.toLowerCase().includes('questie-epoch') || 
+                         approvedRepoUrl.toLowerCase().includes('esurm/questie');
+    
+    if (isSpecialCase) {
+      // Use special naming for these addons
+      addonName = repoDisplayName;
+    } else {
+      // Use .toc title if available, otherwise use repo name
+      addonName = existingAddon.title || repoDisplayName;
+    }
+    
     // Create managed addon object
     const managedAddon = {
       id: generateId(),
-      name: existingAddon.title,
+      name: addonName,
       repoUrl: approvedRepoUrl,
       currentVersion: existingAddon.version,
       latestVersion: release.version,
       needsUpdate: compareVersions(existingAddon.version, release.version) < 0,
       lastUpdated: new Date().toISOString(),
-      installedFolders: [existingAddon.folderName],
+      installedFolders: existingAddon.isGrouped ? existingAddon.relatedFolders : [existingAddon.folderName],
       tocData: existingAddon.tocData,
       source: release.source || 'release',
       branch: release.branch,

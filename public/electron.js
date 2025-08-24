@@ -1,4 +1,5 @@
 const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs').promises;
 
@@ -85,7 +86,28 @@ function createWindow() {
 }
 
 // App event handlers
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  
+  // Configure auto-updater (only for production builds)
+  if (!isDev) {
+    autoUpdater.setFeedURL({
+      provider: 'github',
+      owner: 'LoneBrownie',
+      repo: 'AddonManager'
+    });
+    
+    // Check for updates 30 seconds after app start
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify();
+    }, 30000);
+    
+    // Check for updates every 6 hours
+    setInterval(() => {
+      autoUpdater.checkForUpdatesAndNotify();
+    }, 6 * 60 * 60 * 1000);
+  }
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -97,6 +119,57 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// Auto-updater event handlers
+autoUpdater.on('checking-for-update', () => {
+  console.log('Checking for update...');
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', 'checking');
+  }
+});
+
+autoUpdater.on('update-available', (info) => {
+  console.log('Update available.');
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', 'available', info);
+  }
+});
+
+autoUpdater.on('update-not-available', (info) => {
+  console.log('Update not available.');
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', 'not-available', info);
+  }
+});
+
+autoUpdater.on('error', (err) => {
+  console.log('Error in auto-updater: ', err);
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', 'error', err.message);
+  }
+});
+
+autoUpdater.on('download-progress', (progressObj) => {
+  let log_message = "Download speed: " + progressObj.bytesPerSecond;
+  log_message = log_message + ' - Downloaded ' + progressObj.percent + '%';
+  log_message = log_message + ' (' + progressObj.transferred + "/" + progressObj.total + ')';
+  console.log(log_message);
+  if (mainWindow) {
+    mainWindow.webContents.send('update-progress', progressObj);
+  }
+});
+
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('Update downloaded');
+  if (mainWindow) {
+    mainWindow.webContents.send('update-status', 'downloaded', info);
+  }
+  
+  // Show notification and restart after 5 seconds
+  setTimeout(() => {
+    autoUpdater.quitAndInstall();
+  }, 5000);
 });
 
 // IPC handlers for secure file operations
@@ -488,4 +561,30 @@ ipcMain.handle('load-user-data', async (event, key) => {
     console.error('Failed to load user data:', error);
     return null;
   }
+});
+
+// Update-related IPC handlers
+ipcMain.handle('get-app-version', async () => {
+  return app.getVersion();
+});
+
+ipcMain.handle('check-for-updates', async () => {
+  if (isDev) {
+    return { message: 'Updates not available in development mode' };
+  }
+  
+  try {
+    const result = await autoUpdater.checkForUpdates();
+    return result;
+  } catch (error) {
+    throw new Error(`Failed to check for updates: ${error.message}`);
+  }
+});
+
+ipcMain.handle('install-update', async () => {
+  if (isDev) {
+    throw new Error('Updates not available in development mode');
+  }
+  
+  autoUpdater.quitAndInstall();
 });

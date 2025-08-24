@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getSettings, saveSettings } from '../services/addon-manager';
+import { useAppUpdater } from '../hooks/useAppUpdater';
 import './Settings.css';
 
 // ✅ Security: Use secure Electron API access
@@ -10,6 +11,18 @@ function Settings({ alwaysExpanded = false }) {
   const [isOpen, setIsOpen] = useState(alwaysExpanded);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // App updater hook
+  const {
+    currentVersion,
+    updateStatus,
+    checkForUpdates,
+    installUpdate,
+    getStatusMessage,
+    isUpdateAvailable,
+    isDownloading,
+    hasError
+  } = useAppUpdater();
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -157,6 +170,49 @@ function Settings({ alwaysExpanded = false }) {
             >
               Save Settings
             </button>
+          </div>
+
+          <div className="app-update-section">
+            <h4>Application Updates</h4>
+            <div className="version-info">
+              <div className="current-version">
+                <span className="version-label">Current Version:</span>
+                <span className="version-number">{currentVersion || 'Loading...'}</span>
+              </div>
+              
+              <div className="update-status">
+                {getStatusMessage() && (
+                  <div className={`update-message ${hasError ? 'error' : ''} ${isUpdateAvailable ? 'available' : ''}`}>
+                    {getStatusMessage()}
+                  </div>
+                )}
+              </div>
+              
+              <div className="update-actions">
+                <button
+                  className="button secondary"
+                  onClick={checkForUpdates}
+                  disabled={isDownloading || updateStatus === 'checking'}
+                >
+                  {updateStatus === 'checking' ? 'Checking...' : 'Check for Updates'}
+                </button>
+                
+                {isUpdateAvailable && (
+                  <button
+                    className="button success"
+                    onClick={installUpdate}
+                    disabled={isDownloading}
+                  >
+                    Download & Install Update
+                  </button>
+                )}
+              </div>
+            </div>
+            
+            <div className="update-info">
+              <p><strong>Note:</strong> The application automatically checks for updates every 6 hours.</p>
+              <p>Updates are downloaded and installed in the background.</p>
+            </div>
           </div>
 
           <div className="settings-help">

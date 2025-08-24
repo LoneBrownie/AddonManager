@@ -15,8 +15,7 @@ function App() {
     updateAllAddons,
     checkForUpdates,
     removeAddon,
-    scanExisting,
-    addExistingAddonToManagement,
+    wowPath,
     loading,
     error
   } = useAddons();
@@ -110,10 +109,8 @@ function App() {
 
       {showExistingManager && (
         <ExistingAddonManager
-          scanExisting={scanExisting}
-          onAddExisting={addExistingAddonToManagement}
+          wowPath={wowPath}
           onClose={() => setShowExistingManager(false)}
-          loading={loading}
         />
       )}
     </div>

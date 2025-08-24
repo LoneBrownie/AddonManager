@@ -89,8 +89,9 @@ function AddonListItem({ addon, onUpdate, onRemove, loading }) {
           <span className="branch-info">Branch: {addon.branch || 'main'}</span>
         )}
         {addon.installedFolders && addon.installedFolders.length > 0 && (
-          <span className="folder-count" title={addon.installedFolders.join(', ')}>
+          <span className="folder-count" title={`Managed folders: ${addon.installedFolders.join(', ')}`}>
             {addon.installedFolders.length} folder{addon.installedFolders.length !== 1 ? 's' : ''}
+            {addon.installedFolders.length > 1 && ` (${addon.installedFolders.join(', ')})`}
           </span>
         )}
       </div>

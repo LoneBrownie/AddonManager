@@ -1,6 +1,6 @@
 {
   "name": "wow-addon-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A Windows desktop application for managing WoW addons from GitHub and GitLab",
   "author": "LoneBrownie",
   "main": "public/electron.js",
@@ -8,6 +8,7 @@
   "private": true,
   "dependencies": {
     "adm-zip": "^0.5.15",
+    "electron-updater": "^6.6.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-scripts": "^5.0.1"
@@ -29,7 +30,8 @@
     "preelectron-pack": "npm run build",
     "dist": "npm run build && electron-builder --publish=never",
     "dist-win": "npm run build && electron-builder --win",
-    "dist-portable": "npm run build && electron-builder --win --dir"
+    "dist-portable": "npm run build && electron-builder --win --dir",
+    "publish": "npm run build && electron-builder --publish=always"
   },
   "build": {
     "appId": "com.example.wow-addon-manager",
@@ -47,7 +49,8 @@
       "target": "nsis",
       "icon": "build/icon.ico",
       "signAndEditExecutable": false,
-      "signDlls": false
+      "signDlls": false,
+      "publish": ["github"]
     },
     "nsis": {
       "oneClick": false,
@@ -55,6 +58,11 @@
       "perMachine": false,
       "deleteAppDataOnUninstall": false,
       "include": "installer.nsh"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "LoneBrownie",
+      "repo": "AddonManager"
     }
   },
   "eslintConfig": {

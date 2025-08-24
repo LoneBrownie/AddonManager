@@ -3,17 +3,54 @@ name: Create Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release version (e.g., v1.0.0)'
-        required: true
-        default: 'v1.0.0'
       release_notes:
         description: 'Release notes'
         required: false
         default: 'New release of WoW Addon Manager'
+  push:
+    branches: [ main ]
+    paths: [ 'package.json' ]
 
 jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version-changed: ${{ steps.check.outputs.changed }}
+      new-version: ${{ steps.check.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+        
+    - name: Check if version changed
+      id: check
+      run: |
+        # Get current version
+        CURRENT_VERSION=$(jq -r '.version' package.json)
+        
+        # Get previous version (from previous commit)
+        git checkout HEAD~1 -- package.json 2>/dev/null || echo "No previous version"
+        PREVIOUS_VERSION=$(jq -r '.version' package.json 2>/dev/null || echo "0.0.0")
+        
+        # Restore current package.json
+        git checkout HEAD -- package.json
+        
+        echo "Previous version: $PREVIOUS_VERSION"
+        echo "Current version: $CURRENT_VERSION"
+        
+        if [ "$CURRENT_VERSION" != "$PREVIOUS_VERSION" ]; then
+          echo "Version changed from $PREVIOUS_VERSION to $CURRENT_VERSION"
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "version=v$CURRENT_VERSION" >> $GITHUB_OUTPUT
+        else
+          echo "Version unchanged"
+          echo "changed=false" >> $GITHUB_OUTPUT
+        fi
+
   build-and-release:
+    needs: check-version
+    if: needs.check-version.outputs.version-changed == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     permissions:
       contents: write
@@ -28,26 +65,33 @@ jobs:
         node-version: '22'
         cache: 'npm'
         
+    - name: Get version from package.json
+      id: package-version
+      run: |
+        $version = (Get-Content package.json | ConvertFrom-Json).version
+        echo "version=v$version" >> $env:GITHUB_OUTPUT
+        echo "raw_version=$version" >> $env:GITHUB_OUTPUT
+        
     - name: Install dependencies
       run: npm install
       
     - name: Build React app
       run: npm run build
       
-    - name: Build Electron app
-      run: npm run dist
+    - name: Build Electron app and publish
+      run: npm run publish
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.event.inputs.version }}
-        name: WoW Addon Manager ${{ github.event.inputs.version }}
+        tag_name: ${{ steps.package-version.outputs.version }}
+        name: WoW Addon Manager ${{ steps.package-version.outputs.version }}
         body: |
-          ## WoW Addon Manager ${{ github.event.inputs.version }}
+          ## WoW Addon Manager ${{ steps.package-version.outputs.version }}
           
-          ${{ github.event.inputs.release_notes }}
+          ${{ github.event.inputs.release_notes || 'Automatic release triggered by version change' }}
           
           ### Installation
           1. Download the installer below
