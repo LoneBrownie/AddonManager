@@ -49,23 +49,12 @@ jobs:
           
           ${{ github.event.inputs.release_notes }}
           
-          ### Features
-          - 🔗 Add addons from GitHub/GitLab URLs
-          - 📦 Automatic installation and updates
-          - 🎯 Tab-based interface with curated addons
-          - 💾 Persistent storage across app updates
-          - 🔍 Import existing addons from your WoW directory
-          
           ### Installation
           1. Download the installer below
           2. Run the .exe file to install
           3. Launch WoW Addon Manager
           4. Configure your WoW installation path in Settings
           5. Start managing your addons!
-          
-          ### Requirements
-          - Windows 10 or later
-          - World of Warcraft installation
         draft: false
         prerelease: false
         files: dist/*.exe
