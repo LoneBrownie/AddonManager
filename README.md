@@ -1,6 +1,6 @@
-# WoW Addon Manager
+# Brownie's Addon Manager
 
-A modern Windows desktop application built with Electron and React for managing World of Warcraft addons from GitHub and GitLab repositories. Features a sleek tab-based interface with curated addon recommendations and persistent data storage.
+A modern Windows desktop application built with Electron and React for managing World of Warcraft addons from GitHub and GitLab repositories. Features a sleek interface with curated addon recommendations, persistent data storage, and a beautiful purple-themed design.
 
 ## ✨ Features
 
@@ -13,10 +13,12 @@ A modern Windows desktop application built with Electron and React for managing 
 - ⚙️ **Easy configuration**: Set your WoW installation path once
 
 ### User Interface
-- 🎯 **Tab-based navigation**: Organized interface with My Addons, Handy Addons, and Settings tabs
-- 📋 **List view**: Clean, readable addon list with improved visibility
-- 🎨 **Modern design**: Intuitive interface with proper contrast and accessibility
-- 📱 **Responsive layout**: Adapts to different window sizes
+- 🎯 **Modern navigation**: Clean sidebar navigation with intuitive icons
+- 📋 **Improved layout**: Streamlined interface with reduced whitespace for efficiency
+- 🎨 **Purple theme**: Beautiful dark theme with purple accent colors for a modern look
+- 🖼️ **Logo integration**: Custom branding throughout the application
+- 🔲 **Modal dialogs**: Enhanced user experience with modal-based interactions
+- 📱 **Responsive design**: Adapts to different window sizes with consistent layouts
 
 ### Advanced Features
 - 🔍 **Existing addon scanning**: Import and manage addons already installed in your WoW directory
@@ -30,6 +32,18 @@ A modern Windows desktop application built with Electron and React for managing 
 - 🦊 **GitLab compatibility**: Works with GitLab.com repositories
 - 📦 **Flexible downloads**: Supports direct downloads and custom asset selection
 
+## 🎉 Recent Major Updates
+
+### Version 2.0+ - Complete UI/UX Overhaul
+- 🎨 **Brand new design**: Modern purple-themed interface with improved aesthetics
+- 🏷️ **Rebranding**: Now called "Brownie's Addon Manager" with custom logo
+- 🔲 **Modal system**: Enhanced user experience with modal dialogs for adding addons
+- 📐 **Improved layouts**: Consistent spacing and reduced whitespace across all pages
+- ⚙️ **Settings redesign**: Streamlined settings page with better organization
+- 🎯 **Enhanced navigation**: Clean sidebar navigation replacing the old tab system
+- 🔄 **Better state management**: Improved addon scanning and state synchronization
+- 📦 **Automatic releases**: GitHub workflow now generates release notes from commit messages
+
 ## 📋 Prerequisites
 
 - **OS**: Windows 10 or later
@@ -40,7 +54,7 @@ A modern Windows desktop application built with Electron and React for managing 
 ## 🚀 Quick Start
 
 ### For Users (Recommended)
-1. Download the latest `WoW Addon Manager Setup.exe` from the releases page
+1. Download the latest `Brownie's Addon Manager Setup.exe` from the releases page
 2. Run the installer and follow the setup wizard
 3. Launch the application
 4. Configure your WoW installation path in Settings
@@ -66,15 +80,15 @@ npm run electron-dev
 4. **Save settings** - Your configuration will persist across app updates
 
 ### My Addons Tab
-- **Add new addons**: Paste GitHub/GitLab repository URLs
-- **Manage existing**: View, update, or remove your installed addons
+- **Add new addons**: Click "Add New Addon" button to open a modal for pasting GitHub/GitLab repository URLs
+- **Manage existing**: View, update, or remove your installed addons with clean list interface
 - **Bulk operations**: Update all addons at once or check for updates
-- **Import existing**: Scan your AddOns folder to manage already installed addons
+- **Import existing**: Use "Manage Existing Addons" to scan your AddOns folder and import already installed addons
 
-### Handy Addons Tab
-- **Curated collection**: Pre-selected quality addons for Classic and WotLK
+### Get Addons Tab
+- **Curated collection**: Pre-selected quality addons for Classic 3.3.5a
 - **One-click install**: Install recommended addons with special configurations
-- **Category filtering**: Browse by addon type (Core, Healing, Questing, etc.)
+- **Category filtering**: Browse by addon type (All, Core, Interface, Combat, etc.)
 - **Special handling**: Automatic custom folder naming and preferred asset selection
 
 ## 🔧 Technical Overview
@@ -91,7 +105,7 @@ npm run electron-dev
 ```
 src/
 ├── components/
-│   ├── AddAddon.jsx              # URL input and validation
+│   ├── AddAddonModal.jsx         # Modal for adding new addons
 │   ├── AddonList.jsx             # Main addon list display
 │   ├── AddonListItem.jsx         # Individual addon list items
 │   ├── AddonCard.jsx             # Detailed addon cards (legacy)
@@ -112,7 +126,7 @@ public/
 ```
 
 ### Data Persistence
-- **Storage Location**: `%APPDATA%\wow-addon-manager\`
+- **Storage Location**: `%APPDATA%\brownies-addon-manager\`
 - **Files**: `addons.json`, `settings.json`
 - **Migration**: Automatic migration from localStorage
 - **Backup**: Installer preserves data during updates
