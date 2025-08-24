@@ -1,0 +1,91 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Production builds
+build/
+dist/
+out/
+
+# Development
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+.nyc_output
+
+# Electron specific
+electron-builder-output/
+release/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+.npm
+.node_repl_history
+
+# Optional files
+.env.test
+.yarn-integrity
+*.tgz
+
+# IDE and Editor files
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Windows specific
+*.lnk
+*.tmp
+*.temp
+
+# Temporary directories
+temp/
+tmp/
+*.log
+logs/
+
+# Application specific
+settings.json
+user-data/
+electron-cache/
+
+# Build artifacts
+*.exe
+*.msi
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.snap

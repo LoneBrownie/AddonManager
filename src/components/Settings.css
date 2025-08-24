@@ -1,0 +1,141 @@
+.settings {
+  margin-top: 30px;
+  border-top: 1px solid #34495e;
+  padding-top: 20px;
+}
+
+.settings-header {
+  margin-bottom: 15px;
+}
+
+.settings-toggle {
+  background: none;
+  border: none;
+  color: #3498db;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 5px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-toggle:hover {
+  color: #2980b9;
+}
+
+.settings-content {
+  background-color: #34495e;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+
+.settings-content h3 {
+  color: #ecf0f1;
+  margin-bottom: 20px;
+  font-size: 1.3em;
+}
+
+.path-input-group {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.path-input-group .input {
+  flex: 1;
+}
+
+.path-input-group .button {
+  flex-shrink: 0;
+  min-width: 80px;
+}
+
+.path-info {
+  margin-top: 10px;
+  padding: 10px;
+  background-color: #2c3e50;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.path-info p {
+  color: #95a5a6;
+  margin-bottom: 5px;
+}
+
+.path-info code {
+  color: #e74c3c;
+  background-color: #1a1a1a;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  word-break: break-all;
+  display: block;
+}
+
+.success {
+  color: #27ae60;
+  font-size: 14px;
+  margin-top: 5px;
+  font-weight: bold;
+}
+
+.settings-actions {
+  margin: 20px 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.settings-help {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #2c3e50;
+  border-radius: 5px;
+  border-left: 4px solid #3498db;
+}
+
+.settings-help h4 {
+  color: #3498db;
+  margin-bottom: 10px;
+  font-size: 1.1em;
+}
+
+.settings-help ul {
+  color: #bdc3c7;
+  font-size: 14px;
+}
+
+.settings-help li {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.settings-help ul ul {
+  margin-top: 5px;
+  margin-bottom: 5px;
+}
+
+.settings-help code {
+  background-color: #1a1a1a;
+  color: #e74c3c;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+}
+
+@media (max-width: 480px) {
+  .path-input-group {
+    flex-direction: column;
+  }
+  
+  .settings-actions {
+    justify-content: stretch;
+  }
+  
+  .settings-actions .button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,31 @@
+.add-addon {
+  margin-bottom: 30px;
+}
+
+.add-addon h2 {
+  color: #ecf0f1;
+  margin-bottom: 20px;
+  font-size: 1.5em;
+}
+
+.add-addon .help-text {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #34495e;
+  border-radius: 5px;
+  font-size: 14px;
+  color: #bdc3c7;
+}
+
+.add-addon .help-text p {
+  margin-bottom: 10px;
+}
+
+.add-addon .help-text ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.add-addon .help-text li {
+  margin-bottom: 5px;
+}

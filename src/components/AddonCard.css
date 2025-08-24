@@ -1,0 +1,193 @@
+.addon-card {
+  background-color: #2c3e50;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid transparent;
+}
+
+.addon-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.addon-card.needs-update {
+  border-color: #f39c12;
+  box-shadow: 0 4px 6px rgba(243, 156, 18, 0.2);
+}
+
+.addon-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+  gap: 10px;
+}
+
+.addon-name {
+  color: #ecf0f1;
+  font-size: 1.3em;
+  margin: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.update-badge {
+  background-color: #f39c12;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.addon-info {
+  margin-bottom: 20px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+
+.info-row .label {
+  color: #95a5a6;
+  font-weight: bold;
+  flex-shrink: 0;
+  min-width: 100px;
+}
+
+.version.current {
+  color: #3498db;
+  font-weight: bold;
+}
+
+.version.latest {
+  color: #27ae60;
+  font-weight: bold;
+}
+
+.date {
+  color: #bdc3c7;
+  font-size: 14px;
+}
+
+.author {
+  color: #e74c3c;
+}
+
+.interface {
+  color: #9b59b6;
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.folders {
+  color: #16a085;
+  font-size: 13px;
+  text-align: right;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.repo-link {
+  background: none;
+  border: none;
+  color: #3498db;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: inherit;
+  padding: 0;
+  text-align: right;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repo-link:hover {
+  color: #2980b9;
+}
+
+.addon-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.addon-actions .button {
+  flex: 1;
+  max-width: 120px;
+}
+
+@media (max-width: 480px) {
+  .addon-card {
+    padding: 15px;
+  }
+  
+  .addon-card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  
+  .info-row .label {
+    min-width: auto;
+  }
+  
+  .repo-link {
+    text-align: left;
+  }
+  
+  .addon-actions {
+    flex-direction: column;
+  }
+  
+  .addon-actions .button {
+    max-width: none;
+  }
+}
+
+/* Source badges */
+.source-badge {
+  margin-left: 8px;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.source-badge.release {
+  background-color: #27ae60;
+  color: white;
+}
+
+.source-badge.branch {
+  background-color: #3498db;
+  color: white;
+}
+
+.version {
+  display: inline-flex;
+  align-items: center;
+}
+
+.branch {
+  color: #3498db;
+  font-family: monospace;
+  font-size: 0.9em;
+}
