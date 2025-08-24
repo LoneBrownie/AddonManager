@@ -1,14 +1,23 @@
+<h1>K<h1>
 I wanted a simple addon to help with updating addons for Project Epoch so I used claude to create this.
 
 It currently allows updating of addons from both github and gitlab. 
 Provides a few addons for 3.3.5a as one-click installs.
 
+***
+<h1>Known Issues<h1>
 
-My Addons Page
+Currently None
+
+Please create a github issue for any problems you find and I'll take a look at some point.
+
+***
+<h1>Screenshots<h1>
+
 ![Brownie's Addon Manager](docs/images/MyAddonPage.png)
 
-Get Addons Page
 ![Brownie's Addon Manager](docs/images/GetAddonsPage.png)
 
-Settings
 ![Brownie's Addon Manager](docs/images/SettingsPage.png)
+
+

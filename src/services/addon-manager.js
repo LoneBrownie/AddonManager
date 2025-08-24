@@ -398,7 +398,29 @@ export async function installAddon(repoUrl, release, customOptions = {}) {
       const sourcePath = pathUtils.join(extractPath, addonFolderPath);
       let addonFolderName = pathUtils.basename(addonFolderPath);
       
-      // Apply custom folder name if specified
+        // Normalize folder names coming from GitHub/GitLab archive zips which
+        // often append `-main` or `-master` (or case variants). Remove those
+        // suffixes so installed addon folders match expected addon folder names.
+        function normalizeExtractedFolderName(name) {
+          if (!name) return name;
+          // Remove repeated trailing -main or -master (case-insensitive)
+          let newName = name;
+          const pattern = /(-|_)?(?:main|master)$/i;
+          // Keep stripping while matches (handles names like "Foo-main-main")
+          while (pattern.test(newName)) {
+            newName = newName.replace(pattern, '');
+          }
+          // Trim any trailing separators left behind
+          newName = newName.replace(/[-_\s]+$/g, '');
+          return newName || name; // fallback to original if empty
+        }
+      
+        // Apply normalization unless a custom folder name was explicitly provided
+        if (!(customOptions.customFolderName && addonFolderPaths.length === 1)) {
+          addonFolderName = normalizeExtractedFolderName(addonFolderName);
+        }
+      
+      // Apply custom folder name if specified (override normalization)
       if (customOptions.customFolderName && addonFolderPaths.length === 1) {
         addonFolderName = customOptions.customFolderName;
       }

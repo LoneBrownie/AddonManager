@@ -4,7 +4,7 @@ import './HandyAddons.css';
 const HANDY_ADDONS = [
   {
     id: 'classicapi',
-    name: '!!!ClassicAPI',
+    name: 'Classic API',
     description: 'Essential API functions for Classic WoW addons compatibility.',
     repoUrl: 'https://gitlab.com/Tsoukie/classicapi',
     category: 'Core',
@@ -44,7 +44,7 @@ const HANDY_ADDONS = [
   },
   {
     id: 'compactraidframe-healex',
-    name: 'Compact Raid Frame HealEx',
+    name: 'Compact Raid Frame - HealEx',
     description: 'Extended healing features for Compact Raid Frames.',
     repoUrl: 'https://gitlab.com/Tsoukie/compactraidframe_healex',
     category: 'Healing',
@@ -59,33 +59,21 @@ const HANDY_ADDONS = [
     icon: '🔄'
   },
   {
-    id: 'pfquest-full',
-    name: 'pfQuest (Full)',
-    description: 'Complete quest helper addon with database and map integration.',
-    repoUrl: 'https://github.com/shagu/pfQuest/releases/latest/download/pfQuest-full-wotlk.zip',
-    category: 'Questing',
-    icon: '🗺️',
-    isDirectDownload: true,
-    customFolderName: 'pfQuest-wotlk'
-  },
-  {
-    id: 'pfquest-epoch',
-    name: 'pfQuest Epoch (deprecated)',
-    description: 'Enhanced version of pfQuest with additional features for modern gameplay.',
-    repoUrl: 'https://github.com/Bennylavaa/pfQuest-epoch',
-    category: 'Questing',
-    icon: '⏰',
-    customFolderName: 'pfQuest-epoch',
-    preferredAssetName: 'pfQuest-enUS-wotlk.zip'
+    id: 'framesort',
+    name: 'FrameSort',
+    description: 'Sort and organize unit frames and raid frames for better group management.',
+    repoUrl: 'https://gitlab.com/Tsoukie/framesort-3.3.5',
+    category: 'Raid Frames',
+    icon: '📋'
   },
   {
     id: 'questie-epoch',
     name: 'Questie Epoch',
     description: 'Enhanced version of Questie with improved quest tracking and database for WotLK.',
-    repoUrl: 'https://github.com/esurm/Questie-Epoch',
+    repoUrl: 'https://github.com/esurm/Questie',
     category: 'Questing',
     icon: '❓',
-    customFolderName: 'Questie-335'
+    customFolderName: 'Questie'
   },
   {
     id: 'dragonflightui',
@@ -121,12 +109,24 @@ const HANDY_ADDONS = [
     customFolderName: 'NotPlater-3.3.5'
   },
   {
-    id: 'framesort',
-    name: 'FrameSort',
-    description: 'Sort and organize unit frames and raid frames for better group management.',
-    repoUrl: 'https://gitlab.com/Tsoukie/framesort-3.3.5',
-    category: 'Raid Frames',
-    icon: '📋'
+    id: 'pfquest-full',
+    name: 'pfQuest',
+    description: 'Complete quest helper addon with database and map integration.',
+    repoUrl: 'https://github.com/shagu/pfQuest/releases/latest/download/pfQuest-full-wotlk.zip',
+    category: 'Questing',
+    icon: '🗺️',
+    isDirectDownload: true,
+    customFolderName: 'pfQuest-wotlk',
+    preferredAssetName: 'pfQuest-enUS-wotlk.zip'
+  },
+  {
+    id: 'pfquest-epoch',
+    name: 'pfQuest Epoch (Archived)',
+    description: 'Enhanced version of pfQuest with additional features for modern gameplay.',
+    repoUrl: 'https://github.com/Bennylavaa/pfQuest-epoch',
+    category: 'Questing',
+    icon: '⏰',
+    customFolderName: 'pfQuest-epoch'
   }
 ];
 
