@@ -54,6 +54,7 @@ jobs:
     runs-on: windows-latest
     permissions:
       contents: write
+      id-token: write  # Required for OIDC token access
     
     steps:
     - name: Checkout code
@@ -108,27 +109,41 @@ jobs:
     - name: Build React app
       run: npm run build
       
-    - name: Prepare code signing cert for electron-builder
-      if: runner.os == 'Windows'
-      shell: powershell
-      env:
-        PFX_BASE64: ${{ secrets.cert_pfx }}
-        PFX_PASSWORD: ${{ secrets.CERTSECRECT }}
-      run: |
-        # Decode the Base64 PFX into a temp file and expose for electron-builder
-        $pfxPath = Join-Path $env:TEMP "github_signing_cert.pfx"
-        Write-Host "Writing PFX to $pfxPath"
-        [System.IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:PFX_BASE64))
-
-        # Export env vars for electron-builder
-        Write-Host "Setting CSC_LINK and CSC_KEY_PASSWORD for electron-builder"
-        echo "CSC_LINK=$pfxPath" >> $env:GITHUB_ENV
-        echo "CSC_KEY_PASSWORD=$env:PFX_PASSWORD" >> $env:GITHUB_ENV
+    - name: Install Cosign
+      uses: sigstore/cosign-installer@v3.6.0
+      with:
+        cosign-release: 'v2.2.4'
         
     - name: Build Electron app and publish
       run: npm run publish
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Sign executables with Cosign
+      shell: powershell
+      run: |
+        # Find all .exe files in dist directory
+        $artifacts = Get-ChildItem -Path "dist" -Filter "*.exe" -File -ErrorAction SilentlyContinue
+        if (-not $artifacts) {
+          Write-Host "No .exe files found in dist/ to sign. Skipping signing."
+          exit 0
+        }
+        
+        foreach ($artifact in $artifacts) {
+          Write-Host "Signing $($artifact.FullName) with Cosign..."
+          
+          # Sign with keyless signing using GitHub OIDC token
+          cosign sign-blob --yes $artifact.FullName --output-signature "$($artifact.FullName).sig" --output-certificate "$($artifact.FullName).crt"
+          
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "Cosign signing failed for $($artifact.FullName)"
+            exit $LASTEXITCODE
+          }
+          
+          Write-Host "Successfully signed $($artifact.FullName)"
+          Write-Host "Signature: $($artifact.FullName).sig"
+          Write-Host "Certificate: $($artifact.FullName).crt"
+        }
         
     - name: Create Release
       uses: softprops/action-gh-release@v2
@@ -148,13 +163,16 @@ jobs:
           5. Start managing your addons!
         draft: false
         prerelease: false
-        files: dist/*.exe
+        files: |
+          dist/Brownie.s.Addon.Manager.Setup*.exe
+          dist/*.sig
+          dist/*.crt
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Cleanup signing cert
-      if: runner.os == 'Windows'
+    - name: Cleanup temporary files
+      if: always()
       shell: powershell
       run: |
-        $pfxPath = Join-Path $env:TEMP "github_signing_cert.pfx"
-        if (Test-Path $pfxPath) { Remove-Item $pfxPath -Force; Write-Host "Removed $pfxPath" } else { Write-Host "No pfx to remove" }
+        # Clean up any temporary signing artifacts if needed
+        Write-Host "Build and signing process completed"
