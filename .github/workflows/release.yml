@@ -114,18 +114,18 @@ jobs:
       with:
         cosign-release: 'v2.2.4'
         
-    - name: Build Electron app and publish
-      run: npm run publish
+    - name: Build Electron app (no publish)
+      run: npm run dist
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Sign executables with Cosign
       shell: powershell
       run: |
-        # Find all .exe files in dist directory
-        $artifacts = Get-ChildItem -Path "dist" -Filter "*.exe" -File -ErrorAction SilentlyContinue
+        # Find all Setup .exe files in dist directory
+        $artifacts = Get-ChildItem -Path "dist" -Filter "*Setup*.exe" -File -ErrorAction SilentlyContinue
         if (-not $artifacts) {
-          Write-Host "No .exe files found in dist/ to sign. Skipping signing."
+          Write-Host "No Setup .exe files found in dist/ to sign. Skipping signing."
           exit 0
         }
         
@@ -164,9 +164,9 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          dist/Brownie's Addon Manager Setup*.exe
-          dist/*.sig
-          dist/*.crt
+          dist/*Setup*.exe
+          dist/*Setup*.exe.sig
+          dist/*Setup*.exe.crt
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
