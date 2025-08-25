@@ -152,7 +152,32 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
     setInstalling(prev => new Set(prev).add(addon.id));
     
     try {
-      // Handle special addon installation cases
+      // Check if this is a Tsoukie addon (excluding ClassicAPI itself)
+      const isTsoukieAddon = addon.repoUrl.includes('gitlab.com/Tsoukie/') && addon.id !== 'classicapi';
+      const classicApiAddon = HANDY_ADDONS.find(a => a.id === 'classicapi');
+      const classicApiInstalled = isAddonInstalled(classicApiAddon.repoUrl);
+      
+      // Auto-install ClassicAPI if installing a Tsoukie addon and ClassicAPI isn't already installed
+      if (isTsoukieAddon && !classicApiInstalled) {
+        console.log('Installing required dependency: ClassicAPI');
+        setInstalling(prev => new Set(prev).add('classicapi'));
+        
+        try {
+          await onAddAddon(classicApiAddon.repoUrl);
+          console.log('ClassicAPI dependency installed successfully');
+        } catch (error) {
+          console.error('Failed to install ClassicAPI dependency:', error);
+          // Continue with main addon installation even if dependency fails
+        } finally {
+          setInstalling(prev => {
+            const newSet = new Set(prev);
+            newSet.delete('classicapi');
+            return newSet;
+          });
+        }
+      }
+      
+      // Install the main addon
       if (addon.customFolderName || addon.isDirectDownload || addon.preferredAssetName) {
         await onAddAddon(addon.repoUrl, {
           customFolderName: addon.customFolderName,
