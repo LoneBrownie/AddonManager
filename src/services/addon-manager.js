@@ -439,15 +439,114 @@ export async function installAddon(repoUrl, release, customOptions = {}) {
       installedFolders.push(addonFolderName);
     }
     
-    // Find and parse the main .toc file
+    // Heuristic: prefer a folder whose .toc metadata references the downloaded repo
+    // or whose title closely matches the repo name. Fall back to name-based matching
+    // and finally to the first folder with a .toc file.
+    function normalizeNameForCompare(n) {
+      return (n || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+    }
+
     let mainTocData = null;
-    for (const folderName of installedFolders) {
-      const folderPath = pathUtils.join(wowAddonsPath, folderName);
-      const tocFiles = await findTocFiles(folderPath);
-      
-      if (tocFiles.length > 0) {
-        mainTocData = await parseAddonToc(tocFiles[0]);
-        break;
+
+    try {
+      const repoCandidates = new Set();
+      if (repoInfo && repoInfo.repo) {
+        const repoRaw = repoInfo.repo;
+        repoCandidates.add(normalizeNameForCompare(repoRaw));
+        // Add the token before common separators (e.g., WeakAuras-WotLK -> WeakAuras)
+        const token = String(repoRaw).split(/[-_\s.]+/)[0];
+        repoCandidates.add(normalizeNameForCompare(token));
+      }
+      // Also consider owner/repo (ownerRepo) as a string to match x_repository fields
+      const ownerRepo = repoInfo && repoInfo.owner && repoInfo.repo ? `${repoInfo.owner}/${repoInfo.repo}`.toLowerCase() : null;
+
+      // First pass: scan each folder's .toc files and prefer matches based on metadata
+      for (let i = 0; i < installedFolders.length; i++) {
+        const folderName = installedFolders[i];
+        const folderPath = pathUtils.join(wowAddonsPath, folderName);
+        const tocFiles = await findTocFiles(folderPath);
+
+        if (tocFiles.length === 0) continue;
+
+        for (const tocPath of tocFiles) {
+          try {
+            const tocMeta = await parseAddonToc(tocPath);
+
+            // Normalize and check x_repository or x_website fields for owner/repo
+            const xRepo = (tocMeta.x_repository || '').toLowerCase();
+            const xWebsite = (tocMeta.x_website || '').toLowerCase();
+
+            const titleNorm = normalizeNameForCompare(tocMeta.title || '');
+
+            // Priority 1: x_repository contains owner/repo or repo name
+            if (ownerRepo && (xRepo.includes(ownerRepo) || xWebsite.includes(ownerRepo) || xRepo.includes(repoInfo.repo.toLowerCase()))) {
+              // move this folder to front
+              if (i > 0) {
+                const [matchFolder] = installedFolders.splice(i, 1);
+                installedFolders.unshift(matchFolder);
+              }
+              mainTocData = tocMeta;
+              break;
+            }
+
+            // Priority 2: title matches repo candidates
+            for (const cand of repoCandidates) {
+              if (cand && titleNorm === cand) {
+                if (i > 0) {
+                  const [matchFolder] = installedFolders.splice(i, 1);
+                  installedFolders.unshift(matchFolder);
+                }
+                mainTocData = tocMeta;
+                break;
+              }
+            }
+
+            if (mainTocData) break;
+          } catch (e) {
+            // ignore parse errors for individual toc files
+          }
+        }
+
+        if (mainTocData) break;
+      }
+
+      // If no match found via metadata/title, fall back to name-based matching
+      if (!mainTocData && repoInfo && repoInfo.repo && installedFolders.length > 1) {
+        const repoBaseName = normalizeNameForCompare(repoInfo.repo);
+        const matchIndex = installedFolders.findIndex(f => normalizeNameForCompare(f) === repoBaseName);
+        if (matchIndex > 0) {
+          const [matchFolder] = installedFolders.splice(matchIndex, 1);
+          installedFolders.unshift(matchFolder);
+        }
+      }
+
+      // Final fallback: pick the first folder that has a .toc file and parse it if we haven't already
+      if (!mainTocData) {
+        for (const folderName of installedFolders) {
+          const folderPath = pathUtils.join(wowAddonsPath, folderName);
+          const tocFiles = await findTocFiles(folderPath);
+          if (tocFiles.length > 0) {
+            try {
+              mainTocData = await parseAddonToc(tocFiles[0]);
+              break;
+            } catch (e) {
+              // ignore and continue
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error selecting main addon folder:', e);
+      // On error, fallback to previous simple selection
+      for (const folderName of installedFolders) {
+        const folderPath = pathUtils.join(wowAddonsPath, folderName);
+        const tocFiles = await findTocFiles(folderPath);
+        if (tocFiles.length > 0) {
+          try {
+            mainTocData = await parseAddonToc(tocFiles[0]);
+            break;
+          } catch (err) {}
+        }
       }
     }
     
