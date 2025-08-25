@@ -108,6 +108,16 @@
   font-size: 0.95rem;
 }
 
+.addon-dependency {
+  font-size: 0.825rem;
+  color: var(--primary-hover-color);
+  margin: 8px 0 12px 0;
+  padding: 0;
+  display: block;
+  text-align: right;
+  font-weight: 500;
+}
+
 .addon-actions {
   display: flex;
   gap: 12px;
@@ -229,4 +239,9 @@
   .addon-icon {
     align-self: center;
   }
+}
+
+/* Space between Project Epoch section and the following section title */
+.epoch-section {
+  margin-bottom: 28px;
 }
