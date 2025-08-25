@@ -21,6 +21,7 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
     getStatusMessage,
     isUpdateAvailable,
     isDownloading,
+    isUpdateReady,
     hasError
   } = useAppUpdater();
 
