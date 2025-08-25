@@ -164,7 +164,7 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          dist/Brownie.s.Addon.Manager.Setup*.exe
+          dist/Brownie's Addon Manager Setup*.exe
           dist/*.sig
           dist/*.crt
       env:
