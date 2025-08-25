@@ -112,6 +112,47 @@ jobs:
       run: npm run publish
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Code sign Windows installers
+      if: runner.os == 'Windows'
+      shell: powershell
+      env:
+        PFX_BASE64: ${{ secrets.cert_pfx }}
+        PFX_PASSWORD: ${{ secrets.CERTSECRECT }}
+      run: |
+        # Decode the Base64 PFX into a temp file
+        $pfxPath = Join-Path $env:TEMP "github_signing_cert.pfx"
+        Write-Host "Writing PFX to $pfxPath"
+        [System.IO.File]::WriteAllBytes($pfxPath, [Convert]::FromBase64String($env:PFX_BASE64))
+
+        # Locate signtool.exe - it's installed with Windows SDK. Try common locations and PATH.
+        $signtool = Get-Command signtool -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue
+        if (-not $signtool) {
+          $possible = @("$env:ProgramFiles(x86)\Windows Kits\10\bin\x64\signtool.exe", "$env:ProgramFiles(x86)\Windows Kits\10\bin\x86\signtool.exe")
+          foreach ($p in $possible) { if (Test-Path $p) { $signtool = $p; break } }
+        }
+
+        if (-not $signtool) {
+          Write-Error "signtool.exe not found on runner. Ensure Windows SDK is available or install it before this step."
+          exit 1
+        }
+
+        Write-Host "Using signtool: $signtool"
+
+        # Find artifacts to sign - default to dist\*.exe
+        $artifacts = Get-ChildItem -Path "dist" -Filter "*.exe" -File -ErrorAction SilentlyContinue
+        if (-not $artifacts) {
+          Write-Host "No .exe files found in dist/ to sign. Skipping signing."
+        } else {
+          foreach ($f in $artifacts) {
+            Write-Host "Signing $($f.FullName)"
+            & $signtool sign /f $pfxPath /p $env:PFX_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /v $f.FullName
+            if ($LASTEXITCODE -ne 0) { Write-Error "Signing failed for $($f.FullName)"; exit $LASTEXITCODE }
+          }
+        }
+
+        # Cleanup sensitive file
+        Remove-Item -Path $pfxPath -Force -ErrorAction SilentlyContinue
         
     - name: Create Release
       uses: softprops/action-gh-release@v2
