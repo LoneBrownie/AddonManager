@@ -90,18 +90,16 @@ jobs:
         }
         
         if ($commits) {
-          $releaseNotes = @"
-        ### Changes in this release:
-        
-        $commits
-        "@
+          $releaseNotes = "### Changes in this release:`n`n$commits"
         } else {
           $releaseNotes = "- Initial release"
         }
         
-        # Escape for GitHub output
-        $releaseNotes = $releaseNotes -replace "`r`n", "%0A" -replace "`n", "%0A"
-        echo "notes=$releaseNotes" >> $env:GITHUB_OUTPUT
+        # Use proper multiline output for GitHub Actions
+        $delimiter = "EOF$(Get-Random)"
+        echo "notes<<$delimiter" >> $env:GITHUB_OUTPUT
+        echo $releaseNotes >> $env:GITHUB_OUTPUT
+        echo $delimiter >> $env:GITHUB_OUTPUT
         
     - name: Install dependencies
       run: npm install
