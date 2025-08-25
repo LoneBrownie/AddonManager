@@ -223,6 +223,17 @@
   min-width: 140px;
 }
 
+.restart-notice {
+  background-color: var(--warning-bg-color);
+  color: var(--warning-color);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  border-left: 4px solid var(--warning-color);
+  margin-top: 10px;
+  font-weight: 500;
+}
+
 .update-info {
   margin-top: 15px;
   padding-top: 15px;

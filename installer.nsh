@@ -1,4 +1,5 @@
 ; Custom NSIS installer script to preserve addon data during updates
+; This script supports silent updates via autoUpdater.quitAndInstall()
 
 ; Backup addon data before installation
 !macro preInit

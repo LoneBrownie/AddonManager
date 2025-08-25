@@ -218,12 +218,19 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
                     Download & Install Update
                   </button>
                 )}
+                
+                {isUpdateReady && (
+                  <div className="restart-notice">
+                    ⚠️ Application will restart automatically to complete the update
+                  </div>
+                )}
               </div>
             </div>
             
             <div className="update-info">
               <p><strong>Note:</strong> The application automatically checks for updates every 6 hours.</p>
-              <p>Updates are downloaded and installed in the background.</p>
+              <p>When an update is available, it will download automatically in the background.</p>
+              <p>The application will restart automatically to install updates silently.</p>
             </div>
           </div>
         </div>

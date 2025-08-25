@@ -29,6 +29,7 @@
     "electron-pack": "electron-builder",
     "preelectron-pack": "npm run build",
     "dist": "npm run build && electron-builder --publish=never",
+    "dist-with-metadata": "npm run build && electron-builder --publish=never --config.generateUpdatesFilesForAllChannels=true",
     "dist-win": "npm run build && electron-builder --win",
     "dist-portable": "npm run build && electron-builder --win --dir",
     "publish": "npm run build && electron-builder --publish=always"
@@ -36,6 +37,7 @@
   "build": {
     "appId": "com.example.brownies-addon-manager",
     "productName": "Brownie's Addon Manager",
+    "generateUpdatesFilesForAllChannels": true,
     "directories": {
       "output": "dist"
     },
@@ -58,7 +60,11 @@
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,
       "deleteAppDataOnUninstall": false,
-      "include": "installer.nsh"
+      "include": "installer.nsh",
+      "allowElevation": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "installerSidebar": "public/Logo.png"
     },
     "publish": {
       "provider": "github",

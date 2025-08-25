@@ -90,7 +90,7 @@ export function useAppUpdater() {
         const percent = downloadProgress ? Math.round(downloadProgress.percent) : 0;
         return `Downloading update... ${percent}%`;
       case 'downloaded':
-        return 'Update downloaded! Restarting in 5 seconds...';
+        return 'Update downloaded! Application will restart automatically in a few seconds...';
       case 'error':
         return `Update error: ${error}`;
       default:

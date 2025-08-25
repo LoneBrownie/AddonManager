@@ -116,6 +116,49 @@ jobs:
       run: npm run dist
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Generate update metadata
+      run: |
+        # Generate latest.yml for electron-updater
+        # This file is required for the auto-updater to work properly
+        # It contains version info, file hashes, and download URLs
+        $version = "${{ steps.package-version.outputs.raw_version }}"
+        $setupFile = Get-ChildItem -Path "dist" -Filter "*Setup*.exe" | Select-Object -First 1
+        $blockmapFile = Get-ChildItem -Path "dist" -Filter "*Setup*.exe.blockmap" | Select-Object -First 1
+        
+        if ($setupFile -and $blockmapFile) {
+          $setupSize = $setupFile.Length
+          $setupSha512 = (Get-FileHash -Path $setupFile.FullName -Algorithm SHA512).Hash.ToLower()
+          $blockmapSize = $blockmapFile.Length
+          $blockmapSha512 = (Get-FileHash -Path $blockmapFile.FullName -Algorithm SHA512).Hash.ToLower()
+          $releaseDate = Get-Date -Format "yyyy-MM-ddTHH:mm:ss.fffZ"
+          
+          $latestYml = "version: $version`n" +
+                       "files:`n" +
+                       "  - url: $($setupFile.Name)`n" +
+                       "    sha512: $setupSha512`n" +
+                       "    size: $setupSize`n" +
+                       "    blockMapSize: $blockmapSize`n" +
+                       "path: $($setupFile.Name)`n" +
+                       "sha512: $setupSha512`n" +
+                       "releaseDate: $releaseDate"
+          
+          $latestYml | Out-File -FilePath "dist/latest.yml" -Encoding UTF8
+          Write-Host "Generated latest.yml for electron-updater"
+          Get-Content "dist/latest.yml"
+          
+          # Validate the generated YAML
+          try {
+            $yamlContent = Get-Content "dist/latest.yml" -Raw
+            Write-Host "✓ latest.yml generated successfully"
+          } catch {
+            Write-Error "✗ Failed to read generated latest.yml: $_"
+            exit 1
+          }
+        } else {
+          Write-Error "Setup file or blockmap file not found"
+          exit 1
+        }
 
     - name: Sign executables with Cosign
       shell: powershell
@@ -163,6 +206,8 @@ jobs:
         prerelease: false
         files: |
           dist/*Setup*.exe
+          dist/*Setup*.exe.blockmap
+          dist/latest.yml
           dist/*Setup*.exe.sig
           dist/*Setup*.exe.crt
       env:

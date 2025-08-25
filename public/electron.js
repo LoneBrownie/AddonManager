@@ -103,6 +103,10 @@ app.whenReady().then(() => {
       repo: 'AddonManager'
     });
     
+    // Configure silent updates
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    
     // Check for updates 30 seconds after app start
     setTimeout(() => {
       autoUpdater.checkForUpdatesAndNotify();
@@ -172,10 +176,11 @@ autoUpdater.on('update-downloaded', (info) => {
     mainWindow.webContents.send('update-status', 'downloaded', info);
   }
   
-  // Show notification and restart after 5 seconds
+  // Automatically restart and install silently after 3 seconds
+  console.log('Installing update and restarting...');
   setTimeout(() => {
-    autoUpdater.quitAndInstall();
-  }, 5000);
+    autoUpdater.quitAndInstall(true, true); // Silent install and force restart
+  }, 3000);
 });
 
 // IPC handlers for secure file operations
@@ -592,5 +597,6 @@ ipcMain.handle('install-update', async () => {
     throw new Error('Updates not available in development mode');
   }
   
-  autoUpdater.quitAndInstall();
+  console.log('Manual update install triggered');
+  autoUpdater.quitAndInstall(true, true); // Silent install and force restart
 });
