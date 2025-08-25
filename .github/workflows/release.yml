@@ -136,13 +136,18 @@ jobs:
           Write-Host "Setup file: $($setupFile.Name)"
           Write-Host "File size: $setupSize bytes"
           
+          # GitHub converts certain characters in filenames when uploading
+          # Convert apostrophes to dots to match GitHub's behavior
+          $githubFileName = $setupFile.Name -replace "'", "."
+          Write-Host "GitHub filename will be: $githubFileName"
+          
           $latestYml = "version: $version`n" +
                        "files:`n" +
-                       "  - url: $($setupFile.Name)`n" +
+                       "  - url: $githubFileName`n" +
                        "    sha512: $setupSha512`n" +
                        "    size: $setupSize`n" +
                        "    blockMapSize: $blockmapSize`n" +
-                       "path: $($setupFile.Name)`n" +
+                       "path: $githubFileName`n" +
                        "sha512: $setupSha512`n" +
                        "releaseDate: $releaseDate"
           
@@ -162,6 +167,34 @@ jobs:
           Write-Error "Setup file or blockmap file not found"
           exit 1
         }
+
+    - name: Verify release files
+      run: |
+        Write-Host "Verifying all required files for electron-updater..."
+        Write-Host "Files in dist directory:"
+        Get-ChildItem -Path "dist" -Filter "*.exe" | ForEach-Object { Write-Host "  $($_.Name)" }
+        Get-ChildItem -Path "dist" -Filter "*.blockmap" | ForEach-Object { Write-Host "  $($_.Name)" }
+        Get-ChildItem -Path "dist" -Filter "*.yml" | ForEach-Object { Write-Host "  $($_.Name)" }
+        
+        $requiredFiles = @(
+          "dist/*Setup*.exe",
+          "dist/*Setup*.exe.blockmap", 
+          "dist/latest.yml"
+        )
+        
+        foreach ($pattern in $requiredFiles) {
+          $files = Get-ChildItem -Path $pattern -ErrorAction SilentlyContinue
+          if ($files) {
+            Write-Host "✓ Found: $($files.Name -join ', ')"
+          } else {
+            Write-Error "✗ Missing: $pattern"
+            exit 1
+          }
+        }
+        
+        Write-Host "`nAll required files for electron-updater are present!"
+        Write-Host "`nContents of latest.yml:"
+        Get-Content "dist/latest.yml"
 
     - name: Sign executables with Cosign
       shell: powershell
