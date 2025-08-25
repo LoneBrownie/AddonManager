@@ -7,64 +7,56 @@ const HANDY_ADDONS = [
     name: 'Classic API',
     description: 'Essential API functions for Classic WoW addons compatibility.',
     repoUrl: 'https://gitlab.com/Tsoukie/classicapi',
-    category: 'Core',
-    icon: '⚙️'
+    category: 'Core'
   },
   {
     id: 'compactraidframe',
     name: 'Compact Raid Frames',
     description: 'Compact and customizable raid frame addon for improved raid visibility.',
     repoUrl: 'https://gitlab.com/Tsoukie/compactraidframe-3.3.5',
-    category: 'Raid Frames',
-    icon: '🖼️'
+    category: 'Raid Frames'
   },
   {
     id: 'enhancedraidframes',
     name: 'Enhanced Raid Frames',
     description: 'Enhanced raid frames with additional features and customization options.',
     repoUrl: 'https://gitlab.com/Tsoukie/enhancedraidframes-3.3.5',
-    category: 'Raid Frames',
-    icon: '�'
+    category: 'Raid Frames'
   },
   {
     id: 'addonlist',
     name: 'Addon List',
     description: 'Manage and organize your addons with an in-game interface.',
     repoUrl: 'https://gitlab.com/Tsoukie/addonlist-3.3.5',
-    category: 'Management',
-    icon: '�'
+    category: 'Management'
   },
   {
     id: 'clique',
     name: 'Clique',
     description: 'Click-casting addon for healers and support classes.',
     repoUrl: 'https://gitlab.com/Tsoukie/clique-3.3.5',
-    category: 'Healing',
-    icon: '�️'
+    category: 'Healing'
   },
   {
     id: 'compactraidframe-healex',
     name: 'Compact Raid Frame - HealEx',
     description: 'Extended healing features for Compact Raid Frames.',
     repoUrl: 'https://gitlab.com/Tsoukie/compactraidframe_healex',
-    category: 'Healing',
-    icon: '�'
+    category: 'Healing'
   },
   {
     id: 'raidframesorter',
     name: 'Raid Frame Sorter',
     description: 'Sort and organize raid frames for better group management.',
     repoUrl: 'https://gitlab.com/Tsoukie/raidframesorter-3.3.5',
-    category: 'Raid Frames',
-    icon: '🔄'
+    category: 'Raid Frames'
   },
   {
     id: 'framesort',
     name: 'FrameSort',
     description: 'Sort and organize unit frames and raid frames for better group management.',
     repoUrl: 'https://gitlab.com/Tsoukie/framesort-3.3.5',
-    category: 'Raid Frames',
-    icon: '📋'
+    category: 'Raid Frames'
   },
   {
     id: 'questie-epoch',
@@ -72,32 +64,28 @@ const HANDY_ADDONS = [
     description: 'Enhanced version of Questie with improved quest tracking and database for WotLK.',
     repoUrl: 'https://github.com/esurm/Questie',
     category: 'Questing',
-    icon: '❓',
     customFolderName: 'Questie'
   },
   {
-    id: 'dragonflightui',
-    name: 'DragonflightUI',
+    id: 'dragonui',
+    name: 'DragonUI',
     description: 'Modern Dragonflight-style user interface for Classic WoW with updated visuals and functionality.',
-    repoUrl: 'https://github.com/TheLinuxITGuy/Chromie-Dragonflight',
-    category: 'Interface',
-    icon: '🐉'
+    repoUrl: 'https://github.com/NeticSoul/DragonUI',
+    category: 'Interface'
   },
   {
     id: 'atlasloot-epoch',
     name: 'AtlasLoot Epoch',
     description: 'Complete loot browser for Classic WoW showing items, locations, and drop rates.',
     repoUrl: 'https://github.com/Raynbock/AtlaslootProjectEpoch',
-    category: 'Interface',
-    icon: '💰'
+    category: 'Interface'
   },
   {
     id: 'bagnon',
     name: 'Bagnon',
     description: 'All-in-one bag replacement addon that merges all your bags into one frame.',
     repoUrl: 'https://github.com/RichSteini/Bagnon-3.3.5',
-    category: 'Interface',
-    icon: '🎒'
+    category: 'Interface'
   },
   {
     id: 'notplater',
@@ -105,16 +93,14 @@ const HANDY_ADDONS = [
     description: 'Advanced nameplate addon with extensive customization options.',
     repoUrl: 'https://github.com/RichSteini/NotPlater',
     category: 'Interface',
-    icon: '📋',
     customFolderName: 'NotPlater-3.3.5'
   },
   {
     id: 'pfquest-full',
     name: 'pfQuest',
     description: 'Complete quest helper addon with database and map integration.',
-    repoUrl: 'https://github.com/shagu/pfQuest/releases/latest/download/pfQuest-full-wotlk.zip',
+    repoUrl: 'https://github.com/shagu/pfQuest',
     category: 'Questing',
-    icon: '🗺️',
     isDirectDownload: true,
     customFolderName: 'pfQuest-wotlk',
     preferredAssetName: 'pfQuest-enUS-wotlk.zip'
@@ -125,8 +111,21 @@ const HANDY_ADDONS = [
     description: 'Enhanced version of pfQuest with additional features for modern gameplay.',
     repoUrl: 'https://github.com/Bennylavaa/pfQuest-epoch',
     category: 'Questing',
-    icon: '⏰',
     customFolderName: 'pfQuest-epoch'
+  },
+  {
+    id: 'EpochDeltaFix',
+    name: 'Epoch Delta Fix',
+    description: 'Replaces Epochs stat-compare with correct deltas.',
+    repoUrl: 'https://github.com/dellmas/WoW-Epoch-Delta-Fix/',
+    category: 'Interface'
+  },
+  {
+    id: 'LFG',
+    name: 'Looking for Group',
+    description: 'Find groups for dungeons and raids easily.',
+    repoUrl: 'https://github.com/Bennylavaa/LFG',
+    category: 'Interface'
   }
 ];
 
