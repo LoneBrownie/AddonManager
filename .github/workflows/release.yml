@@ -137,8 +137,8 @@ jobs:
           Write-Host "File size: $setupSize bytes"
           
           # GitHub converts certain characters in filenames when uploading
-          # Convert apostrophes to dots to match GitHub's behavior
-          $githubFileName = $setupFile.Name -replace "'", "."
+          # Convert apostrophes and spaces to dots to match GitHub's behavior
+          $githubFileName = $setupFile.Name -replace "'", "." -replace " ", "."
           Write-Host "GitHub filename will be: $githubFileName"
           
           $latestYml = "version: $version`n" +
