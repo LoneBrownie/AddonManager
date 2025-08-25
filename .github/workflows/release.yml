@@ -133,6 +133,9 @@ jobs:
           $blockmapSha512 = (Get-FileHash -Path $blockmapFile.FullName -Algorithm SHA512).Hash.ToLower()
           $releaseDate = Get-Date -Format "yyyy-MM-ddTHH:mm:ss.fffZ"
           
+          Write-Host "Setup file: $($setupFile.Name)"
+          Write-Host "File size: $setupSize bytes"
+          
           $latestYml = "version: $version`n" +
                        "files:`n" +
                        "  - url: $($setupFile.Name)`n" +
