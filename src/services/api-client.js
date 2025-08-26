@@ -54,6 +54,37 @@ export function isValidRepoUrl(url) {
 }
 
 /**
+ * Get the latest tag from GitHub
+ * @param {Object} repoInfo - Repository information from parseRepoFromUrl
+ * @returns {Promise<Object>} - Tag information
+ */
+async function getGitHubLatestTag(repoInfo) {
+  const response = await fetch(`${repoInfo.apiUrl}/tags`);
+  
+  if (!response.ok) {
+    throw new Error(`GitHub API error: ${response.status}`);
+  }
+  
+  const tags = await response.json();
+  
+  if (!tags || tags.length === 0) {
+    throw new Error('No tags found');
+  }
+  
+  const latestTag = tags[0];
+  const codeloadUrl = `https://codeload.github.com/${repoInfo.owner}/${repoInfo.repo}/zip/${latestTag.name}`;
+  
+  return {
+    version: latestTag.name,
+    name: `Tag ${latestTag.name}`,
+    downloadUrl: codeloadUrl,
+    publishedAt: null, // Tags don't have published dates
+    size: null,
+    source: 'tag'
+  };
+}
+
+/**
  * Get the latest release from GitHub
  * @param {Object} repoInfo - Repository information from parseRepoFromUrl
  * @param {string} preferredAssetName - Optional preferred asset name to download
@@ -64,9 +95,14 @@ async function getGitHubLatestRelease(repoInfo, preferredAssetName = null) {
   
   if (!response.ok) {
     if (response.status === 404) {
-      // No releases found, fall back to latest code
-      console.log('No releases found, falling back to latest code from default branch');
-      return await getGitHubLatestCode(repoInfo);
+      // No releases found, try to fall back to latest tag first
+      console.log('No releases found, falling back to latest tag');
+      try {
+        return await getGitHubLatestTag(repoInfo);
+      } catch (tagError) {
+        console.log('No tags found either, falling back to latest code from default branch');
+        return await getGitHubLatestCode(repoInfo);
+      }
     }
     throw new Error(`GitHub API error: ${response.status}`);
   }
@@ -104,9 +140,14 @@ async function getGitHubLatestRelease(repoInfo, preferredAssetName = null) {
       };
     }
 
-    // No ZIP asset or zipball - fall back to latest code from default branch
-    console.log('No ZIP asset in release, falling back to latest code');
-    return await getGitHubLatestCode(repoInfo);
+    // No ZIP asset or zipball - try to fall back to latest tag first
+    console.log('No ZIP asset in release, falling back to latest tag');
+    try {
+      return await getGitHubLatestTag(repoInfo);
+    } catch (tagError) {
+      console.log('No tags found either, falling back to latest code from default branch');
+      return await getGitHubLatestCode(repoInfo);
+    }
   }
   
   return {
@@ -159,6 +200,37 @@ async function getGitHubLatestCode(repoInfo) {
 }
 
 /**
+ * Get the latest tag from GitLab
+ * @param {Object} repoInfo - Repository information from parseRepoFromUrl
+ * @returns {Promise<Object>} - Tag information
+ */
+async function getGitLabLatestTag(repoInfo) {
+  const response = await fetch(`${repoInfo.apiUrl}/repository/tags`);
+  
+  if (!response.ok) {
+    throw new Error(`GitLab API error: ${response.status}`);
+  }
+  
+  const tags = await response.json();
+  
+  if (!tags || tags.length === 0) {
+    throw new Error('No tags found');
+  }
+  
+  const latestTag = tags[0];
+  const archiveUrl = `https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/archive/${latestTag.name}/${repoInfo.repo}-${latestTag.name}.zip`;
+  
+  return {
+    version: latestTag.name,
+    name: `Tag ${latestTag.name}`,
+    downloadUrl: archiveUrl,
+    publishedAt: latestTag.commit?.committed_date || null,
+    size: null,
+    source: 'tag'
+  };
+}
+
+/**
  * Get the latest release from GitLab
  * @param {Object} repoInfo - Repository information from parseRepoFromUrl
  * @returns {Promise<Object>} - Release information
@@ -168,9 +240,14 @@ async function getGitLabLatestRelease(repoInfo) {
   
   if (!response.ok) {
     if (response.status === 404) {
-      // No releases found, fall back to latest code
-      console.log('No releases found, falling back to latest code from default branch');
-      return await getGitLabLatestCode(repoInfo);
+      // No releases found, try to fall back to latest tag first
+      console.log('No releases found, falling back to latest tag');
+      try {
+        return await getGitLabLatestTag(repoInfo);
+      } catch (tagError) {
+        console.log('No tags found either, falling back to latest code from default branch');
+        return await getGitLabLatestCode(repoInfo);
+      }
     }
     throw new Error(`GitLab API error: ${response.status}`);
   }
@@ -178,9 +255,14 @@ async function getGitLabLatestRelease(repoInfo) {
   const releases = await response.json();
   
   if (!releases || releases.length === 0) {
-    // No releases, fall back to latest code
-    console.log('No releases found, falling back to latest code');
-    return await getGitLabLatestCode(repoInfo);
+    // No releases, try to fall back to latest tag first
+    console.log('No releases found, falling back to latest tag');
+    try {
+      return await getGitLabLatestTag(repoInfo);
+    } catch (tagError) {
+      console.log('No tags found either, falling back to latest code from default branch');
+      return await getGitLabLatestCode(repoInfo);
+    }
   }
   
   const latestRelease = releases[0];
@@ -210,9 +292,14 @@ async function getGitLabLatestRelease(repoInfo) {
       // ignore and fall back
     }
 
-    // No ZIP asset or constructed archive, fall back to latest code
-    console.log('No ZIP asset in release, falling back to latest code');
-    return await getGitLabLatestCode(repoInfo);
+    // No ZIP asset or constructed archive, try to fall back to latest tag first
+    console.log('No ZIP asset in release, falling back to latest tag');
+    try {
+      return await getGitLabLatestTag(repoInfo);
+    } catch (tagError) {
+      console.log('No tags found either, falling back to latest code from default branch');
+      return await getGitLabLatestCode(repoInfo);
+    }
   }
   
   return {
