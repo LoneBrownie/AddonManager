@@ -35,7 +35,19 @@ function AddonCard({ addon, onUpdate, onRemove, loading }) {
   };
 
   return (
-    <div className={`addon-card ${addon.needsUpdate ? 'needs-update' : ''}`}>
+    <div className={`addon-card ${addon.needsUpdate ? 'needs-update' : ''} ${addon.exists === false ? 'missing' : ''}`}>
+      {addon.exists === false && (
+        <div className="missing-warning">
+          <span className="warning-icon">⚠️</span>
+          <span className="warning-text">
+            {addon.missingFolders && addon.missingFolders.length > 0 
+              ? `Missing folders: ${addon.missingFolders.join(', ')}`
+              : 'Addon files not found in AddOns directory'
+            }
+          </span>
+        </div>
+      )}
+      
       <div className="addon-card-header">
         <h3 className="addon-name" title={addon.name}>
           {addon.name}
@@ -127,7 +139,18 @@ function AddonCard({ addon, onUpdate, onRemove, loading }) {
       </div>
 
       <div className="addon-actions">
-        {addon.needsUpdate && (
+        {addon.exists === false && (
+          <button
+            className="button warning"
+            onClick={onUpdate}
+            disabled={loading}
+            title="Reinstall missing addon"
+          >
+            {loading ? 'Reinstalling...' : 'Reinstall'}
+          </button>
+        )}
+        
+        {addon.needsUpdate && addon.exists !== false && (
           <button
             className="button success"
             onClick={onUpdate}

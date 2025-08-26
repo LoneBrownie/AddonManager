@@ -88,3 +88,4 @@ electron-cache/
 *.deb
 *.rpm
 *.snap
+eslint-fix-output.txt

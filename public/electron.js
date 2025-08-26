@@ -516,7 +516,14 @@ ipcMain.handle('download-file', async (event, url, destinationPath) => {
         const urlObj = new URL(downloadUrl);
         const client = urlObj.protocol === 'https:' ? https : http;
         
-        const request = client.get(downloadUrl, (response) => {
+        const options = {
+          headers: {
+            'User-Agent': 'Wow-Addon-Manager/1.0 (+https://github.com)',
+            'Accept': '*/*'
+          }
+        };
+
+        const request = client.get(downloadUrl, options, (response) => {
           // Handle redirects
           if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
             response.resume(); // Consume response data to free memory

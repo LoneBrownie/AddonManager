@@ -7,6 +7,7 @@ function AddonList({
   onUpdateAddon, 
   onUpdateAll, 
   onCheckUpdates, 
+  onCheckExistence,
   onRemoveAddon, 
   loading,
   hideHeader = false,
@@ -39,6 +40,17 @@ function AddonList({
             >
               {loading ? 'Checking...' : 'Check for Updates'}
             </button>
+            
+            {onCheckExistence && (
+              <button
+                className="button secondary"
+                onClick={onCheckExistence}
+                disabled={loading}
+                title="Check if addon folders still exist on disk"
+              >
+                {loading ? 'Scanning...' : 'Scan for Missing'}
+              </button>
+            )}
             
             {hasUpdates && (
               <button

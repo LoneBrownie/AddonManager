@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAddons } from '../hooks/useAddons';
 
-const ExistingAddonManager = ({ wowPath, existingAddons: propExistingAddons, onClose }) => {
-  const { addExistingAddon, scanForExistingAddons } = useAddons();
+const ExistingAddonManager = ({ wowPath, existingAddons: propExistingAddons, onClose, addExistingAddon, scanForExistingAddons }) => {
   const [scanning, setScanning] = useState(false);
   const [adding, setAdding] = useState(new Set());
   const [selectedAddon, setSelectedAddon] = useState(null);
@@ -11,7 +9,7 @@ const ExistingAddonManager = ({ wowPath, existingAddons: propExistingAddons, onC
   const [localExistingAddons, setLocalExistingAddons] = useState(propExistingAddons || []);
 
   // No automatic scanning - rely entirely on the scan triggered by App.js
-  // The existingAddons state from the hook should already be populated when this component opens
+  // The existingAddons state is provided by the parent (App) so additions will update the main list
 
   // Update local state when props change
   useEffect(() => {

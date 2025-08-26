@@ -1176,5 +1176,74 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl) {
   }
 }
 
+/**
+ * Check if managed addons still exist in the addons folder
+ * @param {Array<Object>} addons - Array of managed addon objects
+ * @param {Object} settings - Settings object containing wowPath
+ * @returns {Promise<Array<Object>>} Array of addons with existence status
+ */
+export async function checkAddonExistence(addons, settings = null) {
+  if (!electronAPI) {
+    console.warn('File system access not available for addon existence check');
+    return addons; // Return unchanged if not in Electron environment
+  }
+
+  const appSettings = settings || await getSettings();
+  if (!appSettings.wowPath) {
+    console.warn('WoW path not configured for addon existence check');
+    return addons; // Return unchanged if no WoW path
+  }
+
+  const addonsPath = pathUtils.join(appSettings.wowPath, 'Interface', 'AddOns');
+  
+  const updatedAddons = [];
+  
+  for (const addon of addons) {
+    let allFoldersExist = true;
+    const missingFolders = [];
+    
+    if (addon.installedFolders && addon.installedFolders.length > 0) {
+      for (const folderName of addon.installedFolders) {
+        const folderPath = pathUtils.join(addonsPath, folderName);
+        
+        try {
+          const exists = await fileSystem.checkDirectory(folderPath);
+          if (!exists) {
+            allFoldersExist = false;
+            missingFolders.push(folderName);
+          }
+        } catch (error) {
+          console.error(`Error checking folder ${folderPath}:`, error);
+          allFoldersExist = false;
+          missingFolders.push(folderName);
+        }
+      }
+    } else {
+      // Fallback: check if installPath exists
+      if (addon.installPath) {
+        try {
+          const exists = await fileSystem.checkDirectory(addon.installPath);
+          if (!exists) {
+            allFoldersExist = false;
+            missingFolders.push(pathUtils.basename(addon.installPath));
+          }
+        } catch (error) {
+          console.error(`Error checking install path ${addon.installPath}:`, error);
+          allFoldersExist = false;
+          missingFolders.push(pathUtils.basename(addon.installPath));
+        }
+      }
+    }
+    
+    updatedAddons.push({
+      ...addon,
+      exists: allFoldersExist,
+      missingFolders: missingFolders
+    });
+  }
+  
+  return updatedAddons;
+}
+
 // Export settings functions
 export { getSettings, saveSettings };

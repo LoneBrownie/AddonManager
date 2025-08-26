@@ -17,6 +17,7 @@ function App() {
   const {
     addons,
     addAddon,
+  addExistingAddon,
     updateAddon,
     updateAllAddons,
     checkForUpdates,
@@ -24,6 +25,7 @@ function App() {
     scanForExistingAddons,
     existingAddons,
     wowPath,
+    checkAddonExistenceManually,
     loading,
     error
   } = useAddons();
@@ -141,6 +143,7 @@ function App() {
               onUpdateAddon={updateAddon}
               onUpdateAll={updateAllAddons}
               onCheckUpdates={checkForUpdates}
+              onCheckExistence={checkAddonExistenceManually}
               onRemoveAddon={removeAddon}
               loading={loading}
               hideHeader={true}
@@ -248,6 +251,8 @@ function App() {
         <ExistingAddonManager
           wowPath={wowPath}
           existingAddons={existingAddons}
+          addExistingAddon={addExistingAddon}
+          scanForExistingAddons={scanForExistingAddons}
           onClose={() => setShowExistingManager(false)}
         />
       )}

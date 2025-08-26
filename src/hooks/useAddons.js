@@ -6,7 +6,8 @@ import {
   checkForUpdates as checkUpdatesService, 
   removeAddon as removeAddonService,
   scanExistingAddons,
-  getSettings
+  getSettings,
+  checkAddonExistence
 } from '../services/addon-manager';
 
 const STORAGE_KEY = 'addons';
@@ -118,7 +119,7 @@ export function useAddons() {
     loadAddons();
   }, []);
 
-  // Load settings including wowPath
+  // Load settings including wowPath and check addon existence
   useEffect(() => {
     const loadSettings = async () => {
       try {
@@ -131,6 +132,50 @@ export function useAddons() {
     
     loadSettings();
   }, []);
+
+  // Background check for addon existence when addons or wowPath changes
+  useEffect(() => {
+    const checkExistence = async () => {
+      if (!wowPath || addons.length === 0) return;
+      
+      try {
+        const updatedAddons = await checkAddonExistence(addons);
+        
+        // Remove addons that don't exist on disk
+        const existingAddons = updatedAddons.filter(addon => addon.exists !== false);
+        
+        // Check if any addons were removed
+        const removedCount = addons.length - existingAddons.length;
+        
+        if (removedCount > 0) {
+          console.log(`Removed ${removedCount} missing addon(s) from managed list`);
+          setAddons(existingAddons);
+        } else {
+          // Check for other changes (like missingFolders)
+          const hasChanges = updatedAddons.some((addon, index) => {
+            const originalAddon = addons[index];
+            return addon.exists !== originalAddon.exists || 
+                   JSON.stringify(addon.missingFolders) !== JSON.stringify(originalAddon.missingFolders);
+          });
+          
+          if (hasChanges) {
+            setAddons(existingAddons);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check addon existence:', err);
+        // Don't show error to user for background checks
+      }
+    };
+    
+    // Check immediately, then set up periodic checks
+    checkExistence();
+    
+    // Check every 30 seconds in the background
+    const interval = setInterval(checkExistence, 30000);
+    
+    return () => clearInterval(interval);
+  }, [wowPath, addons]); // Include addons to satisfy dependency array
 
   // Save addons to persistent storage whenever addons change
   useEffect(() => {
@@ -465,6 +510,38 @@ export function useAddons() {
     }
   }, [addExistingAddonToManagement]);
 
+  // Manual check for addon existence
+  const checkAddonExistenceManually = useCallback(async () => {
+    if (!wowPath || addons.length === 0) {
+      setError('No WoW path set or no addons to check');
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const updatedAddons = await checkAddonExistence(addons);
+      
+      // Remove addons that don't exist on disk
+      const existingAddons = updatedAddons.filter(addon => addon.exists !== false);
+      const removedCount = addons.length - existingAddons.length;
+      
+      setAddons(existingAddons);
+      
+      if (removedCount === 0) {
+        console.log('All addons exist on disk');
+      } else {
+        console.log(`Removed ${removedCount} missing addon(s) from managed list`);
+      }
+    } catch (err) {
+      console.error('Failed to check addon existence:', err);
+      setError(err.message || 'Failed to check addon existence');
+    } finally {
+      setLoading(false);
+    }
+  }, [wowPath, addons]);
+
   return {
     addons,
     addAddon,
@@ -479,6 +556,7 @@ export function useAddons() {
     addExistingAddon,
     wowPath,
     normalizeAllAddonNames,
+    checkAddonExistenceManually,
     loading,
     error
   };

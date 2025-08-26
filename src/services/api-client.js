@@ -89,7 +89,22 @@ async function getGitHubLatestRelease(repoInfo, preferredAssetName = null) {
   }
   
   if (!zipAsset) {
-    // No ZIP asset in release, fall back to latest code
+    // No ZIP asset in release - check if GitHub provides a zipball for the release
+    if (release.zipball_url) {
+      // Prefer codeload.github.com URL which is a public redirectable binary download
+      const tag = release.tag_name || release.name;
+      const codeloadUrl = `https://codeload.github.com/${repoInfo.owner}/${repoInfo.repo}/zip/${tag}`;
+      return {
+        version: release.tag_name,
+        name: release.name || release.tag_name,
+        downloadUrl: codeloadUrl,
+        publishedAt: release.published_at,
+        size: null,
+        source: 'release-zipball-codeload'
+      };
+    }
+
+    // No ZIP asset or zipball - fall back to latest code from default branch
     console.log('No ZIP asset in release, falling back to latest code');
     return await getGitHubLatestCode(repoInfo);
   }
@@ -177,7 +192,25 @@ async function getGitLabLatestRelease(repoInfo) {
   );
   
   if (!zipAsset) {
-    // No ZIP asset, fall back to latest code
+    // No explicit ZIP asset - try constructing a release archive URL for the tag
+    try {
+      const tag = latestRelease.tag_name || latestRelease.name;
+      if (tag) {
+        const archiveUrl = `https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/archive/${tag}/${repoInfo.repo}-${tag}.zip`;
+        return {
+          version: latestRelease.tag_name,
+          name: latestRelease.name || latestRelease.tag_name,
+          downloadUrl: archiveUrl,
+          publishedAt: latestRelease.released_at,
+          size: null,
+          source: 'release-archive'
+        };
+      }
+    } catch (err) {
+      // ignore and fall back
+    }
+
+    // No ZIP asset or constructed archive, fall back to latest code
     console.log('No ZIP asset in release, falling back to latest code');
     return await getGitLabLatestCode(repoInfo);
   }

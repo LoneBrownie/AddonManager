@@ -45,6 +45,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isElevated: () => ipcRenderer.invoke('is-elevated'),
   restartAsAdmin: () => ipcRenderer.invoke('restart-as-admin'),
   
+  // Dialog functions
+  showMessageBox: (options) => ipcRenderer.invoke('show-message-box', options),
+  
   // Open external links safely
   openExternal: (url) => {
     // ✅ Security: Validate URL before passing to main process

@@ -72,10 +72,19 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
           }
         }
 
-  const newSettings = { ...settings, wowPath: selectedPath };
-  setSettings(newSettings);
-  await saveSettings(newSettings);
-  setSuccess('WoW path updated successfully!');
+        const newSettings = { ...settings, wowPath: selectedPath };
+        setSettings(newSettings);
+        await saveSettings(newSettings);
+
+        // If path is inside Program Files, prompt for admin restart
+        const lowerPath = selectedPath.toLowerCase();
+        if (lowerPath.includes('program files')) {
+          const msg = 'The selected WoW directory is under Program Files. Installing addons may require administrator rights.';
+          setPendingRestartMessage(msg);
+          setShowAdminModal(true);
+        }
+
+        setSuccess('WoW path updated successfully!');
         setError('');
         
         // Clear success message after 3 seconds
@@ -92,33 +101,6 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
     setSettings(newSettings);
     setError('');
     setSuccess('');
-  };
-
-  const handleSave = async () => {
-    if (!settings.wowPath.trim()) {
-      setError('Please select a WoW installation directory');
-      return;
-    }
-
-    try {
-      await saveSettings(settings);
-
-      // If path is inside Program Files, prompt for admin restart
-      const lowerPath = settings.wowPath.toLowerCase();
-      if (lowerPath.includes('program files')) {
-        const msg = 'The selected WoW directory is under Program Files. Installing addons may require administrator rights.';
-        setPendingRestartMessage(msg);
-        setShowAdminModal(true);
-      }
-
-      setSuccess('Settings saved successfully!');
-      setError('');
-      
-      // Clear success message after 3 seconds
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
-      setError('Failed to save settings: ' + err.message);
-    }
   };
 
   const handleAdminConfirm = async () => {
@@ -192,21 +174,13 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
 
           {error && <div className="error">{error}</div>}
           {success && <div className="success">{success}</div>}
-
-            <div className="settings-actions">
-              <button 
-                className="button"
-                onClick={handleSave}
-              >
-                Save Settings
-              </button>
-            </div>
           </div>
 
           <div className="settings-help">
             <h4>Help</h4>
             <ul>
-              <li>Select your main World of Warcraft installation folder</li>
+              <li>Select your main World of Warcraft installation folder using the Browse button</li>
+              <li>Settings are saved automatically when you select a directory</li>
               <li>This should be the folder containing "WoW.exe" or "World of Warcraft.exe"</li>
               <li>Common locations:
                 <ul>

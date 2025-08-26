@@ -17,6 +17,34 @@
   box-shadow: 0 4px 6px rgba(243, 156, 18, 0.2);
 }
 
+.addon-card.missing {
+  border-color: #e74c3c;
+  box-shadow: 0 4px 6px rgba(231, 76, 60, 0.2);
+}
+
+.missing-warning {
+  background-color: rgba(231, 76, 60, 0.1);
+  border: 1px solid #e74c3c;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.warning-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.warning-text {
+  color: #e74c3c;
+  font-size: 13px;
+  font-weight: 500;
+  flex: 1;
+}
+
 .addon-card-header {
   display: flex;
   justify-content: space-between;
