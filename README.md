@@ -7,7 +7,7 @@ Provides a few addons for 3.3.5a as one-click installs.
 ***
 <h1>Known Issues</h1>
 
-Currently None
+- If your WoW directory is in Program Files then you will need to run this as admin.
 
 Please create a github issue for any problems you find and I'll take a look at some point.
 
