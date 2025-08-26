@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getSettings, saveSettings } from '../services/addon-manager';
 import { useAppUpdater } from '../hooks/useAppUpdater';
 import './Settings.css';
+import AdminRestartModal from './AdminRestartModal';
 
 // ✅ Security: Use secure Electron API access
 const electronAPI = window.electronAPI;
@@ -11,6 +12,8 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
   const [isOpen, setIsOpen] = useState(alwaysExpanded);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [pendingRestartMessage, setPendingRestartMessage] = useState('');
 
   // App updater hook
   const {
@@ -69,10 +72,10 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
           }
         }
 
-        const newSettings = { ...settings, wowPath: selectedPath };
-        setSettings(newSettings);
-        await saveSettings(newSettings);
-        setSuccess('WoW path updated successfully!');
+  const newSettings = { ...settings, wowPath: selectedPath };
+  setSettings(newSettings);
+  await saveSettings(newSettings);
+  setSuccess('WoW path updated successfully!');
         setError('');
         
         // Clear success message after 3 seconds
@@ -99,6 +102,15 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
 
     try {
       await saveSettings(settings);
+
+      // If path is inside Program Files, prompt for admin restart
+      const lowerPath = settings.wowPath.toLowerCase();
+      if (lowerPath.includes('program files')) {
+        const msg = 'The selected WoW directory is under Program Files. Installing addons may require administrator rights.';
+        setPendingRestartMessage(msg);
+        setShowAdminModal(true);
+      }
+
       setSuccess('Settings saved successfully!');
       setError('');
       
@@ -107,6 +119,25 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
     } catch (err) {
       setError('Failed to save settings: ' + err.message);
     }
+  };
+
+  const handleAdminConfirm = async () => {
+    setShowAdminModal(false);
+    // Call into the secure electron API to restart elevated
+    if (electronAPI && electronAPI.restartAsAdmin) {
+      try {
+        await electronAPI.restartAsAdmin();
+      } catch (e) {
+        setError('Failed to restart as admin: ' + (e && e.message ? e.message : String(e)));
+      }
+    } else {
+      // Fallback: inform user
+      setError('Restart-as-admin is not available in this environment. Please restart the app as Administrator manually.');
+    }
+  };
+
+  const handleAdminCancel = () => {
+    setShowAdminModal(false);
   };
 
   const getAddonsPath = () => {
@@ -184,8 +215,10 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
                 </ul>
               </li>
               <li>Addons will be installed to the "Interface\AddOns" subfolder</li>
+              <li style={{ color: 'red' }}>Warning: If your World of Warcraft installation is in Program Files you will need to run this application as Admin.</li>
             </ul>
-          </div>          <div className="app-update-section">
+          </div>
+          <div className="app-update-section">
             <h4>Application Updates</h4>
             <div className="version-info">
               <div className="current-version">
@@ -231,9 +264,16 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
             <div className="update-info">
               <p><strong>Note:</strong> The application automatically checks for updates every 6 hours.</p>
               <p>When an update is available, it will download automatically in the background.</p>
-              <p>The application will restart automatically to install updates silently.</p>
+              <p>The application will restart automatically to install updates.</p>
             </div>
           </div>
+          {showAdminModal && (
+            <AdminRestartModal
+              message={pendingRestartMessage}
+              onCancel={handleAdminCancel}
+              onConfirm={handleAdminConfirm}
+            />
+          )}
         </div>
       )}
     </div>

@@ -41,6 +41,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Platform information
   platform: process.platform,
   
+  // Admin and elevation functions
+  isElevated: () => ipcRenderer.invoke('is-elevated'),
+  restartAsAdmin: () => ipcRenderer.invoke('restart-as-admin'),
+  
   // Open external links safely
   openExternal: (url) => {
     // ✅ Security: Validate URL before passing to main process

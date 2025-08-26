@@ -1,12 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import AddAddonModal from './components/AddAddonModal';
+import AdminRestartModal from './components/AdminRestartModal';
 import AddonList from './components/AddonList';
 import HandyAddons from './components/HandyAddons';
 import Settings from './components/Settings';
 import ExistingAddonManager from './components/ExistingAddonManager';
 import { useAddons } from './hooks/useAddons';
+import { getSettings } from './services/addon-manager';
 import logo from './img/Logo.png';
 import './App.css';
+
+// ✅ Security: Use secure Electron API access
+const electronAPI = window.electronAPI;
 
 function App() {
   const {
@@ -25,7 +30,60 @@ function App() {
 
   const [showExistingManager, setShowExistingManager] = useState(false);
   const [showAddAddonModal, setShowAddAddonModal] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  const [adminRestartMessage, setAdminRestartMessage] = useState('');
   const [activeTab, setActiveTab] = useState('addons'); // 'addons', 'get-addons', 'settings'
+
+  // Check for admin requirements on startup
+  useEffect(() => {
+    const checkAdminRequirements = async () => {
+      try {
+        const settings = await getSettings();
+        if (settings.wowPath) {
+          const lowerPath = settings.wowPath.toLowerCase();
+          if (lowerPath.includes('program files')) {
+            // Check if we're already running as admin
+            if (electronAPI && electronAPI.isElevated) {
+              const isElevated = await electronAPI.isElevated();
+              if (!isElevated) {
+                const msg = 'Your WoW installation is in Program Files. Administrator privileges are required to install addons.';
+                setAdminRestartMessage(msg);
+                setShowAdminModal(true);
+              }
+            } else {
+              // If we can't check elevation status, assume we need admin
+              const msg = 'Your WoW installation is in Program Files. Administrator privileges may be required to install addons.';
+              setAdminRestartMessage(msg);
+              setShowAdminModal(true);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check admin requirements:', error);
+      }
+    };
+
+    checkAdminRequirements();
+  }, []);
+
+  const handleAdminConfirm = async () => {
+    setShowAdminModal(false);
+    // Call into the secure electron API to restart elevated
+    if (electronAPI && electronAPI.restartAsAdmin) {
+      try {
+        await electronAPI.restartAsAdmin();
+      } catch (e) {
+        console.error('Failed to restart as admin:', e);
+        // Show error but don't block the app
+      }
+    } else {
+      console.warn('Restart-as-admin is not available in this environment.');
+    }
+  };
+
+  const handleAdminCancel = () => {
+    setShowAdminModal(false);
+  };
 
   const handleManageExistingAddons = async () => {
     try {
@@ -199,6 +257,14 @@ function App() {
           onClose={() => setShowAddAddonModal(false)}
           onAddAddon={addAddon}
           loading={loading}
+        />
+      )}
+
+      {showAdminModal && (
+        <AdminRestartModal
+          message={adminRestartMessage}
+          onCancel={handleAdminCancel}
+          onConfirm={handleAdminConfirm}
         />
       )}
     </div>

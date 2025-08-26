@@ -264,6 +264,67 @@ ipcMain.handle('open-external', async (event, url) => {
   }
 });
 
+// Check if the app is running with elevated privileges (Windows only)
+ipcMain.handle('is-elevated', async () => {
+  try {
+    if (process.platform !== 'win32') {
+      return false; // Not Windows, elevation doesn't apply
+    }
+
+    // On Windows, check if we're running as admin
+    const { execSync } = require('child_process');
+    try {
+      // This command will throw an error if not running as admin
+      execSync('net session', { stdio: 'ignore' });
+      return true; // Running as admin
+    } catch (error) {
+      return false; // Not running as admin
+    }
+  } catch (error) {
+    console.error('Error checking elevation status:', error);
+    return false; // Assume not elevated on error
+  }
+});
+
+// Restart the app elevated (Windows only)
+ipcMain.handle('restart-as-admin', async () => {
+  try {
+    if (process.platform !== 'win32') {
+      throw new Error('Elevated restart is only supported on Windows');
+    }
+
+    // Get the correct executable path
+    let exePath;
+    if (app.isPackaged) {
+      // In production, use the app executable
+      exePath = process.execPath;
+    } else {
+      // In development, restart the npm script or electron command
+      // Since we can't easily restart the dev environment elevated,
+      // we'll show an error message instead
+      throw new Error('Cannot restart development environment as admin. Please manually restart the application as Administrator.');
+    }
+
+    // Use PowerShell to start the process elevated
+    const { execFile } = require('child_process');
+    const psCommand = `Start-Process -FilePath '"${exePath}"' -Verb runAs`;
+
+    // Spawn powershell to run the elevation command
+    execFile('powershell', ['-Command', psCommand], (error) => {
+      if (error) {
+        console.error('Failed to relaunch elevated:', error);
+      }
+      // Quit the current app regardless (the elevated instance may have started)
+      app.quit();
+    });
+
+    return true;
+  } catch (error) {
+    console.error('restart-as-admin error:', error);
+    throw error;
+  }
+});
+
 // Additional IPC handlers for addon management
 ipcMain.handle('create-directory', async (event, dirPath) => {
   try {
