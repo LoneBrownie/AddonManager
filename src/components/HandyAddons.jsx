@@ -88,6 +88,7 @@ const HANDY_ADDONS = [
     description: 'Modern Dragonflight-style user interface for Classic WoW with updated visuals and functionality.',
     repoUrl: 'https://github.com/NeticSoul/DragonUI',
     category: 'Interface',
+    customFolderName: 'DragonUI',
     epochAddon: false
   },
   {
