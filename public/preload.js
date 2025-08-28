@@ -62,6 +62,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
       console.warn('Invalid URL:', url);
     }
   }
+  ,
+  // Fetch release/tag info via main process (avoids CORS)
+  fetchReleaseWeb: (repoUrl) => ipcRenderer.invoke('fetch-release-web', repoUrl)
 });
 
 // ✅ Security: Remove any window.require access

@@ -636,14 +636,14 @@ export async function checkForUpdates(addons) {
   for (const addon of addons) {
     try {
       const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName);
-      const needsUpdate = release.version !== addon.currentVersion;
+  const needsUpdate = isUpdateAvailable(addon.currentVersion, release.version);
       
-      updatedAddons.push({
-        ...addon,
-        latestVersion: release.version,
-        latestSource: release.source,
-        needsUpdate
-      });
+        updatedAddons.push({
+          ...addon,
+          latestVersion: release.version,
+          latestSource: release.source,
+          needsUpdate
+        });
     } catch (error) {
       console.error(`Failed to check updates for ${addon.name}:`, error);
       updatedAddons.push(addon);
@@ -678,6 +678,28 @@ export function compareVersions(version1, version2) {
   }
   
   return 0;
+}
+
+/**
+ * Determine if latestVersion is newer than currentVersion.
+ * Uses semver-style numeric comparison when both versions look numeric (e.g. "v1.2.3" or "1.2.3").
+ * Falls back to simple string equality for non-numeric versions (commit-sha, date-sha, etc.).
+ * @param {string} currentVersion
+ * @param {string} latestVersion
+ * @returns {boolean} true if an update is available
+ */
+function isUpdateAvailable(currentVersion, latestVersion) {
+  if (!currentVersion && latestVersion) return true;
+  if (!latestVersion) return false;
+
+  const semverLike = v => typeof v === 'string' && /^v?\d+(?:\.\d+)*$/.test(v.trim());
+  if (semverLike(currentVersion) && semverLike(latestVersion)) {
+    return compareVersions(currentVersion, latestVersion) < 0;
+  }
+
+  // Normalize simple v-prefix differences
+  const normalize = s => (typeof s === 'string' ? s.replace(/^v/, '') : s);
+  return normalize(currentVersion) !== normalize(latestVersion);
 }
 
 /**
@@ -1157,7 +1179,7 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl) {
       repoUrl: approvedRepoUrl,
       currentVersion: existingAddon.version,
       latestVersion: release.version,
-      needsUpdate: compareVersions(existingAddon.version, release.version) < 0,
+  needsUpdate: isUpdateAvailable(existingAddon.version, release.version),
       lastUpdated: new Date().toISOString(),
       installedFolders: existingAddon.isGrouped ? existingAddon.relatedFolders : [existingAddon.folderName],
       tocData: existingAddon.tocData,

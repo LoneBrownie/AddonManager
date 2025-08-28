@@ -53,10 +53,181 @@ export function isValidRepoUrl(url) {
   }
 }
 
+// Simple in-memory cache to avoid repeated network calls during a session
+const latestCache = new Map();
+
+function cacheSet(key, value, ttlMs = 1000 * 60 * 10) {
+  const expires = Date.now() + ttlMs;
+  latestCache.set(key, { value, expires });
+}
+
+function cacheGet(key) {
+  const entry = latestCache.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expires) {
+    latestCache.delete(key);
+    return null;
+  }
+  return entry.value;
+}
+
+/**
+ * Try to discover latest release/tag via public web endpoints (no API) to avoid hitting API rate limits.
+ * Returns an object similar to API release `{ version, downloadUrl, name, publishedAt, source }` or null.
+ */
+async function getGitHubLatestFromWeb(repoInfo) {
+  const cacheKey = `gh:web:${repoInfo.owner}/${repoInfo.repo}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+
+  try {
+    // Try the releases/latest web URL which redirects to the release page with the tag in URL
+    const releasesLatestUrl = `https://github.com/${repoInfo.owner}/${repoInfo.repo}/releases/latest`;
+    const resp = await fetch(releasesLatestUrl, { redirect: 'follow' });
+    if (resp && resp.ok) {
+      const finalUrl = resp.url || '';
+      // eslint-disable-next-line no-useless-escape
+      const m = finalUrl.match(/\/releases\/tag\/(.+)$/);
+      if (m && m[1]) {
+        const tag = decodeURIComponent(m[1]);
+        const downloadUrl = `https://codeload.github.com/${repoInfo.owner}/${repoInfo.repo}/zip/${tag}`;
+        const result = { version: tag, name: `Release ${tag}`, downloadUrl, publishedAt: null, size: null, source: 'release-web' };
+        cacheSet(cacheKey, result);
+        return result;
+      }
+    }
+
+    // If release redirect failed, fetch releases page HTML and try to parse first /releases/tag/ link
+    const listResp = await fetch(`https://github.com/${repoInfo.owner}/${repoInfo.repo}/releases`);
+    if (listResp && listResp.ok) {
+  const text = await listResp.text();
+  // eslint-disable-next-line no-useless-escape
+  const tagMatch = text.match(/\/(?:[^/]+)\/(?:[^/]+)\/releases\/tag\/([\w%\-.+]+)/);
+      if (tagMatch && tagMatch[1]) {
+        const tag = decodeURIComponent(tagMatch[1]);
+        const downloadUrl = `https://codeload.github.com/${repoInfo.owner}/${repoInfo.repo}/zip/${tag}`;
+        const result = { version: tag, name: `Release ${tag}`, downloadUrl, publishedAt: null, size: null, source: 'release-web' };
+        cacheSet(cacheKey, result);
+        return result;
+      }
+    }
+
+    // As a last web fallback, try the tags page and find the first tag link
+    const tagsResp = await fetch(`https://github.com/${repoInfo.owner}/${repoInfo.repo}/tags`);
+    if (tagsResp && tagsResp.ok) {
+    const text = await tagsResp.text();
+    // eslint-disable-next-line no-useless-escape
+  const tagMatch = text.match(/\/(?:[^/]+)\/(?:[^/]+)\/releases\/tag\/([\w%\-.+]+)/) || text.match(/\/(?:[^/]+)\/(?:[^/]+)\/tree\/([\w%\-.+]+)/);
+      if (tagMatch && tagMatch[1]) {
+        const tag = decodeURIComponent(tagMatch[1]);
+        const downloadUrl = `https://codeload.github.com/${repoInfo.owner}/${repoInfo.repo}/zip/${tag}`;
+        const result = { version: tag, name: `Tag ${tag}`, downloadUrl, publishedAt: null, size: null, source: 'tag-web' };
+        cacheSet(cacheKey, result);
+        return result;
+      }
+    }
+  } catch (err) {
+    // ignore web fallback errors and let API-based methods handle it
+    console.debug('GitHub web fallback failed:', err);
+  }
+
+  return null;
+}
+
+async function getGitLabLatestFromWeb(repoInfo) {
+  const cacheKey = `gl:web:${repoInfo.owner}/${repoInfo.repo}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const releasesLatestUrl = `https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/releases/latest`;
+    const resp = await fetch(releasesLatestUrl, { redirect: 'follow' });
+    if (resp && resp.ok) {
+      const finalUrl = resp.url || '';
+      // eslint-disable-next-line no-useless-escape
+  const m = finalUrl.match(/\/-\/releases\/(?:[^/]+)\/([\w%\-.+]+)$/) || finalUrl.match(/\/-\/releases\/([^/]+)$/);
+      if (m && m[1]) {
+        const tag = decodeURIComponent(m[1]);
+        const downloadUrl = `https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/archive/${tag}/${repoInfo.repo}-${tag}.zip`;
+        const result = { version: tag, name: `Release ${tag}`, downloadUrl, publishedAt: null, size: null, source: 'release-web' };
+        cacheSet(cacheKey, result);
+        return result;
+      }
+    }
+
+    const listResp = await fetch(`https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/releases`);
+    if (listResp && listResp.ok) {
+    const text = await listResp.text();
+    // eslint-disable-next-line no-useless-escape
+  const tagMatch = text.match(/\/-\/releases\/([\w%\-.+]+)/);
+      if (tagMatch && tagMatch[1]) {
+        const tag = decodeURIComponent(tagMatch[1]);
+        const downloadUrl = `https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/archive/${tag}/${repoInfo.repo}-${tag}.zip`;
+        const result = { version: tag, name: `Release ${tag}`, downloadUrl, publishedAt: null, size: null, source: 'release-web' };
+        cacheSet(cacheKey, result);
+        return result;
+      }
+    }
+
+    const tagsResp = await fetch(`https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/tags`);
+    if (tagsResp && tagsResp.ok) {
+      const text = await tagsResp.text();
+      // eslint-disable-next-line no-useless-escape
+  const tagMatch = text.match(/\/-\/tags\/([\w%\-.+]+)/) || text.match(/\/-\/tree\/([\w%\-.+]+)/);
+      if (tagMatch && tagMatch[1]) {
+        const tag = decodeURIComponent(tagMatch[1]);
+        const downloadUrl = `https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/archive/${tag}/${repoInfo.repo}-${tag}.zip`;
+        const result = { version: tag, name: `Tag ${tag}`, downloadUrl, publishedAt: null, size: null, source: 'tag-web' };
+        cacheSet(cacheKey, result);
+        return result;
+      }
+    }
+  } catch (err) {
+    console.debug('GitLab web fallback failed:', err);
+  }
+
+  return null;
+}
+
 /**
  * Get the latest tag from GitHub
  * @param {Object} repoInfo - Repository information from parseRepoFromUrl
- * @returns {Promise<Object>} - Tag information
+ * @returns {Promise<Object>} - Tagapi-client.js:403 API Error: Error: GitHub API error: 403
+    at getGitHubLatestRelease (api-client.js:126:1)
+    at async getLatestRelease (api-client.js:396:1)
+    at async checkForUpdates (addon-manager.js:638:1)
+    at async useAddons.js:296:1
+addon-manager.js:648 Failed to check updates for |cff33ffccpf|cffffffffQuest |cffcccccc[Project Epoch DB] |cffff5555[RELEASE]: Error: GitHub API error: 403
+    at getGitHubLatestRelease (api-client.js:126:1)
+    at async getLatestRelease (api-client.js:396:1)
+    at async checkForUpdates (addon-manager.js:638:1)
+    at async useAddons.js:296:1
+api-client.js:113 
+ GET https://api.github.com/repos/Raynbock/Atlas-Project-Epoch/releases/latest 403 (Forbidden)
+api-client.js:403 API Error: Error: GitHub API error: 403
+    at getGitHubLatestRelease (api-client.js:126:1)
+    at async getLatestRelease (api-client.js:396:1)
+    at async checkForUpdates (addon-manager.js:638:1)
+    at async useAddons.js:296:1
+addon-manager.js:648 Failed to check updates for Atlas: Error: GitHub API error: 403
+    at getGitHubLatestRelease (api-client.js:126:1)
+    at async getLatestRelease (api-client.js:396:1)
+    at async checkForUpdates (addon-manager.js:638:1)
+    at async useAddons.js:296:1
+api-client.js:113 
+ GET https://api.github.com/repos/NeticSoul/DragonUI/releases/latest 403 (Forbidden)
+api-client.js:403 API Error: Error: GitHub API error: 403
+    at getGitHubLatestRelease (api-client.js:126:1)
+    at async getLatestRelease (api-client.js:396:1)
+    at async checkForUpdates (addon-manager.js:638:1)
+    at async useAddons.js:296:1
+addon-manager.js:648 Failed to check updates for |cfffff0f5DragonUI|r: Error: GitHub API error: 403
+    at getGitHubLatestRelease (api-client.js:126:1)
+    at async getLatestRelease (api-client.js:396:1)
+    at async checkForUpdates (addon-manager.js:638:1)
+    at async useAddons.js:296:1
+﻿
+ information
  */
 async function getGitHubLatestTag(repoInfo) {
   const response = await fetch(`${repoInfo.apiUrl}/tags`);
@@ -91,8 +262,30 @@ async function getGitHubLatestTag(repoInfo) {
  * @returns {Promise<Object>} - Release information
  */
 async function getGitHubLatestRelease(repoInfo, preferredAssetName = null) {
-  const response = await fetch(`${repoInfo.apiUrl}/releases/latest`);
-  
+  let response;
+  try {
+    response = await fetch(`${repoInfo.apiUrl}/releases/latest`);
+  } catch (fetchErr) {
+    // Network or CORS error when calling API from renderer - try web/tag/branch fallbacks
+    console.debug('GitHub releases/latest fetch failed, trying web/tag/branch fallbacks', fetchErr);
+    try {
+      if (window?.electronAPI?.fetchReleaseWeb) {
+        const web = await window.electronAPI.fetchReleaseWeb(`https://github.com/${repoInfo.owner}/${repoInfo.repo}`);
+        if (web) return web;
+      } else {
+        const web = await getGitHubLatestFromWeb(repoInfo);
+        if (web) return web;
+      }
+    } catch (webErr) {
+      console.debug('Web fallback failed after network error:', webErr);
+    }
+    try {
+      return await getGitHubLatestTag(repoInfo);
+    } catch (tagError) {
+      return await getGitHubLatestCode(repoInfo);
+    }
+  }
+
   if (!response.ok) {
     if (response.status === 404) {
       // No releases found, try to fall back to latest tag first
@@ -104,6 +297,29 @@ async function getGitHubLatestRelease(repoInfo, preferredAssetName = null) {
         return await getGitHubLatestCode(repoInfo);
       }
     }
+
+    // Handle rate limiting / forbidden - try web fallback then tags/branch
+    if (response.status === 403) {
+      console.warn('GitHub API returned 403; attempting web/tag/branch fallbacks to avoid failure');
+      try {
+        if (window?.electronAPI?.fetchReleaseWeb) {
+          const web = await window.electronAPI.fetchReleaseWeb(`https://github.com/${repoInfo.owner}/${repoInfo.repo}`);
+          if (web) return web;
+        } else {
+          const web = await getGitHubLatestFromWeb(repoInfo);
+          if (web) return web;
+        }
+      } catch (webErr) {
+        console.debug('Web fallback failed after 403:', webErr);
+      }
+
+      try {
+        return await getGitHubLatestTag(repoInfo);
+      } catch (tagError) {
+        return await getGitHubLatestCode(repoInfo);
+      }
+    }
+
     throw new Error(`GitHub API error: ${response.status}`);
   }
   
@@ -362,8 +578,36 @@ export async function getLatestRelease(repoUrl, preferredAssetName = null) {
   
   try {
     if (repoInfo.platform === 'github') {
+      // If no specific asset is requested, try the web fallback first to avoid API limits
+      if (!preferredAssetName) {
+        try {
+          // Prefer main-process fetch (avoids CORS) when available
+          if (window.electronAPI?.fetchReleaseWeb) {
+            const web = await window.electronAPI.fetchReleaseWeb(repoUrl);
+            // Ignore non-informative web responses that return the literal 'latest'
+            if (web && web.version && String(web.version).toLowerCase() !== 'latest') return web;
+          } else {
+            const web = await getGitHubLatestFromWeb(repoInfo);
+            if (web && web.version && String(web.version).toLowerCase() !== 'latest') return web;
+          }
+        } catch (err) {
+          // ignore and fall back to API
+        }
+      }
       return await getGitHubLatestRelease(repoInfo, preferredAssetName);
     } else if (repoInfo.platform === 'gitlab') {
+      // Try web fallback first when possible (prefer main-process fetch to avoid CORS)
+      try {
+        if (window.electronAPI?.fetchReleaseWeb) {
+          const web = await window.electronAPI.fetchReleaseWeb(repoUrl);
+          if (web && web.version && String(web.version).toLowerCase() !== 'latest') return web;
+        } else {
+          const web = await getGitLabLatestFromWeb(repoInfo);
+          if (web && web.version && String(web.version).toLowerCase() !== 'latest') return web;
+        }
+      } catch (err) {
+        // ignore and fall back to API
+      }
       return await getGitLabLatestRelease(repoInfo);
     }
     

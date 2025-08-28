@@ -668,3 +668,128 @@ ipcMain.handle('install-update', async () => {
   console.log('Manual update install triggered');
   autoUpdater.quitAndInstall(true, true); // Silent install and force restart
 });
+
+// Fetch release/tag via web in main process to avoid renderer CORS issues
+ipcMain.handle('fetch-release-web', async (event, repoUrl) => {
+  try {
+    if (!repoUrl || typeof repoUrl !== 'string') throw new Error('Invalid repoUrl');
+    const repoInfo = (function parse(url) {
+      try {
+        const u = new URL(url);
+        const host = u.hostname.toLowerCase();
+        const parts = u.pathname.split('/').filter(Boolean);
+        if ((host === 'github.com' || host === 'www.github.com') && parts.length >= 2) {
+          return { platform: 'github', owner: parts[0], repo: parts[1] };
+        }
+        if ((host === 'gitlab.com' || host === 'www.gitlab.com') && parts.length >= 2) {
+          return { platform: 'gitlab', owner: parts[0], repo: parts[1] };
+        }
+      } catch (err) {
+        return null;
+      }
+      return null;
+    })(repoUrl);
+
+    if (!repoInfo) throw new Error('Unsupported or invalid repo URL');
+
+    const https = require('https');
+    const http = require('http');
+
+    function fetchText(url) {
+      return new Promise((resolve, reject) => {
+        try {
+          const urlObj = new URL(url);
+          const client = urlObj.protocol === 'https:' ? https : http;
+          const req = client.get(urlObj, { headers: { 'User-Agent': 'Wow-Addon-Manager/1.0' } }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk.toString());
+            res.on('end', () => resolve({ status: res.statusCode, url: res.responseUrl || urlObj.href, text: data }));
+          });
+          req.on('error', reject);
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }
+
+    // Try platform-specific web flows
+    if (repoInfo.platform === 'github') {
+      // 1) Try /releases/latest redirect
+      try {
+        const releasesLatest = `https://github.com/${repoInfo.owner}/${repoInfo.repo}/releases/latest`;
+        const r = await fetchText(releasesLatest);
+        // If the server redirected, res.url may include final URL; fallback to header parsing
+        const finalUrl = r.url || '';
+        const m = (finalUrl.match(/\/releases\/tag\/(.+)$/) || [])[1];
+        if (m) {
+          const tag = decodeURIComponent(m);
+          return { version: tag, downloadUrl: `https://codeload.github.com/${repoInfo.owner}/${repoInfo.repo}/zip/${tag}`, source: 'release-web' };
+        }
+      } catch (err) { /** ignore */ }
+
+      // 2) Fetch releases page and look for /releases/tag/ link
+      try {
+        const list = await fetchText(`https://github.com/${repoInfo.owner}/${repoInfo.repo}/releases`);
+        if (list.status === 200 && list.text) {
+          const m = list.text.match(/\/releases\/tag\/([\w%\-.+]+)/);
+          if (m && m[1]) {
+            const tag = decodeURIComponent(m[1]);
+            return { version: tag, downloadUrl: `https://codeload.github.com/${repoInfo.owner}/${repoInfo.repo}/zip/${tag}`, source: 'release-web' };
+          }
+        }
+      } catch (err) { /** ignore */ }
+
+      // 3) Fallback to tags page
+      try {
+        const tags = await fetchText(`https://github.com/${repoInfo.owner}/${repoInfo.repo}/tags`);
+        if (tags.status === 200 && tags.text) {
+          const m = tags.text.match(/\/(?:[^\/]+)\/(?:[^\/]+)\/tree\/([\w%\-.+]+)/) || tags.text.match(/\/releases\/tag\/([\w%\-.+]+)/);
+          if (m && m[1]) {
+            const tag = decodeURIComponent(m[1]);
+            return { version: tag, downloadUrl: `https://codeload.github.com/${repoInfo.owner}/${repoInfo.repo}/zip/${tag}`, source: 'tag-web' };
+          }
+        }
+      } catch (err) { /** ignore */ }
+    }
+
+    if (repoInfo.platform === 'gitlab') {
+      try {
+        const releasesLatest = `https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/releases/latest`;
+        const r = await fetchText(releasesLatest);
+        const finalUrl = r.url || '';
+  const m = (finalUrl.match(/\/-\/releases\/(?:[^\/]+)\/(.+)$/) || finalUrl.match(/\/-\/releases\/(.+)$/) || [])[1];
+        if (m) {
+          const tag = decodeURIComponent(m);
+          return { version: tag, downloadUrl: `https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/archive/${tag}/${repoInfo.repo}-${tag}.zip`, source: 'release-web' };
+        }
+      } catch (err) { /** ignore */ }
+
+      try {
+        const list = await fetchText(`https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/releases`);
+        if (list.status === 200 && list.text) {
+          const m = list.text.match(/\/-\/releases\/(?:[^\/]+)\/(.+)$/) || list.text.match(/\/-\/releases\/(.+)$/);
+          if (m && m[1]) {
+            const tag = decodeURIComponent(m[1]);
+            return { version: tag, downloadUrl: `https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/archive/${tag}/${repoInfo.repo}-${tag}.zip`, source: 'release-web' };
+          }
+        }
+      } catch (err) { /** ignore */ }
+
+      try {
+        const tags = await fetchText(`https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/tags`);
+        if (tags.status === 200 && tags.text) {
+          const m = tags.text.match(/\/-\/tags\/(.+)/) || tags.text.match(/\/-\/tree\/(.+)/);
+          if (m && m[1]) {
+            const tag = decodeURIComponent(m[1]);
+            return { version: tag, downloadUrl: `https://gitlab.com/${repoInfo.owner}/${repoInfo.repo}/-/archive/${tag}/${repoInfo.repo}-${tag}.zip`, source: 'tag-web' };
+          }
+        }
+      } catch (err) { /** ignore */ }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('fetch-release-web error:', error);
+    throw error;
+  }
+});
