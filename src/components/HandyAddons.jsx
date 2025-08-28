@@ -151,7 +151,8 @@ const HANDY_ADDONS = [
     description: 'Find groups for dungeons and raids easily.',
     repoUrl: 'https://github.com/Bennylavaa/LFG',
     category: 'Interface',
-    epochAddon: true
+    epochAddon: true,
+    customFolderName: 'LFG'
   }
 ];
 
