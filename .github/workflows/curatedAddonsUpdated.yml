@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Azure CLI
-        uses: azure/CLI@v1
+        uses: azure/setup-azure-cli@v1
 
       - name: Upload curated list to Blob storage
         env:
