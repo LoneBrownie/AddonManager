@@ -4,6 +4,7 @@ import './AddAddonModal.css';
 
 function AddAddonModal({ onClose, onAddAddon, loading }) {
   const [url, setUrl] = useState('');
+  const [folderName, setFolderName] = useState('');
   const [error, setError] = useState('');
 
   const handleSubmit = async (e) => {
@@ -21,8 +22,14 @@ function AddAddonModal({ onClose, onAddAddon, loading }) {
     }
 
     try {
-      await onAddAddon(url.trim());
+      const options = {};
+      if (folderName && folderName.trim()) {
+        options.customFolderName = folderName.trim();
+      }
+
+      await onAddAddon(url.trim(), options);
       setUrl(''); // Clear input on success
+      setFolderName('');
       onClose(); // Close modal on success
     } catch (err) {
       setError(err.message || 'Failed to add addon');
@@ -59,6 +66,20 @@ function AddAddonModal({ onClose, onAddAddon, loading }) {
               autoFocus
             />
             {error && <div className="error">{error}</div>}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="folder-name">Folder name (optional)</label>
+            <input
+              id="folder-name"
+              type="text"
+              className="input"
+              value={folderName}
+              onChange={(e) => setFolderName(e.target.value)}
+              placeholder="Addon folder name to use when installing (optional)"
+              disabled={loading}
+            />
+            <div className="help-text-small">If provided, this name will be used for the installed addon folder. Leave empty to use the addon's default name.</div>
           </div>
           
           <div className="help-text">

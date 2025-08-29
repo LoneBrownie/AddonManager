@@ -1,5 +1,6 @@
 import React from 'react';
 import './AddonCard.css';
+import { sanitizeTocTitle } from '../services/addon-manager';
 
 function AddonCard({ addon, onUpdate, onRemove, loading }) {
   const formatDate = (dateString) => {
@@ -34,6 +35,8 @@ function AddonCard({ addon, onUpdate, onRemove, loading }) {
     }
   };
 
+  const displayName = addon.tocData && addon.tocData.title ? addon.tocData.title : addon.name;
+
   return (
     <div className={`addon-card ${addon.needsUpdate ? 'needs-update' : ''} ${addon.exists === false ? 'missing' : ''}`}>
       {addon.exists === false && (
@@ -49,8 +52,8 @@ function AddonCard({ addon, onUpdate, onRemove, loading }) {
       )}
       
       <div className="addon-card-header">
-        <h3 className="addon-name" title={addon.name}>
-          {addon.name}
+        <h3 className="addon-name" title={displayName}>
+          {sanitizeTocTitle(displayName) || addon.name}
         </h3>
         {addon.needsUpdate && (
           <span className="update-badge">Update Available</span>

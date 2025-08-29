@@ -1,5 +1,6 @@
 import React from 'react';
 import './AddonListItem.css';
+import { sanitizeTocTitle } from '../services/addon-manager';
 
 function AddonListItem({ addon, onUpdate, onRemove, loading }) {
   const formatDate = (dateString) => {
@@ -34,12 +35,14 @@ function AddonListItem({ addon, onUpdate, onRemove, loading }) {
     }
   };
 
+  const displayName = addon.tocData && addon.tocData.title ? addon.tocData.title : addon.name;
+
   return (
     <div className={`addon-list-item ${addon.needsUpdate ? 'needs-update' : ''}`}>
       <div className="addon-main-info">
         <div className="addon-name-section">
-          <h3 className="addon-name" title={addon.name}>
-            {addon.name}
+          <h3 className="addon-name" title={sanitizeTocTitle(displayName) || addon.name}>
+            {sanitizeTocTitle(displayName) || addon.name}
           </h3>
           {addon.needsUpdate && (
             <span className="update-badge">Update Available</span>

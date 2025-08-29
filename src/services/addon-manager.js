@@ -249,7 +249,7 @@ async function parseAddonToc(tocPath) {
     }
     
     return {
-      title: metadata.title || pathUtils.basename(tocPath, '.toc'),
+      title: sanitizeTocTitle(metadata.title || pathUtils.basename(tocPath, '.toc')),
       version: metadata.version || 'Unknown',
       author: metadata.author || 'Unknown',
       interface: metadata.interface || 'Unknown',
@@ -260,7 +260,7 @@ async function parseAddonToc(tocPath) {
   } catch (error) {
     console.error('Failed to parse .toc file:', error);
     return {
-      title: pathUtils.basename(tocPath, '.toc'),
+      title: sanitizeTocTitle(pathUtils.basename(tocPath, '.toc')),
       version: 'Unknown',
       author: 'Unknown',
       interface: 'Unknown'
@@ -290,7 +290,7 @@ function parseTocContent(content) {
   }
   
   return {
-    title: metadata.title || 'Unknown',
+    title: sanitizeTocTitle(metadata.title || 'Unknown'),
     version: metadata.version || 'Unknown',
     author: metadata.author || 'Unknown',
     interface: metadata.interface || 'Unknown',
@@ -298,6 +298,50 @@ function parseTocContent(content) {
     x_website: metadata['x-website'] || '',
     x_repository: metadata['x-repository'] || ''
   };
+}
+
+/**
+ * Sanitize .toc title values to remove WoW color codes and other control/formatting sequences.
+ * Examples removed: "|cff33ffcc", "|r", texture tags |T...|t, and hyperlink wrappers |H...|h
+ * Also strips non-printable control characters and collapses excessive punctuation/whitespace.
+ * @param {string} title
+ * @returns {string}
+ */
+export function sanitizeTocTitle(title) {
+  if (!title || typeof title !== 'string') return '';
+
+  let t = title;
+
+  // Remove WoW color codes like |cff33ffcc or |cffffffff
+  t = t.replace(/\|c[0-9a-fA-F]{6,8}/g, '');
+  // Remove color reset markers
+  t = t.replace(/\|r/gi, '');
+
+  // Remove texture tags |T...|t
+  t = t.replace(/\|T.*?\|t/g, '');
+
+  // Unwrap hyperlink text |H...|htext|h -> keep 'text'
+  t = t.replace(/\|H.*?\|h(.*?)\|h/g, '$1');
+
+  // Remove other simple |x sequences (e.g., |cff..., |1 etc.) but keep the following text
+  t = t.replace(/\|[a-zA-Z0-9]{1,12}/g, '');
+
+  // Strip control characters (avoid control-character escapes in regex for ESLint)
+  t = t.split('').filter(ch => {
+    const code = ch.charCodeAt(0);
+    // Keep printable ASCII range (space..~) and everything above DEL (127). Remove C0 control chars and DEL.
+    return code >= 32 && code !== 127;
+  }).join('');
+
+  // Replace multiple quotes or punctuation with a single instance
+  t = t.replace(/['"`]{2,}/g, '');
+  t = t.replace(/[-_]{2,}/g, '-');
+
+  // Collapse multiple whitespace to single space
+  t = t.replace(/\s{2,}/g, ' ');
+
+  // Trim and return
+  return t.trim();
 }
 
 /**
