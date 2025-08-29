@@ -1,0 +1,154 @@
+[
+  {
+    "id": "classicapi",
+    "name": "Classic API",
+    "description": "Essential API functions for Classic WoW addons compatibility.",
+    "repoUrl": "https://gitlab.com/Tsoukie/classicapi",
+    "category": "Core",
+    "epochAddon": false
+  },
+  {
+    "id": "compactraidframe",
+    "name": "Compact Raid Frames",
+    "description": "Compact and customizable raid frame addon for improved raid visibility.",
+    "repoUrl": "https://gitlab.com/Tsoukie/compactraidframe-3.3.5",
+    "category": "Raid Frames",
+    "epochAddon": false,
+    "dependencies": ["classicapi"]
+  },
+  {
+    "id": "enhancedraidframes",
+    "name": "Enhanced Raid Frames",
+    "description": "Enhanced raid frames with additional features and customization options.",
+    "repoUrl": "https://gitlab.com/Tsoukie/enhancedraidframes-3.3.5",
+    "category": "Raid Frames",
+    "epochAddon": false,
+    "dependencies": ["classicapi", "compactraidframe"]
+  },
+  {
+    "id": "addonlist",
+    "name": "Addon List",
+    "description": "Manage and organize your addons with an in-game interface.",
+    "repoUrl": "https://gitlab.com/Tsoukie/addonlist-3.3.5",
+    "category": "Management",
+    "epochAddon": false,
+    "dependencies": ["classicapi"]
+  },
+  {
+    "id": "clique",
+    "name": "Clique",
+    "description": "Click-casting addon for healers and support classes.",
+    "repoUrl": "https://gitlab.com/Tsoukie/clique-3.3.5",
+    "category": "Healing",
+    "epochAddon": false,
+    "dependencies": ["classicapi"]
+  },
+  {
+    "id": "compactraidframe-healex",
+    "name": "Compact Raid Frame - HealEx",
+    "description": "Extended healing features for Compact Raid Frames.",
+    "repoUrl": "https://gitlab.com/Tsoukie/compactraidframe_healex",
+    "category": "Healing",
+    "epochAddon": false,
+    "dependencies": ["classicapi", "compactraidframe"]
+  },
+  {
+    "id": "raidframesorter",
+    "name": "Raid Frame Sorter",
+    "description": "Sort and organize raid frames for better group management.",
+    "repoUrl": "https://gitlab.com/Tsoukie/raidframesorter-3.3.5",
+    "category": "Raid Frames",
+    "epochAddon": false,
+    "dependencies": ["classicapi", "compactraidframe"]
+  },
+  {
+    "id": "framesort",
+    "name": "FrameSort",
+    "description": "Sort and organize unit frames and raid frames for better group management.",
+    "repoUrl": "https://gitlab.com/Tsoukie/framesort-3.3.5",
+    "category": "Raid Frames",
+    "epochAddon": false,
+    "dependencies": ["classicapi", "compactraidframe"]
+  },
+  {
+    "id": "questie-epoch",
+    "name": "Questie",
+    "description": "Enhanced version of Questie with improved quest tracking and database for WotLK.",
+    "repoUrl": "https://github.com/esurm/Questie",
+    "category": "Questing",
+    "customFolderName": "Questie",
+    "epochAddon": true
+  },
+  {
+    "id": "dragonui",
+    "name": "DragonUI",
+    "description": "Modern Dragonflight-style user interface for Classic WoW with updated visuals and functionality.",
+    "repoUrl": "https://github.com/NeticSoul/DragonUI",
+    "category": "Interface",
+    "customFolderName": "DragonUI",
+    "epochAddon": false
+  },
+  {
+    "id": "atlasloot-epoch",
+    "name": "AtlasLoot Epoch",
+    "description": "Complete loot browser for Classic WoW showing items, locations, and drop rates.",
+    "repoUrl": "https://github.com/Raynbock/AtlaslootProjectEpoch",
+    "category": "Interface",
+    "epochAddon": true
+  },
+  {
+    "id": "bagnon",
+    "name": "Bagnon",
+    "description": "All-in-one bag replacement addon that merges all your bags into one frame.",
+    "repoUrl": "https://github.com/RichSteini/Bagnon-3.3.5",
+    "category": "Interface",
+    "epochAddon": false
+  },
+  {
+    "id": "notplater",
+    "name": "NotPlater",
+    "description": "Advanced nameplate addon with extensive customization options.",
+    "repoUrl": "https://github.com/RichSteini/NotPlater",
+    "category": "Interface",
+    "customFolderName": "NotPlater-3.3.5",
+    "epochAddon": false
+  },
+  {
+    "id": "pfquest-full",
+    "name": "pfQuest",
+    "description": "Complete quest helper addon with database and map integration.",
+    "repoUrl": "https://github.com/shagu/pfQuest/releases/latest/download/pfQuest-full-wotlk.zip",
+    "category": "Questing",
+    "isDirectDownload": true,
+    "customFolderName": "pfQuest-wotlk",
+    "preferredAssetName": "pfQuest-enUS-wotlk.zip",
+    "epochAddon": false
+  },
+  {
+    "id": "pfquest-epoch",
+    "name": "pfQuest Epoch (Archived)",
+    "description": "Enhanced version of pfQuest with additional features for modern gameplay.",
+    "repoUrl": "https://github.com/Bennylavaa/pfQuest-epoch",
+    "category": "Questing",
+    "customFolderName": "pfQuest-epoch",
+    "epochAddon": true,
+    "dependencies": ["pfquest-full"]
+  },
+  {
+    "id": "EpochDeltaFix",
+    "name": "Epoch Delta Fix",
+    "description": "Replaces Epochs stat-compare with correct deltas.",
+    "repoUrl": "https://github.com/dellmas/WoW-Epoch-Delta-Fix/",
+    "category": "Interface",
+    "epochAddon": true
+  },
+  {
+    "id": "LFG",
+    "name": "Looking for Group",
+    "description": "Find groups for dungeons and raids easily.",
+    "repoUrl": "https://github.com/Bennylavaa/LFG",
+    "category": "Interface",
+    "epochAddon": true,
+    "customFolderName": "LFG"
+  }
+]

@@ -793,3 +793,41 @@ ipcMain.handle('fetch-release-web', async (event, repoUrl) => {
     throw error;
   }
 });
+
+// Fetch curated JSON blob in main process to avoid renderer CORS restrictions
+ipcMain.handle('fetch-curated-list', async (event, url) => {
+  try {
+    if (!url || typeof url !== 'string') throw new Error('Invalid URL');
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error('Only http(s) URLs allowed');
+
+    const https = require('https');
+    const http = require('http');
+
+    const client = parsed.protocol === 'https:' ? https : http;
+
+    return await new Promise((resolve, reject) => {
+      const req = client.get(parsed, { headers: { 'User-Agent': 'Wow-Addon-Manager/1.0', 'Accept': 'application/json' } }, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk.toString());
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              const json = JSON.parse(data);
+              resolve({ ok: true, json });
+            } catch (err) {
+              reject(new Error('Invalid JSON from curated list'));
+            }
+          } else {
+            reject(new Error(`Failed to fetch curated list: ${res.statusCode || 'unknown'}`));
+          }
+        });
+      });
+      req.on('error', (err) => reject(err));
+      req.setTimeout(20000, () => { req.destroy(); reject(new Error('Curated list fetch timeout')); });
+    });
+  } catch (error) {
+    console.error('fetch-curated-list error:', error);
+    throw error;
+  }
+});

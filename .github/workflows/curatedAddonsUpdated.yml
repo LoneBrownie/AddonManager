@@ -1,0 +1,36 @@
+name: Curated Addons Updated
+
+on:
+  push:
+    paths:
+      - 'public/handy-addons.json'
+  workflow_dispatch:
+
+jobs:
+  upload:
+    name: Upload curated list to Azure Blob
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Azure CLI
+        uses: azure/CLI@v1
+
+      - name: Upload curated list to Blob storage
+        env:
+          AZURE_STORAGE_ACCOUNT: stbrowniesmanagerprod36f
+          AZURE_STORAGE_KEY: ${{ secrets.BlobKey }}
+        run: |
+          set -e
+          echo "Uploading public/handy-addons.json to Azure Blob storage..."
+          az storage blob upload \
+            --account-name "$AZURE_STORAGE_ACCOUNT" \
+            --account-key "$AZURE_STORAGE_KEY" \
+            --container-name "blob" \
+            --name "handy-addons.json" \
+            --file "public/handy-addons.json" \
+            --content-type "application/json" \
+            --overwrite true
+          echo "Uploaded to: https://$AZURE_STORAGE_ACCOUNT.blob.core.windows.net/blob/handy-addons.json"

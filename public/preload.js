@@ -65,6 +65,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   ,
   // Fetch release/tag info via main process (avoids CORS)
   fetchReleaseWeb: (repoUrl) => ipcRenderer.invoke('fetch-release-web', repoUrl)
+  ,
+  // Fetch curated addon JSON via main process (avoids renderer CORS)
+  fetchCuratedList: (url) => ipcRenderer.invoke('fetch-curated-list', url)
 });
 
 // ✅ Security: Remove any window.require access

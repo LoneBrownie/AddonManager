@@ -16,8 +16,81 @@
   border-bottom: 1px solid var(--border-color);
 }
 
+.handy-list-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.refresh-list-btn {
+  background: transparent;
+  color: var(--primary-color);
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.refresh-list-btn:hover:not(:disabled) {
+  background: var(--primary-bg-color);
+  color: var(--text-primary-color);
+  border-color: var(--primary-color);
+}
+
+.refresh-list-btn.large {
+  padding: 12px 18px;
+  font-size: 1rem;
+}
+
+.list-error {
+  color: var(--accent-error, #ff6b6b);
+  font-size: 0.9rem;
+}
+
 .add-addon-button-wrapper {
   margin-left: auto;
+}
+
+/* Ensure the refresh button sits next to the Add New Addon button with proper spacing
+   and has similar sizing to primary action buttons */
+.add-addon-button-wrapper {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.add-addon-button-wrapper .refresh-list-btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  min-width: 120px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+/* Grey theme override for the refresh button when paired with the primary Add New Addon */
+.add-addon-button-wrapper .refresh-list-btn {
+  background: var(--surface-color);
+  color: var(--text-primary-color);
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+}
+
+.add-addon-button-wrapper .refresh-list-btn:hover:not(:disabled) {
+  background: var(--surface-hover-color);
+  color: var(--text-primary-color);
+  border-color: var(--border-color);
+}
+
+@media (max-width: 480px) {
+  .add-addon-button-wrapper .refresh-list-btn {
+    padding: 8px 12px;
+    min-width: 96px;
+  }
 }
 
 .category-filter {
@@ -64,6 +137,35 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+/* Error / retry block when list fails to load */
+.handy-addons-error-block {
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  padding: 28px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  margin: 18px 0 32px 0;
+}
+
+.handy-addons-error-block .section-title {
+  color: var(--text-primary-color);
+  margin: 0;
+}
+
+.handy-addons-error-content {
+  color: var(--text-secondary-color);
+  text-align: center;
+  max-width: 720px;
+}
+
+.handy-addons-error-content p {
+  margin: 0 0 12px 0;
+}
+
 .handy-addon-card:hover {
   border-color: var(--primary-color);
   background: var(--surface-hover-color);
@@ -98,6 +200,14 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   opacity: 0.9;
+}
+
+/* Section titles consistent with app theme */
+.section-title {
+  color: var(--heading-color, var(--text-primary-color));
+  font-size: 1.5rem;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.01em;
 }
 
 .addon-description {

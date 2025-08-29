@@ -1,160 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './HandyAddons.css';
 
-const HANDY_ADDONS = [
-  {
-    id: 'classicapi',
-    name: 'Classic API',
-    description: 'Essential API functions for Classic WoW addons compatibility.',
-    repoUrl: 'https://gitlab.com/Tsoukie/classicapi',
-    category: 'Core',
-    epochAddon: false
-  },
-  {
-    id: 'compactraidframe',
-    name: 'Compact Raid Frames',
-    description: 'Compact and customizable raid frame addon for improved raid visibility.',
-    repoUrl: 'https://gitlab.com/Tsoukie/compactraidframe-3.3.5',
-    category: 'Raid Frames',
-  epochAddon: false,
-  dependencies: ['classicapi']
-  },
-  {
-    id: 'enhancedraidframes',
-    name: 'Enhanced Raid Frames',
-    description: 'Enhanced raid frames with additional features and customization options.',
-    repoUrl: 'https://gitlab.com/Tsoukie/enhancedraidframes-3.3.5',
-    category: 'Raid Frames',
-  epochAddon: false,
-  dependencies: ['classicapi', 'compactraidframe']
-  },
-  {
-    id: 'addonlist',
-    name: 'Addon List',
-    description: 'Manage and organize your addons with an in-game interface.',
-    repoUrl: 'https://gitlab.com/Tsoukie/addonlist-3.3.5',
-    category: 'Management',
-  epochAddon: false,
-  dependencies: ['classicapi']
-  },
-  {
-    id: 'clique',
-    name: 'Clique',
-    description: 'Click-casting addon for healers and support classes.',
-    repoUrl: 'https://gitlab.com/Tsoukie/clique-3.3.5',
-    category: 'Healing',
-  epochAddon: false,
-  dependencies: ['classicapi']
-  },
-  {
-    id: 'compactraidframe-healex',
-    name: 'Compact Raid Frame - HealEx',
-    description: 'Extended healing features for Compact Raid Frames.',
-    repoUrl: 'https://gitlab.com/Tsoukie/compactraidframe_healex',
-    category: 'Healing',
-  epochAddon: false,
-  dependencies: ['classicapi', 'compactraidframe']
-  },
-  {
-    id: 'raidframesorter',
-    name: 'Raid Frame Sorter',
-    description: 'Sort and organize raid frames for better group management.',
-    repoUrl: 'https://gitlab.com/Tsoukie/raidframesorter-3.3.5',
-    category: 'Raid Frames',
-  epochAddon: false,
-  dependencies: ['classicapi', 'compactraidframe']
-  },
-  {
-    id: 'framesort',
-    name: 'FrameSort',
-    description: 'Sort and organize unit frames and raid frames for better group management.',
-    repoUrl: 'https://gitlab.com/Tsoukie/framesort-3.3.5',
-    category: 'Raid Frames',
-  epochAddon: false,
-  dependencies: ['classicapi', 'compactraidframe']
-  },
-  {
-    id: 'questie-epoch',
-    name: 'Questie',
-    description: 'Enhanced version of Questie with improved quest tracking and database for WotLK.',
-    repoUrl: 'https://github.com/esurm/Questie',
-    category: 'Questing',
-    customFolderName: 'Questie',
-    epochAddon: true
-  },
-  {
-    id: 'dragonui',
-    name: 'DragonUI',
-    description: 'Modern Dragonflight-style user interface for Classic WoW with updated visuals and functionality.',
-    repoUrl: 'https://github.com/NeticSoul/DragonUI',
-    category: 'Interface',
-    customFolderName: 'DragonUI',
-    epochAddon: false
-  },
-  {
-    id: 'atlasloot-epoch',
-    name: 'AtlasLoot Epoch',
-    description: 'Complete loot browser for Classic WoW showing items, locations, and drop rates.',
-    repoUrl: 'https://github.com/Raynbock/AtlaslootProjectEpoch',
-    category: 'Interface',
-    epochAddon: true
-  },
-  {
-    id: 'bagnon',
-    name: 'Bagnon',
-    description: 'All-in-one bag replacement addon that merges all your bags into one frame.',
-    repoUrl: 'https://github.com/RichSteini/Bagnon-3.3.5',
-    category: 'Interface',
-    epochAddon: false
-  },
-  {
-    id: 'notplater',
-    name: 'NotPlater',
-    description: 'Advanced nameplate addon with extensive customization options.',
-    repoUrl: 'https://github.com/RichSteini/NotPlater',
-    category: 'Interface',
-    customFolderName: 'NotPlater-3.3.5',
-    epochAddon: false
-  },
-  {
-    id: 'pfquest-full',
-    name: 'pfQuest',
-    description: 'Complete quest helper addon with database and map integration.',
-    repoUrl: 'https://github.com/shagu/pfQuest/releases/latest/download/pfQuest-full-wotlk.zip',
-    category: 'Questing',
-    isDirectDownload: true,
-    customFolderName: 'pfQuest-wotlk',
-    preferredAssetName: 'pfQuest-enUS-wotlk.zip',
-    epochAddon: false
-  },
-  {
-    id: 'pfquest-epoch',
-    name: 'pfQuest Epoch (Archived)',
-    description: 'Enhanced version of pfQuest with additional features for modern gameplay.',
-    repoUrl: 'https://github.com/Bennylavaa/pfQuest-epoch',
-    category: 'Questing',
-    customFolderName: 'pfQuest-epoch',
-    epochAddon: true,
-    dependencies: ['pfquest-full']
-  },
-  {
-    id: 'EpochDeltaFix',
-    name: 'Epoch Delta Fix',
-    description: 'Replaces Epochs stat-compare with correct deltas.',
-    repoUrl: 'https://github.com/dellmas/WoW-Epoch-Delta-Fix/',
-    category: 'Interface',
-    epochAddon: true
-  },
-  {
-    id: 'LFG',
-    name: 'Looking for Group',
-    description: 'Find groups for dungeons and raids easily.',
-    repoUrl: 'https://github.com/Bennylavaa/LFG',
-    category: 'Interface',
-    epochAddon: true,
-    customFolderName: 'LFG'
-  }
-];
+// Curated list blob URL
+const HANDY_ADDONS_URL = 'https://stbrowniesmanagerprod36f.blob.core.windows.net/blob/handy-addons.json';
 
 const CATEGORIES = [
   'All',
@@ -169,6 +17,39 @@ const CATEGORIES = [
 function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [installing, setInstalling] = useState(new Set());
+  const [handyAddons, setHandyAddons] = useState([]);
+  const [loadingList, setLoadingList] = useState(false);
+  const [listError, setListError] = useState(null);
+
+  const fetchHandyAddons = async () => {
+    setLoadingList(true);
+    setListError(null);
+    try {
+      // Prefer main-process fetch to avoid CORS issues; fallback to window.fetch
+      let json;
+      if (window && window.electronAPI && typeof window.electronAPI.fetchCuratedList === 'function') {
+        const result = await window.electronAPI.fetchCuratedList(HANDY_ADDONS_URL);
+        if (!result || !result.ok) throw new Error(result && result.message ? result.message : 'Failed to fetch curated list from main process');
+        json = result.json;
+      } else {
+        const resp = await fetch(HANDY_ADDONS_URL);
+        if (!resp.ok) throw new Error(`Failed to fetch curated list: ${resp.status}`);
+        json = await resp.json();
+      }
+      if (!Array.isArray(json)) throw new Error('Invalid curated list format');
+      setHandyAddons(json);
+    } catch (err) {
+      console.error('Failed to load handy-addons.json:', err);
+      setListError(err.message || String(err));
+      setHandyAddons([]);
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHandyAddons();
+  }, []);
 
   // Partition the curated list into Project Epoch addons and other 3.3.5a addons
   // Use explicit epochAddon boolean when provided, otherwise fall back to heuristics.
@@ -177,9 +58,9 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
     return /epoch/i.test(addon.name || '') || /epoch/i.test(addon.id || '') || /epoch/i.test(addon.repoUrl || '');
   };
 
-  const projectEpochAddons = HANDY_ADDONS.filter(isProjectEpoch);
+  const projectEpochAddons = handyAddons.filter(isProjectEpoch);
   // Any addon not marked as Project Epoch goes into the "Other Addons" section
-  const otherAddons = HANDY_ADDONS.filter(a => !isProjectEpoch(a));
+  const otherAddons = handyAddons.filter(a => !isProjectEpoch(a));
 
   const applyCategory = (list) => selectedCategory === 'All' ? list : list.filter(addon => addon.category === selectedCategory);
 
@@ -194,7 +75,7 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
       if (visited.has(addonId)) return; // avoid cycles / duplicate work
       visited.add(addonId);
 
-      const depAddon = HANDY_ADDONS.find(a => a.id === addonId);
+  const depAddon = handyAddons.find(a => a.id === addonId);
       if (!depAddon) return; // unknown dependency id
 
       // If already installed, skip
@@ -281,7 +162,7 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
   // Resolve dependencies: use explicit addon.dependencies (array of ids) only.
   const depIds = Array.isArray(addon.dependencies) ? addon.dependencies : [];
     const depNames = depIds.map(id => {
-      const found = HANDY_ADDONS.find(a => a.id === id);
+      const found = handyAddons.find(a => a.id === id);
       return found ? found.name : id;
     }).filter(Boolean);
 
@@ -324,6 +205,7 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
 
   return (
     <div className="handy-addons">
+    {/* refresh control moved into the filters row */}
       <div className="category-filters">
         {CATEGORIES.map(category => (
           <button
@@ -334,36 +216,52 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
             {category}
           </button>
         ))}
-        {addButton && (
-          <div className="add-addon-button-wrapper">
-            {addButton}
+        <div className="add-addon-button-wrapper">
+          <button className="refresh-list-btn" onClick={fetchHandyAddons} disabled={loadingList}>
+            {loadingList ? 'Refreshing…' : 'Refresh Addons'}
+          </button>
+          {addButton}
+        </div>
+      </div>
+
+      {/* If the curated list failed to load, show a single refresh block instead of headers/empty states */}
+      {listError ? (
+        <div className="handy-addons-error-block">
+          <h2 className="section-title">Curated Addon List Unavailable</h2>
+          <div className="handy-addons-error-content">
+            <p>Failed to load curated addons: {listError}</p>
+            <button className="refresh-list-btn large" onClick={fetchHandyAddons} disabled={loadingList}>
+              {loadingList ? 'Refreshing…' : 'Retry loading curated list'}
+            </button>
           </div>
-        )}
-      </div>
-
-      {/* Project Epoch curated section */}
-      <div className="epoch-section">
-        <h2 className="section-title">Project Epoch Addons</h2>
-        <div className="handy-addons-grid">
-          {filteredProjectEpochAddons.length > 0 ? (
-            filteredProjectEpochAddons.map(addon => renderAddonCard(addon))
-          ) : (
-            <div className="no-addons"><p>No Project Epoch addons found for "{selectedCategory}".</p></div>
-          )}
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Project Epoch curated section */}
+          <div className="epoch-section">
+            <h2 className="section-title">Project Epoch Addons</h2>
+            <div className="handy-addons-grid">
+              {filteredProjectEpochAddons.length > 0 ? (
+                filteredProjectEpochAddons.map(addon => renderAddonCard(addon))
+              ) : (
+                <div className="no-addons"><p>No Project Epoch addons found for "{selectedCategory}".</p></div>
+              )}
+            </div>
+          </div>
 
-      {/* Other Addons section */}
-      <div className="other-335-section">
-        <h2 className="section-title">General Addons</h2>
-        <div className="handy-addons-grid">
-          {filteredOtherAddons.length > 0 ? (
-            filteredOtherAddons.map(addon => renderAddonCard(addon))
-          ) : (
-            <div className="no-addons"><p>No General addons found for "{selectedCategory}".</p></div>
-          )}
-        </div>
-      </div>
+          {/* Other Addons section */}
+          <div className="other-335-section">
+            <h2 className="section-title">General Addons</h2>
+            <div className="handy-addons-grid">
+              {filteredOtherAddons.length > 0 ? (
+                filteredOtherAddons.map(addon => renderAddonCard(addon))
+              ) : (
+                <div className="no-addons"><p>No General addons found for "{selectedCategory}".</p></div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
   {/* Note: category-specific empty states are shown per-section above */}
     </div>
