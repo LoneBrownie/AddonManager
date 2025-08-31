@@ -74,7 +74,7 @@
     "id": "questie-epoch",
     "name": "Questie",
     "description": "Enhanced version of Questie with improved quest tracking and database for WotLK.",
-    "repoUrl": "https://github.com/esurm/Questie",
+    "repoUrl": "https://github.com/trav346/Questie-Epoch/",
     "category": "Questing",
     "customFolderName": "Questie",
     "epochAddon": true
