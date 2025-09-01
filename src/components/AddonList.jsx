@@ -9,6 +9,7 @@ function AddonList({
   onCheckUpdates, 
   onCheckExistence,
   onRemoveAddon, 
+  isAddonUpdating,
   loading,
   hideHeader = false,
   hideCheckUpdates = false
@@ -81,6 +82,7 @@ function AddonList({
             addon={addon}
             onUpdate={() => onUpdateAddon(addon.id)}
             onRemove={() => onRemoveAddon(addon.id)}
+            isUpdating={isAddonUpdating ? isAddonUpdating(addon.id) : false}
             loading={loading}
           />
         ))}

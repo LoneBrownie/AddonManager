@@ -26,6 +26,7 @@ function App() {
     existingAddons,
     wowPath,
     checkAddonExistenceManually,
+    isAddonUpdating,
     loading,
     error
   } = useAddons();
@@ -145,6 +146,7 @@ function App() {
               onCheckUpdates={checkForUpdates}
               onCheckExistence={checkAddonExistenceManually}
               onRemoveAddon={removeAddon}
+              isAddonUpdating={isAddonUpdating}
               loading={loading}
               hideHeader={true}
               hideCheckUpdates={true}

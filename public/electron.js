@@ -19,7 +19,7 @@ function createWindow() {
     width: 1440,  // 1200 * 1.2 = 1440
     height: 960,  // 800 * 1.2 = 960
     autoHideMenuBar: true, // Hide the File/Edit/View/Window/Help menu bar
-    icon: path.join(__dirname, 'Logo.png'), // Application icon
+    icon: path.join(__dirname, 'Logo.ico'), // Application icon
     title: "Brownie's Addon Manager", // Set window title
     webPreferences: {
       // ✅ Security: Disable Node.js integration in renderer

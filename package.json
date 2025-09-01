@@ -48,11 +48,12 @@
       "public/electron.js",
       "public/preload.js",
       "public/Logo.png",
+      "public/Logo.ico",
       "node_modules/**/*"
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/Logo.png",
+      "icon": "public/Logo.ico",
       "signAndEditExecutable": false,
       "publish": ["github"]
     },
@@ -65,7 +66,7 @@
       "allowElevation": false,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
-      "installerSidebar": "public/Logo.png",
+      "installerSidebar": "public/Logo.ico",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "publish": {

@@ -239,11 +239,15 @@
 
 .repo-link {
   color: var(--primary-color);
-  text-decoration: none;
+  background: none;
+  border: none;
   font-size: 0.875rem;
   font-weight: 500;
   padding: 8px 0;
   flex-grow: 1;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: left;
   transition: color 0.2s ease;
 }
 

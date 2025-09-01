@@ -69,6 +69,7 @@ export function useAddons() {
   const [existingAddons, setExistingAddons] = useState([]);
   const [wowPath, setWowPath] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [updatingAddons, setUpdatingAddons] = useState(new Set());
   const [error, setError] = useState(null);
 
   // Load addons from persistent storage on mount
@@ -241,7 +242,7 @@ export function useAddons() {
   }, [addons]);
 
   const updateAddon = useCallback(async (addonId) => {
-    setLoading(true);
+    setUpdatingAddons(prev => new Set(prev).add(addonId));
     setError(null);
     
     try {
@@ -259,7 +260,11 @@ export function useAddons() {
       console.error('Failed to update addon:', err);
       setError(err.message || 'Failed to update addon');
     } finally {
-      setLoading(false);
+      setUpdatingAddons(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(addonId);
+        return newSet;
+      });
     }
   }, [addons]);
 
@@ -270,6 +275,13 @@ export function useAddons() {
     try {
       const updatableAddons = addons.filter(addon => addon.needsUpdate);
       
+      // Mark all addons as updating
+      setUpdatingAddons(prev => {
+        const newSet = new Set(prev);
+        updatableAddons.forEach(addon => newSet.add(addon.id));
+        return newSet;
+      });
+      
       for (const addon of updatableAddons) {
         try {
           const updatedAddon = await updateAddonService(addon);
@@ -278,6 +290,13 @@ export function useAddons() {
           ));
         } catch (err) {
           console.error(`Failed to update ${addon.name}:`, err);
+        } finally {
+          // Remove this addon from updating set
+          setUpdatingAddons(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(addon.id);
+            return newSet;
+          });
         }
       }
     } catch (err) {
@@ -542,6 +561,11 @@ export function useAddons() {
     }
   }, [wowPath, addons]);
 
+  // Helper function to check if specific addon is updating
+  const isAddonUpdating = useCallback((addonId) => {
+    return updatingAddons.has(addonId);
+  }, [updatingAddons]);
+
   return {
     addons,
     addAddon,
@@ -557,6 +581,7 @@ export function useAddons() {
     wowPath,
     normalizeAllAddonNames,
     checkAddonExistenceManually,
+    isAddonUpdating,
     loading,
     error
   };

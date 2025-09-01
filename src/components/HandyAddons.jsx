@@ -182,14 +182,20 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
         )}
 
         <div className="addon-actions">
-          <a
-            href={addon.repoUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            onClick={() => {
+              if (window.electronAPI) {
+                window.electronAPI.openExternal(addon.repoUrl);
+              } else {
+                // Fallback for web environment
+                window.open(addon.repoUrl, '_blank', 'noopener,noreferrer');
+              }
+            }}
             className="repo-link"
+            title="Open repository in browser"
           >
             View Repository
-          </a>
+          </button>
 
           <button
             className={`install-btn ${installed ? 'installed' : ''}`}

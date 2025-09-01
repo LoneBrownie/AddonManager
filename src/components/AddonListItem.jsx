@@ -2,7 +2,7 @@ import React from 'react';
 import './AddonListItem.css';
 import { sanitizeTocTitle } from '../services/addon-manager';
 
-function AddonListItem({ addon, onUpdate, onRemove, loading }) {
+function AddonListItem({ addon, onUpdate, onRemove, isUpdating, loading }) {
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown';
     try {
@@ -106,9 +106,9 @@ function AddonListItem({ addon, onUpdate, onRemove, loading }) {
           <button
             className="button success small"
             onClick={onUpdate}
-            disabled={loading}
+            disabled={isUpdating || loading}
           >
-            {loading ? 'Updating...' : 'Update'}
+            {isUpdating ? 'Updating...' : 'Update'}
           </button>
         )}
         
