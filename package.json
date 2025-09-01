@@ -1,5 +1,5 @@
 {
-  "name": "wow-addon-manager",
+  "name": "brownies-addon-manager",
   "version": "1.1.6",
   "description": "A Windows desktop application for managing WoW addons from GitHub and GitLab",
   "author": "LoneBrownie",
@@ -38,7 +38,7 @@
     "publish": "npm run build && electron-builder --publish=always"
   },
   "build": {
-    "appId": "com.example.brownies-addon-manager",
+    "appId": "com.lonebrownie.brownies-addon-manager",
     "productName": "Brownie's Addon Manager",
     "directories": {
       "output": "dist"
@@ -47,14 +47,13 @@
       "build/**/*",
       "public/electron.js",
       "public/preload.js",
-      "public/Logo.png",
-      "public/Logo.ico",
+      "assets/Logo.ico",
       "node_modules/**/*"
     ],
     "win": {
       "target": "nsis",
-      "icon": "public/Logo.ico",
-      "signAndEditExecutable": false,
+      "icon": "assets/Logo.ico",
+      "signAndEditExecutable": true,
       "publish": ["github"]
     },
     "nsis": {
@@ -66,7 +65,7 @@
       "allowElevation": false,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
-      "installerSidebar": "public/Logo.ico",
+      "installerSidebar": "assets/Logo.ico",
       "artifactName": "${productName}-Setup-${version}.${ext}"
     },
     "publish": {

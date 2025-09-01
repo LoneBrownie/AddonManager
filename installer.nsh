@@ -7,13 +7,13 @@
   ReadRegStr $0 HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINSTALL_APP_KEY}" "UninstallString"
   ${If} $0 != ""
     ; App is already installed, backup addon data
-    ${If} ${FileExists} "$APPDATA\wow-addon-manager\addons.json"
-      CreateDirectory "$TEMP\wow-addon-manager-backup"
-      CopyFiles "$APPDATA\wow-addon-manager\addons.json" "$TEMP\wow-addon-manager-backup\addons.json"
+    ${If} ${FileExists} "$APPDATA\brownies-addon-manager\addons.json"
+      CreateDirectory "$TEMP\brownies-addon-manager-backup"
+      CopyFiles "$APPDATA\brownies-addon-manager\addons.json" "$TEMP\brownies-addon-manager-backup\addons.json"
     ${EndIf}
-    ${If} ${FileExists} "$APPDATA\wow-addon-manager\settings.json"
-      CreateDirectory "$TEMP\wow-addon-manager-backup"
-      CopyFiles "$APPDATA\wow-addon-manager\settings.json" "$TEMP\wow-addon-manager-backup\settings.json"
+    ${If} ${FileExists} "$APPDATA\brownies-addon-manager\settings.json"
+      CreateDirectory "$TEMP\brownies-addon-manager-backup"
+      CopyFiles "$APPDATA\brownies-addon-manager\settings.json" "$TEMP\brownies-addon-manager-backup\settings.json"
     ${EndIf}
   ${EndIf}
 !macroend
@@ -21,18 +21,18 @@
 ; Restore addon data after installation
 !macro customInstall
   ; Restore backed up data if it exists
-  ${If} ${FileExists} "$TEMP\wow-addon-manager-backup\addons.json"
-    CreateDirectory "$APPDATA\wow-addon-manager"
-    CopyFiles "$TEMP\wow-addon-manager-backup\addons.json" "$APPDATA\wow-addon-manager\addons.json"
+  ${If} ${FileExists} "$TEMP\brownies-addon-manager-backup\addons.json"
+    CreateDirectory "$APPDATA\brownies-addon-manager"
+    CopyFiles "$TEMP\brownies-addon-manager-backup\addons.json" "$APPDATA\brownies-addon-manager\addons.json"
   ${EndIf}
-  ${If} ${FileExists} "$TEMP\wow-addon-manager-backup\settings.json"
-    CreateDirectory "$APPDATA\wow-addon-manager"
-    CopyFiles "$TEMP\wow-addon-manager-backup\settings.json" "$APPDATA\wow-addon-manager\settings.json"
+  ${If} ${FileExists} "$TEMP\brownies-addon-manager-backup\settings.json"
+    CreateDirectory "$APPDATA\brownies-addon-manager"
+    CopyFiles "$TEMP\brownies-addon-manager-backup\settings.json" "$APPDATA\brownies-addon-manager\settings.json"
   ${EndIf}
   
   ; Clean up temporary backup
-  ${If} ${FileExists} "$TEMP\wow-addon-manager-backup"
-    RMDir /r "$TEMP\wow-addon-manager-backup"
+  ${If} ${FileExists} "$TEMP\brownies-addon-manager-backup"
+    RMDir /r "$TEMP\brownies-addon-manager-backup"
   ${EndIf}
 !macroend
 
