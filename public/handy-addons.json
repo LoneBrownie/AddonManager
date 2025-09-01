@@ -150,5 +150,13 @@
     "category": "Interface",
     "epochAddon": true,
     "customFolderName": "LFG"
+  },
+  {
+    "id": "WeakAuras",
+    "name": "Weak Auras",
+    "description": "WeakAuras is a powerful and flexible framework that allows the display of highly customizable graphics on World of Warcraft's user interface to indicate buffs, debuffs, and other relevant information.",
+    "repoUrl": "https://github.com/NoM0Re/WeakAuras-WotLK/",
+    "category": "Interface",
+    "epochAddon": false
   }
 ]
