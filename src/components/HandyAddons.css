@@ -35,9 +35,10 @@
 }
 
 .refresh-list-btn:hover:not(:disabled) {
-  background: var(--primary-bg-color);
+  background: var(--surface-hover-color);
   color: var(--text-primary-color);
   border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(85, 85, 85, 0.2);
 }
 
 .refresh-list-btn.large {
@@ -46,7 +47,7 @@
 }
 
 .list-error {
-  color: var(--accent-error, #ff6b6b);
+  color: var(--danger-color);
   font-size: 0.9rem;
 }
 
@@ -83,7 +84,8 @@
 .add-addon-button-wrapper .refresh-list-btn:hover:not(:disabled) {
   background: var(--surface-hover-color);
   color: var(--text-primary-color);
-  border-color: var(--border-color);
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 8px rgba(85, 85, 85, 0.2);
 }
 
 @media (max-width: 480px) {
@@ -204,7 +206,7 @@
 
 /* Section titles consistent with app theme */
 .section-title {
-  color: var(--heading-color, var(--text-primary-color));
+  color: var(--text-primary-color);
   font-size: 1.5rem;
   margin: 0 0 12px 0;
   letter-spacing: -0.01em;
@@ -274,7 +276,7 @@
 .install-btn:hover:not(:disabled) {
   background: var(--primary-hover-color);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+  box-shadow: 0 2px 8px rgba(167, 139, 250, 0.3);
 }
 
 .install-btn:disabled {
@@ -286,15 +288,17 @@
 }
 
 .install-btn.installed {
-  background: var(--success-color);
+  background: var(--disabled-color);
+  color: var(--text-primary-color);
   cursor: default;
+  opacity: 0.8;
 }
 
 .install-btn.installed:hover {
-  background: var(--success-color);
+  background: var(--disabled-color);
   transform: none;
   box-shadow: none;
-  opacity: 1;
+  opacity: 0.9;
 }
 
 .no-addons {

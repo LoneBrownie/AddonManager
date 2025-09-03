@@ -618,7 +618,9 @@ export async function installAddon(repoUrl, release, customOptions = {}) {
       commit: release.commit,
       customFolderName: customOptions.customFolderName,
       isDirectDownload: customOptions.isDirectDownload,
-      preferredAssetName: customOptions.preferredAssetName
+      preferredAssetName: customOptions.preferredAssetName,
+      // Default to allowing updates for newly installed addons (not imported)
+      allowUpdates: customOptions.allowUpdates !== false // Default to true unless explicitly set to false
     };
     
   } catch (error) {
@@ -640,6 +642,15 @@ export async function installAddon(repoUrl, release, customOptions = {}) {
  * @returns {Promise<Object>} Updated addon object
  */
 export async function updateAddon(addon) {
+  // Check if updates are allowed for this addon
+  if (addon.allowUpdates === false) {
+    return {
+      ...addon,
+      needsUpdate: false,
+      lastChecked: new Date().toISOString()
+    };
+  }
+  
   const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName);
   
   if (release.version === addon.currentVersion) {
@@ -647,6 +658,24 @@ export async function updateAddon(addon) {
       ...addon,
       needsUpdate: false
     };
+  }
+  
+  // For imported existing addons, check if update is available but allow full update
+  if (addon.importedExisting) {
+    const needsUpdate = isUpdateAvailable(addon.currentVersion || 'Imported', release.version);
+    
+    // If no update needed, just return metadata update
+    if (!needsUpdate) {
+      return {
+        ...addon,
+        latestVersion: release.version,
+        needsUpdate: false,
+        lastChecked: new Date().toISOString()
+      };
+    }
+    
+    // If update is available, proceed with full update process
+    // This will download and install the new version
   }
   
   // Preserve custom options from the original addon
@@ -670,27 +699,67 @@ export async function updateAddon(addon) {
 }
 
 /**
+ * Force update an imported existing addon (downloads new version)
+ * @param {Object} addon - Addon object
+ * @returns {Promise<Object>} Updated addon object
+ */
+export async function forceUpdateImportedAddon(addon) {
+  const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName);
+  
+  // Preserve custom options from the original addon
+  const customOptions = {
+    customFolderName: addon.customFolderName,
+    isDirectDownload: addon.isDirectDownload,
+    preferredAssetName: addon.preferredAssetName
+  };
+  
+  // Install the new version (this will overwrite the old one)
+  const updatedAddon = await installAddon(addon.repoUrl, release, customOptions);
+  
+  // Preserve the original addon ID and metadata, but remove imported flag
+  return {
+    ...updatedAddon,
+    id: addon.id,
+    installPath: addon.installPath,
+    customFolderName: addon.customFolderName,
+    isDirectDownload: addon.isDirectDownload,
+    // Remove importedExisting flag since it's now a fresh install
+    importedExisting: false
+  };
+}
+
+/**
  * Check for updates for all addons
  * @param {Array<Object>} addons - Array of addon objects
  * @returns {Promise<Array<Object>>} Updated addon array with update flags
  */
 export async function checkForUpdates(addons) {
+  console.log(`Checking for updates for ${addons.length} addons...`);
   const updatedAddons = [];
   
   for (const addon of addons) {
     try {
+      console.log(`Checking updates for: ${addon.name} (${addon.repoUrl})`);
       const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName);
-  const needsUpdate = isUpdateAvailable(addon.currentVersion, release.version);
+      const needsUpdate = isUpdateAvailable(addon.currentVersion, release.version);
       
-        updatedAddons.push({
-          ...addon,
-          latestVersion: release.version,
-          latestSource: release.source,
-          needsUpdate
-        });
+      console.log(`${addon.name}: Current=${addon.currentVersion}, Latest=${release.version}, NeedsUpdate=${needsUpdate}`);
+      
+      updatedAddons.push({
+        ...addon,
+        latestVersion: release.version,
+        latestSource: release.source,
+        needsUpdate,
+        lastChecked: new Date().toISOString()
+      });
     } catch (error) {
       console.error(`Failed to check updates for ${addon.name}:`, error);
-      updatedAddons.push(addon);
+      // Add the addon without update info but with error flag
+      updatedAddons.push({
+        ...addon,
+        lastChecked: new Date().toISOString(),
+        updateCheckError: error.message
+      });
     }
   }
   
@@ -728,6 +797,8 @@ export function compareVersions(version1, version2) {
  * Determine if latestVersion is newer than currentVersion.
  * Uses semver-style numeric comparison when both versions look numeric (e.g. "v1.2.3" or "1.2.3").
  * Falls back to simple string equality for non-numeric versions (commit-sha, date-sha, etc.).
+ * Special handling for branch names to avoid false updates between equivalent default branches.
+ * Special handling for date-sha format from code fallback (e.g. "2025-09-03-abc1234").
  * @param {string} currentVersion
  * @param {string} latestVersion
  * @returns {boolean} true if an update is available
@@ -736,14 +807,120 @@ function isUpdateAvailable(currentVersion, latestVersion) {
   if (!currentVersion && latestVersion) return true;
   if (!latestVersion) return false;
 
-  const semverLike = v => typeof v === 'string' && /^v?\d+(?:\.\d+)*$/.test(v.trim());
-  if (semverLike(currentVersion) && semverLike(latestVersion)) {
-    return compareVersions(currentVersion, latestVersion) < 0;
+  console.log(`Comparing versions: "${currentVersion}" vs "${latestVersion}"`);
+
+  // Check if versions are semantic versions
+  const isSemanticVersion = v => typeof v === 'string' && /^v?\d+\.\d+(\.\d+)?/.test(v.trim());
+  const isBranchName = v => {
+    const commonBranches = ['main', 'master', 'develop', 'development', 'dev'];
+    return commonBranches.includes(v) || 
+           v.includes('branch') ||
+           (!isSemanticVersion(v) && !isDateShaVersion(v) && v.length < 20);
+  };
+  const isDateShaVersion = v => {
+    // Check for date-sha format like "2025-09-03-abc1234"
+    return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}-[a-f0-9]{7}$/.test(v);
+  };
+
+  const currentIsSemver = isSemanticVersion(currentVersion);
+  const latestIsSemver = isSemanticVersion(latestVersion);
+  const currentIsBranch = isBranchName(currentVersion);
+  const latestIsBranch = isBranchName(latestVersion);
+  const currentIsDateSha = isDateShaVersion(currentVersion);
+  const latestIsDateSha = isDateShaVersion(latestVersion);
+
+  // Handle date-sha versions (from code fallback)
+  if (currentIsDateSha || latestIsDateSha) {
+    console.log(`  Handling date-sha versions`);
+    
+    // If both are date-sha versions, compare them
+    if (currentIsDateSha && latestIsDateSha) {
+      // Extract date and sha parts
+      const currentParts = currentVersion.split('-');
+      const latestParts = latestVersion.split('-');
+      
+      if (currentParts.length >= 4 && latestParts.length >= 4) {
+        const currentDate = `${currentParts[0]}-${currentParts[1]}-${currentParts[2]}`;
+        const latestDate = `${latestParts[0]}-${latestParts[1]}-${latestParts[2]}`;
+        const currentSha = currentParts[3];
+        const latestSha = latestParts[3];
+        
+        // First compare dates
+        if (currentDate !== latestDate) {
+          const hasUpdate = latestDate > currentDate;
+          console.log(`  Date comparison: ${hasUpdate ? 'update available' : 'up to date'} (${currentDate} vs ${latestDate})`);
+          return hasUpdate;
+        }
+        
+        // If dates are the same, compare SHA (different commit on same day)
+        const hasUpdate = currentSha !== latestSha;
+        console.log(`  SHA comparison: ${hasUpdate ? 'different commit' : 'same commit'} (${currentSha} vs ${latestSha})`);
+        return hasUpdate;
+      }
+    }
+    
+    // If current is date-sha and latest is semver, prefer semver
+    if (currentIsDateSha && latestIsSemver) {
+      console.log(`  ✓ Update available: Current is date-sha (${currentVersion}), latest is release (${latestVersion})`);
+      return true;
+    }
+    
+    // If current is semver and latest is date-sha, no update needed (prefer releases)
+    if (currentIsSemver && latestIsDateSha) {
+      console.log(`  ✓ No update: Current is release (${currentVersion}), latest is date-sha (${latestVersion})`);
+      return false;
+    }
+    
+    // If current is branch and latest is date-sha, update available
+    if (currentIsBranch && latestIsDateSha) {
+      console.log(`  ✓ Update available: Current is branch (${currentVersion}), latest is date-sha (${latestVersion})`);
+      return true;
+    }
+    
+    // If current is date-sha and latest is branch, keep date-sha (more specific)
+    if (currentIsDateSha && latestIsBranch) {
+      console.log(`  ✓ No update: Current is date-sha (${currentVersion}), latest is just branch (${latestVersion})`);
+      return false;
+    }
   }
 
+  // If current version is a specific release and latest is a branch, no update needed
+  if (currentIsSemver && latestIsBranch) {
+    console.log(`  ✓ No update: Current is specific release (${currentVersion}), latest is branch (${latestVersion})`);
+    return false;
+  }
+
+  // If both are branches, check if they're equivalent
+  if (currentIsBranch && latestIsBranch) {
+    const areEquivalent = (currentVersion === latestVersion) ||
+                         ((currentVersion === 'main' && latestVersion === 'master') ||
+                          (currentVersion === 'master' && latestVersion === 'main')) ||
+                         (['develop', 'development', 'dev'].includes(currentVersion) && 
+                          ['develop', 'development', 'dev'].includes(latestVersion));
+    
+    console.log(`  Branch comparison: ${currentVersion} vs ${latestVersion} = ${areEquivalent ? 'equivalent' : 'different'}`);
+    return !areEquivalent;
+  }
+
+  // If both are semantic versions, use semver comparison
+  if (currentIsSemver && latestIsSemver) {
+    const hasUpdate = compareVersions(currentVersion, latestVersion) < 0;
+    console.log(`  Semantic version comparison: ${hasUpdate ? 'update available' : 'up to date'}`);
+    return hasUpdate;
+  }
+
+  // If current is branch and latest is semantic version, update available
+  if (currentIsBranch && latestIsSemver) {
+    console.log(`  ✓ Update available: Current is branch (${currentVersion}), latest is release (${latestVersion})`);
+    return true;
+  }
+
+  // Default string comparison for other cases
   // Normalize simple v-prefix differences
   const normalize = s => (typeof s === 'string' ? s.replace(/^v/, '') : s);
-  return normalize(currentVersion) !== normalize(latestVersion);
+  const hasUpdate = normalize(currentVersion) !== normalize(latestVersion);
+  console.log(`  String comparison: ${hasUpdate ? 'different' : 'same'}`);
+  return hasUpdate;
 }
 
 /**
@@ -1221,9 +1398,9 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl) {
       id: generateId(),
       name: addonName,
       repoUrl: approvedRepoUrl,
-      currentVersion: existingAddon.version,
+      currentVersion: 'Imported', // Always set to Imported for imported addons
       latestVersion: release.version,
-  needsUpdate: isUpdateAvailable(existingAddon.version, release.version),
+      needsUpdate: true, // Allow updates for imported addons
       lastUpdated: new Date().toISOString(),
       installedFolders: existingAddon.isGrouped ? existingAddon.relatedFolders : [existingAddon.folderName],
       tocData: existingAddon.tocData,
@@ -1232,7 +1409,9 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl) {
       commit: release.commit,
       latestSource: release.source,
       latestBranch: release.branch,
-      latestCommit: release.commit
+      latestCommit: release.commit,
+      // Mark as imported existing addon
+      importedExisting: true
     };
 
     return managedAddon;

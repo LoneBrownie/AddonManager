@@ -73,6 +73,17 @@
   white-space: nowrap;
 }
 
+.imported-badge {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
 .addon-info {
   margin-bottom: 6px;
 }
@@ -91,16 +102,6 @@
   font-weight: bold;
   flex-shrink: 0;
   min-width: 100px;
-}
-
-.version.current {
-  color: #3498db;
-  font-weight: bold;
-}
-
-.version.latest {
-  color: #27ae60;
-  font-weight: bold;
 }
 
 .date {
@@ -217,10 +218,29 @@
 .version {
   display: inline-flex;
   align-items: center;
+  background-color: #4a4a4a;
+  color: #ffffff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .branch {
   color: #3498db;
   font-family: monospace;
   font-size: 0.9em;
+}
+
+.update-disabled-notice {
+  background-color: rgba(255, 193, 7, 0.1);
+  border: 1px solid #ffc107;
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: #ffc107;
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  margin: 4px 0;
 }

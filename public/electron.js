@@ -794,6 +794,53 @@ ipcMain.handle('fetch-release-web', async (event, repoUrl) => {
   }
 });
 
+// Fetch GitHub repository info via API in main process to avoid CSP restrictions
+ipcMain.handle('fetch-github-repo', async (event, owner, repo) => {
+  try {
+    if (!owner || !repo || typeof owner !== 'string' || typeof repo !== 'string') {
+      throw new Error('Invalid owner or repo');
+    }
+
+    const https = require('https');
+    const url = `https://api.github.com/repos/${owner}/${repo}`;
+
+    return await new Promise((resolve, reject) => {
+      const req = https.get(url, {
+        headers: {
+          'User-Agent': 'Wow-Addon-Manager/1.0',
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', (chunk) => data += chunk.toString());
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            try {
+              const repoData = JSON.parse(data);
+              resolve({
+                default_branch: repoData.default_branch,
+                full_name: repoData.full_name
+              });
+            } catch (err) {
+              reject(new Error('Invalid JSON response from GitHub API'));
+            }
+          } else {
+            reject(new Error(`GitHub API returned status ${res.statusCode}`));
+          }
+        });
+      });
+      req.on('error', (err) => reject(err));
+      req.setTimeout(10000, () => {
+        req.destroy();
+        reject(new Error('GitHub API request timeout'));
+      });
+    });
+  } catch (error) {
+    console.error('fetch-github-repo error:', error);
+    throw error;
+  }
+});
+
 // Fetch curated JSON blob in main process to avoid renderer CORS restrictions
 ipcMain.handle('fetch-curated-list', async (event, url) => {
   try {
@@ -828,6 +875,62 @@ ipcMain.handle('fetch-curated-list', async (event, url) => {
     });
   } catch (error) {
     console.error('fetch-curated-list error:', error);
+    throw error;
+  }
+});
+
+// Fetch webpage content in main process to avoid CSP restrictions
+ipcMain.handle('fetch-webpage', async (event, url) => {
+  try {
+    if (!url || typeof url !== 'string') throw new Error('Invalid URL');
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new Error('Only http(s) URLs allowed');
+
+    const https = require('https');
+    const http = require('http');
+
+    const client = parsed.protocol === 'https:' ? https : http;
+
+    return await new Promise((resolve, reject) => {
+      const req = client.get(parsed, { 
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Cache-Control': 'no-cache'
+        } 
+      }, (res) => {
+        let data = '';
+        res.setEncoding('utf8');
+        
+        res.on('data', (chunk) => data += chunk);
+        res.on('end', () => {
+          if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(data);
+          } else if (res.statusCode === 301 || res.statusCode === 302) {
+            // Handle redirects
+            const location = res.headers.location;
+            if (location) {
+              console.log(`Following redirect from ${url} to ${location}`);
+              // Recursive call to handle redirect
+              resolve(ipcMain.emit('fetch-webpage', event, location));
+            } else {
+              reject(new Error(`Redirect without location header: ${res.statusCode}`));
+            }
+          } else {
+            reject(new Error(`Failed to fetch webpage: ${res.statusCode || 'unknown'}`));
+          }
+        });
+      });
+      
+      req.on('error', (err) => reject(err));
+      req.setTimeout(30000, () => { 
+        req.destroy(); 
+        reject(new Error('Webpage fetch timeout')); 
+      });
+    });
+  } catch (error) {
+    console.error('fetch-webpage error:', error);
     throw error;
   }
 });

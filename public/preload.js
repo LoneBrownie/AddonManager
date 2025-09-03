@@ -66,8 +66,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Fetch release/tag info via main process (avoids CORS)
   fetchReleaseWeb: (repoUrl) => ipcRenderer.invoke('fetch-release-web', repoUrl)
   ,
+  // Fetch GitHub repository info via main process (avoids CSP restrictions)
+  fetchGitHubRepo: (owner, repo) => ipcRenderer.invoke('fetch-github-repo', owner, repo)
+  ,
   // Fetch curated addon JSON via main process (avoids renderer CORS)
   fetchCuratedList: (url) => ipcRenderer.invoke('fetch-curated-list', url)
+  ,
+  // Fetch webpage content via main process (avoids CSP restrictions)
+  fetchWebpage: (url) => ipcRenderer.invoke('fetch-webpage', url)
 });
 
 // ✅ Security: Remove any window.require access

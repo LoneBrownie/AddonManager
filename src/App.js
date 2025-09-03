@@ -5,6 +5,7 @@ import AddonList from './components/AddonList';
 import HandyAddons from './components/HandyAddons';
 import Settings from './components/Settings';
 import ExistingAddonManager from './components/ExistingAddonManager';
+import ExportAddonListModal from './components/ExportAddonListModal';
 import { useAddons } from './hooks/useAddons';
 import { getSettings } from './services/addon-manager';
 import logo from './img/Logo.png';
@@ -27,6 +28,7 @@ function App() {
     wowPath,
     checkAddonExistenceManually,
     isAddonUpdating,
+    toggleUpdatePermission,
     loading,
     error
   } = useAddons();
@@ -34,6 +36,7 @@ function App() {
   const [showExistingManager, setShowExistingManager] = useState(false);
   const [showAddAddonModal, setShowAddAddonModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [adminRestartMessage, setAdminRestartMessage] = useState('');
   const [activeTab, setActiveTab] = useState('addons'); // 'addons', 'get-addons', 'settings'
 
@@ -100,6 +103,10 @@ function App() {
     }
   };
 
+  const handleExportAddonList = () => {
+    setShowExportModal(true);
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'addons':
@@ -124,10 +131,18 @@ function App() {
               <div className="addon-list-actions">
                 <button
                   className="button secondary"
+                  onClick={handleExportAddonList}
+                  disabled={loading}
+                  title="Export addon list to text"
+                >
+                  Export Addon List
+                </button>
+                <button
+                  className="button secondary"
                   onClick={handleManageExistingAddons}
                   disabled={loading}
                 >
-                  Manage Existing Addons
+                  Import Existing Addons
                 </button>
                 <button
                   className="button primary"
@@ -146,6 +161,7 @@ function App() {
               onCheckUpdates={checkForUpdates}
               onCheckExistence={checkAddonExistenceManually}
               onRemoveAddon={removeAddon}
+              onToggleUpdatePermission={toggleUpdatePermission}
               isAddonUpdating={isAddonUpdating}
               loading={loading}
               hideHeader={true}
@@ -256,6 +272,13 @@ function App() {
           addExistingAddon={addExistingAddon}
           scanForExistingAddons={scanForExistingAddons}
           onClose={() => setShowExistingManager(false)}
+        />
+      )}
+
+      {showExportModal && (
+        <ExportAddonListModal
+          addons={addons}
+          onClose={() => setShowExportModal(false)}
         />
       )}
 

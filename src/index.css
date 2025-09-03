@@ -11,8 +11,8 @@
   --border-color: #555555;
   --text-primary-color: #ffffff;
   --text-secondary-color: #b0b0b0;
-  --primary-color: #a78bfa;
-  --primary-hover-color: #8b5cf6;
+  --primary-color: #8b5cf6;
+  --primary-hover-color: #a78bfa;
   --primary-bg-color: rgba(167, 139, 250, 0.1);
   --success-color: #10b981;
   --success-hover-color: #059669;
@@ -163,7 +163,7 @@ body {
 }
 
 .button.warning {
-  background-color: #f39c12;
+  background-color: var(--warning-color);
   color: white;
   font-weight: bold;
 }
@@ -171,7 +171,7 @@ body {
 .button.warning:hover {
   background-color: #e67e22;
   color: white;
-  box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
 }
 
 .input {

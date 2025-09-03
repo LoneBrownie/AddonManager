@@ -60,8 +60,26 @@ const normalizeAddonName = (addon) => {
   
   return {
     ...addon,
-    name: correctName
+    name: correctName,
+    // Ensure allowUpdates is always a boolean to prevent React controlled/uncontrolled warnings
+    // For imported addons (importedExisting: true), default to false
+    // For regular addons, default to true
+    // But always respect existing values if they're explicitly set
+    allowUpdates: addon.allowUpdates !== undefined 
+      ? addon.allowUpdates 
+      : addon.importedExisting 
+        ? false 
+        : true
   };
+};
+
+// Helper function to sort addons alphabetically by name
+const sortAddonsAlphabetically = (addons) => {
+  return [...addons].sort((a, b) => {
+    const nameA = (a.name || '').toLowerCase();
+    const nameB = (b.name || '').toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
 };
 
 export function useAddons() {
@@ -80,8 +98,8 @@ export function useAddons() {
         if (window.electronAPI) {
           const data = await window.electronAPI.loadUserData(STORAGE_KEY);
           if (data && data.addons) {
-            // Normalize addon names when loading
-            const normalizedAddons = data.addons.map(normalizeAddonName);
+            // Normalize addon names when loading and sort alphabetically
+            const normalizedAddons = sortAddonsAlphabetically(data.addons.map(normalizeAddonName));
             setAddons(normalizedAddons);
             
             // Save normalized names back to storage if any names changed
@@ -100,8 +118,8 @@ export function useAddons() {
         if (saved) {
           const data = JSON.parse(saved);
           if (data.addons) {
-            // Normalize addon names when loading from localStorage
-            const normalizedAddons = (data.addons || []).map(normalizeAddonName);
+            // Normalize addon names when loading from localStorage and sort alphabetically
+            const normalizedAddons = sortAddonsAlphabetically((data.addons || []).map(normalizeAddonName));
             setAddons(normalizedAddons);
             // Migrate to persistent storage if available
             if (window.electronAPI) {
@@ -150,7 +168,7 @@ export function useAddons() {
         
         if (removedCount > 0) {
           console.log(`Removed ${removedCount} missing addon(s) from managed list`);
-          setAddons(existingAddons);
+          setAddons(sortAddonsAlphabetically(existingAddons));
         } else {
           // Check for other changes (like missingFolders)
           const hasChanges = updatedAddons.some((addon, index) => {
@@ -160,7 +178,7 @@ export function useAddons() {
           });
           
           if (hasChanges) {
-            setAddons(existingAddons);
+            setAddons(sortAddonsAlphabetically(existingAddons));
           }
         }
       } catch (err) {
@@ -200,7 +218,7 @@ export function useAddons() {
 
   // Function to normalize all existing addon names
   const normalizeAllAddonNames = useCallback(() => {
-    setAddons(prev => prev.map(normalizeAddonName));
+    setAddons(prev => sortAddonsAlphabetically(prev.map(normalizeAddonName)));
   }, []);
 
   const addAddon = useCallback(async (repoUrl, customOptions = {}) => {
@@ -223,7 +241,7 @@ export function useAddons() {
           name: customOptions.customFolderName || 'unknown'
         }, customOptions);
         
-        setAddons(prev => [...prev, installedAddon]);
+        setAddons(prev => sortAddonsAlphabetically([...prev, installedAddon]));
       } else {
         // Get release info from API, passing preferred asset name if specified
         const release = await getLatestRelease(repoUrl, customOptions.preferredAssetName);
@@ -231,7 +249,7 @@ export function useAddons() {
         // Install the addon
         const installedAddon = await installAddon(repoUrl, release, customOptions);
         
-        setAddons(prev => [...prev, installedAddon]);
+        setAddons(prev => sortAddonsAlphabetically([...prev, installedAddon]));
       }
     } catch (err) {
       console.error('Failed to add addon:', err);
@@ -253,9 +271,9 @@ export function useAddons() {
 
       const updatedAddon = await updateAddonService(addon);
       
-      setAddons(prev => prev.map(a => 
+      setAddons(prev => sortAddonsAlphabetically(prev.map(a => 
         a.id === addonId ? updatedAddon : a
-      ));
+      )));
     } catch (err) {
       console.error('Failed to update addon:', err);
       setError(err.message || 'Failed to update addon');
@@ -285,9 +303,9 @@ export function useAddons() {
       for (const addon of updatableAddons) {
         try {
           const updatedAddon = await updateAddonService(addon);
-          setAddons(prev => prev.map(a => 
+          setAddons(prev => sortAddonsAlphabetically(prev.map(a => 
             a.id === addon.id ? updatedAddon : a
-          ));
+          )));
         } catch (err) {
           console.error(`Failed to update ${addon.name}:`, err);
         } finally {
@@ -308,12 +326,45 @@ export function useAddons() {
   }, [addons]);
 
   const checkForUpdates = useCallback(async () => {
+    console.log('Check for updates button clicked');
     setLoading(true);
     setError(null);
     
     try {
-      const updatedAddons = await checkUpdatesService(addons);
-      setAddons(updatedAddons);
+      // Only check updates for addons that allow updates
+      const addonsToCheck = addons.filter(addon => addon.allowUpdates !== false);
+      const addonsWithoutUpdates = addons.filter(addon => addon.allowUpdates === false);
+      
+      console.log(`Total addons: ${addons.length}, Checking: ${addonsToCheck.length}, Skipping: ${addonsWithoutUpdates.length}`);
+      
+      if (addonsToCheck.length === 0) {
+        console.warn('No addons found that allow updates');
+        setError('No addons are configured to allow updates');
+        return;
+      }
+      
+      // Check updates for allowed addons
+      const updatedAddons = await checkUpdatesService(addonsToCheck);
+      
+      console.log('Update check completed, processing results...');
+      
+      // Combine checked addons with non-updateable addons (preserving their current state)
+      const allAddons = [
+        ...updatedAddons,
+        ...addonsWithoutUpdates.map(addon => ({
+          ...addon,
+          needsUpdate: false, // Force no updates for these addons
+          lastChecked: new Date().toISOString()
+        }))
+      ];
+      
+      // Sort alphabetically by name to maintain consistent order
+      setAddons(sortAddonsAlphabetically(allAddons));
+      
+      // Count updates found
+      const updatesFound = updatedAddons.filter(addon => addon.needsUpdate).length;
+      console.log(`Check for updates completed. Found ${updatesFound} updates available.`);
+      
     } catch (err) {
       console.error('Failed to check for updates:', err);
       setError(err.message || 'Failed to check for updates');
@@ -370,9 +421,14 @@ export function useAddons() {
         addon.installedFolders?.forEach(folder => managedFolders.add(folder));
       });
       
-      const unmanaged = scannedAddons.filter(existing => 
-        !managedFolders.has(existing.folderName)
-      );
+      const unmanaged = scannedAddons.filter(existing => {
+        // For grouped addons, check if any of the related folders are managed
+        if (existing.isGrouped && existing.relatedFolders) {
+          return !existing.relatedFolders.some(folder => managedFolders.has(folder));
+        }
+        // For single folder addons, check the folder name
+        return !managedFolders.has(existing.folderName);
+      });
       
       setExistingAddons(unmanaged);
       return unmanaged; // Return the results
@@ -415,7 +471,7 @@ export function useAddons() {
     }
   }, [addons]);
 
-  const addExistingAddonToManagement = useCallback(async (existingAddon, repoUrl) => {
+  const addExistingAddonToManagement = useCallback(async (existingAddon, repoUrl, options = {}) => {
     setLoading(true);
     setError(null);
     
@@ -456,30 +512,59 @@ export function useAddons() {
         };
         
         // Update the addon in the list
-        setAddons(prev => prev.map(addon => 
+        setAddons(prev => sortAddonsAlphabetically(prev.map(addon => 
           addon.id === existingManagedAddon.id ? updatedAddon : addon
-        ));
+        )));
         
         return updatedAddon;
       } else {
         // Create new addon entry for existing addon
         const { getLatestRelease } = await import('../services/api-client.js');
-        const release = await getLatestRelease(repoUrl);
         
+        let release;
+        try {
+          release = await getLatestRelease(repoUrl);
+        } catch (apiError) {
+          console.warn('Failed to fetch release info from API, using fallback values:', apiError.message);
+          // Create fallback release info when API fails
+          release = {
+            version: 'Unknown',
+            source: 'unknown',
+            branch: 'main',
+            commit: null
+          };
+        }
+        
+        // Use existing addon data to preserve current state
         const managedAddon = {
           id: `existing-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          name: existingAddon.folderName,
+          name: existingAddon.title || existingAddon.folderName,
           repoUrl: repoUrl,
-          currentVersion: 'unknown',
+          currentVersion: 'Imported', // Always set to Imported for imported addons
           latestVersion: release.version,
-          needsUpdate: false, // We don't know the current version
+          needsUpdate: options.allowUpdates === true ? true : false, // Only set needsUpdate if updates are allowed
           installPath: existingAddon.folderPath || `Interface/AddOns/${existingAddon.folderName}`,
-          installedFolders: [existingAddon.folderName],
+          installedFolders: existingAddon.isGrouped ? existingAddon.relatedFolders : [existingAddon.folderName],
           addedAt: new Date().toISOString(),
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
+          // Mark as imported so we know not to auto-update
+          importedExisting: true,
+          // Set update permission based on user choice
+          allowUpdates: options.allowUpdates === true, // Default to false unless explicitly set to true
+          // Preserve any existing addon metadata
+          tocData: existingAddon.tocData,
+          author: existingAddon.author,
+          notes: existingAddon.notes,
+          // Add release metadata (will be fallback values if API failed)
+          source: release.source || 'unknown',
+          branch: release.branch || 'main',
+          commit: release.commit || null,
+          latestSource: release.source || 'unknown',
+          latestBranch: release.branch || 'main',
+          latestCommit: release.commit || null
         };
         
-        setAddons(prev => [...prev, managedAddon]);
+        setAddons(prev => sortAddonsAlphabetically([...prev, managedAddon]));
         
         return managedAddon;
       }
@@ -492,7 +577,7 @@ export function useAddons() {
     }
   }, [addons]);
 
-  const addExistingAddon = useCallback(async (addonOrPath, repoUrl) => {
+  const addExistingAddon = useCallback(async (addonOrPath, repoUrl, options = {}) => {
     setLoading(true);
     setError(null);
     
@@ -511,13 +596,47 @@ export function useAddons() {
         existingAddon = { folderName, folderPath: addonOrPath };
       }
       
-      const managedAddon = await addExistingAddonToManagement(existingAddon, repoUrl);
+      const managedAddon = await addExistingAddonToManagement(existingAddon, repoUrl, options);
       
-      // Remove from existing addons list
-      setExistingAddons(prev => prev.filter(addon => {
-        const addonFolderName = typeof addon === 'object' ? addon.folderName : addon.split(/[/\\]/).pop();
-        return addonFolderName !== folderName;
-      }));
+      // Update the addons state to include the new managed addon
+      setAddons(prev => {
+        const filtered = prev.filter(a => a.id !== managedAddon.id);
+        const updatedAddons = sortAddonsAlphabetically([...filtered, managedAddon]);
+        
+        // Trigger rescan after state update with the updated addons list
+        setTimeout(async () => {
+          try {
+            let settings;
+            try {
+              settings = await getSettings();
+            } catch (err) {
+              console.warn('Could not get settings for rescan:', err);
+              return;
+            }
+            
+            const scannedAddons = await scanExistingAddons(settings);
+            
+            // Filter using the current managed addons
+            const managedFolders = new Set();
+            updatedAddons.forEach(addon => {
+              addon.installedFolders?.forEach(folder => managedFolders.add(folder));
+            });
+            
+            const unmanaged = scannedAddons.filter(existing => {
+              if (existing.isGrouped && existing.relatedFolders) {
+                return !existing.relatedFolders.some(folder => managedFolders.has(folder));
+              }
+              return !managedFolders.has(existing.folderName);
+            });
+            
+            setExistingAddons(unmanaged);
+          } catch (scanError) {
+            console.warn('Failed to refresh existing addons list after import:', scanError);
+          }
+        }, 50);
+        
+        return updatedAddons;
+      });
       
       return managedAddon;
     } catch (err) {
@@ -546,7 +665,7 @@ export function useAddons() {
       const existingAddons = updatedAddons.filter(addon => addon.exists !== false);
       const removedCount = addons.length - existingAddons.length;
       
-      setAddons(existingAddons);
+      setAddons(sortAddonsAlphabetically(existingAddons));
       
       if (removedCount === 0) {
         console.log('All addons exist on disk');
@@ -566,6 +685,22 @@ export function useAddons() {
     return updatingAddons.has(addonId);
   }, [updatingAddons]);
 
+  // Toggle update permission for an addon
+  const toggleUpdatePermission = useCallback((addonId) => {
+    setAddons(prev => sortAddonsAlphabetically(prev.map(addon => {
+      if (addon.id === addonId) {
+        const newAllowUpdates = !addon.allowUpdates;
+        return {
+          ...addon,
+          allowUpdates: newAllowUpdates,
+          // If disabling updates, clear needsUpdate flag
+          needsUpdate: newAllowUpdates ? addon.needsUpdate : false
+        };
+      }
+      return addon;
+    })));
+  }, []);
+
   return {
     addons,
     addAddon,
@@ -582,6 +717,7 @@ export function useAddons() {
     normalizeAllAddonNames,
     checkAddonExistenceManually,
     isAddonUpdating,
+    toggleUpdatePermission,
     loading,
     error
   };

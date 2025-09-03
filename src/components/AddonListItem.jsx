@@ -2,7 +2,7 @@ import React from 'react';
 import './AddonListItem.css';
 import { sanitizeTocTitle } from '../services/addon-manager';
 
-function AddonListItem({ addon, onUpdate, onRemove, isUpdating, loading }) {
+function AddonListItem({ addon, onUpdate, onRemove, onToggleUpdatePermission, isUpdating, loading }) {
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown';
     try {
@@ -63,11 +63,6 @@ function AddonListItem({ addon, onUpdate, onRemove, isUpdating, loading }) {
           <span className="version-label">Current:</span>
           <span className="version current">
             {addon.currentVersion}
-            {addon.source && (
-              <span className={`source-badge ${addon.source}`}>
-                {addon.source === 'release' ? '📦' : '🔧'}
-              </span>
-            )}
           </span>
         </div>
         
@@ -76,11 +71,6 @@ function AddonListItem({ addon, onUpdate, onRemove, isUpdating, loading }) {
             <span className="version-label">Latest:</span>
             <span className="version latest">
               {addon.latestVersion}
-              {addon.latestSource && (
-                <span className={`source-badge ${addon.latestSource}`}>
-                  {addon.latestSource === 'release' ? '📦' : '🔧'}
-                </span>
-              )}
             </span>
           </div>
         )}
@@ -102,7 +92,7 @@ function AddonListItem({ addon, onUpdate, onRemove, isUpdating, loading }) {
       </div>
 
       <div className="addon-actions">
-        {addon.needsUpdate && (
+        {addon.needsUpdate && addon.allowUpdates && (
           <button
             className="button success small"
             onClick={onUpdate}
@@ -112,13 +102,26 @@ function AddonListItem({ addon, onUpdate, onRemove, isUpdating, loading }) {
           </button>
         )}
         
+        <div className="update-toggle-container">
+          <span className="toggle-label">Allow Updates</span>
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={addon.allowUpdates}
+              onChange={() => onToggleUpdatePermission(addon.id)}
+              disabled={loading}
+            />
+            <span className="slider"></span>
+          </label>
+        </div>
+        
         <button
           className="button danger small"
           onClick={onRemove}
           disabled={loading}
           title="Remove addon and delete all files"
         >
-          Remove
+          Delete
         </button>
       </div>
     </div>

@@ -38,7 +38,7 @@ function AddonCard({ addon, onUpdate, onRemove, loading }) {
   const displayName = addon.tocData && addon.tocData.title ? addon.tocData.title : addon.name;
 
   return (
-    <div className={`addon-card ${addon.needsUpdate ? 'needs-update' : ''} ${addon.exists === false ? 'missing' : ''}`}>
+    <div className={`addon-card ${addon.needsUpdate && addon.allowUpdates !== false ? 'needs-update' : ''} ${addon.exists === false ? 'missing' : ''}`}>
       {addon.exists === false && (
         <div className="missing-warning">
           <span className="warning-icon">⚠️</span>
@@ -55,8 +55,11 @@ function AddonCard({ addon, onUpdate, onRemove, loading }) {
         <h3 className="addon-name" title={displayName}>
           {sanitizeTocTitle(displayName) || addon.name}
         </h3>
-        {addon.needsUpdate && (
+        {addon.needsUpdate && addon.allowUpdates !== false && (
           <span className="update-badge">Update Available</span>
+        )}
+        {addon.importedExisting && (
+          <span className="imported-badge" title="Imported from existing WoW installation">Imported</span>
         )}
       </div>
 
@@ -76,24 +79,14 @@ function AddonCard({ addon, onUpdate, onRemove, loading }) {
           <span className="label">Current Version:</span>
           <span className="version current">
             {addon.currentVersion}
-            {addon.source && (
-              <span className={`source-badge ${addon.source}`}>
-                {addon.source === 'release' ? '📦' : '🔧'}
-              </span>
-            )}
           </span>
         </div>
         
-        {addon.needsUpdate && (
+        {addon.needsUpdate && addon.allowUpdates !== false && (
           <div className="info-row">
             <span className="label">Latest Version:</span>
             <span className="version latest">
               {addon.latestVersion}
-              {addon.latestSource && (
-                <span className={`source-badge ${addon.latestSource}`}>
-                  {addon.latestSource === 'release' ? '📦' : '🔧'}
-                </span>
-              )}
             </span>
           </div>
         )}
@@ -153,14 +146,21 @@ function AddonCard({ addon, onUpdate, onRemove, loading }) {
           </button>
         )}
         
-        {addon.needsUpdate && addon.exists !== false && (
+        {addon.needsUpdate && addon.exists !== false && addon.allowUpdates !== false && (
           <button
             className="button success"
             onClick={onUpdate}
             disabled={loading}
+            title={addon.importedExisting ? "Force update (downloads new version)" : "Update to latest version"}
           >
-            {loading ? 'Updating...' : 'Update'}
+            {loading ? 'Updating...' : (addon.importedExisting ? 'Force Update' : 'Update')}
           </button>
+        )}
+        
+        {addon.needsUpdate && addon.exists !== false && addon.allowUpdates === false && (
+          <div className="update-disabled-notice">
+            Updates disabled for this addon
+          </div>
         )}
         
         <button
