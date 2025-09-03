@@ -150,5 +150,14 @@
     "category": "Interface",
     "epochAddon": true,
     "customFolderName": "LFG"
+  },
+  {
+    "id": "Aux",
+    "name": "Aux Epoch",
+    "description": "Auction house addOn for the 3.3.5 client with some features more advanced than anything even on retail.",
+    "repoUrl": "https://github.com/Bestoriop/Aux-addon-Epoch",
+    "category": "Interface",
+    "epochAddon": true,
+    "customFolderName": "aux"
   }
 ]
