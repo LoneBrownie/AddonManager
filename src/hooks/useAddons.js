@@ -504,10 +504,20 @@ export function useAddons() {
           // For other addons, keep the existing name (likely from .toc)
         }
         
+        // For multi-folder addons that are imported, we need to handle customFolderName carefully
+        // If this is the first folder being added to an existing single-folder addon,
+        // preserve the original folder name as customFolderName
+        let customFolderName = existingManagedAddon.customFolderName;
+        if (!customFolderName && existingManagedAddon.installedFolders && existingManagedAddon.installedFolders.length === 1) {
+          // If the existing addon doesn't have a customFolderName but has one folder, preserve it
+          customFolderName = existingManagedAddon.installedFolders[0];
+        }
+        
         const updatedAddon = {
           ...existingManagedAddon,
           name: addonName,
           installedFolders: newFolders,
+          customFolderName: customFolderName, // Preserve or set the custom folder name
           lastUpdated: new Date().toISOString()
         };
         
@@ -535,6 +545,11 @@ export function useAddons() {
           };
         }
         
+        // For imported addons, preserve existing folder names by setting customFolderName
+        const customFolderName = existingAddon.isGrouped ? 
+          existingAddon.relatedFolders[0] : // For grouped addons, use the first folder name
+          existingAddon.folderName;
+        
         // Use existing addon data to preserve current state
         const managedAddon = {
           id: `existing-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -551,6 +566,8 @@ export function useAddons() {
           importedExisting: true,
           // Set update permission based on user choice
           allowUpdates: options.allowUpdates === true, // Default to false unless explicitly set to true
+          // Preserve existing folder name for future updates
+          customFolderName: customFolderName,
           // Preserve any existing addon metadata
           tocData: existingAddon.tocData,
           author: existingAddon.author,

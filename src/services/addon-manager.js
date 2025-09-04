@@ -1393,6 +1393,11 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl) {
       addonName = existingAddon.title || repoDisplayName;
     }
     
+    // For imported addons, preserve existing folder names by setting customFolderName
+    const customFolderName = existingAddon.isGrouped ? 
+      existingAddon.relatedFolders[0] : // For grouped addons, use the first folder name
+      existingAddon.folderName;
+    
     // Create managed addon object
     const managedAddon = {
       id: generateId(),
@@ -1410,6 +1415,8 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl) {
       latestSource: release.source,
       latestBranch: release.branch,
       latestCommit: release.commit,
+      // Preserve existing folder name for future updates
+      customFolderName: customFolderName,
       // Mark as imported existing addon
       importedExisting: true
     };
