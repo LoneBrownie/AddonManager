@@ -159,5 +159,13 @@
     "category": "Interface",
     "epochAddon": true,
     "customFolderName": "Aux-addon"
+  },
+  {
+    "id": "WeakAuras",
+    "name": "Weak Auras",
+    "description": "Powerful aura management addon for tracking buffs, debuffs, and other important information.",
+    "repoUrl": "https://github.com/NoM0Re/WeakAuras-WotLK",
+    "category": "Interface",
+    "epochAddon": false
   }
 ]

@@ -349,6 +349,74 @@ export function sanitizeTocTitle(title) {
  * @param {string} addonDir - Directory to search
  * @returns {Array<string>} Array of .toc file paths
  */
+/**
+ * Determine the best folder name for an addon based on .toc files and existing folder name
+ * @param {string} sourcePath - Path to the extracted addon folder
+ * @param {string} originalFolderName - Original folder name from ZIP
+ * @param {string} repoName - Repository name for additional matching (optional)
+ * @returns {Promise<string>} The best folder name to use
+ */
+async function determineBestFolderName(sourcePath, originalFolderName, repoName = null) {
+  try {
+    const tocFiles = await findTocFiles(sourcePath);
+    
+    if (tocFiles.length === 0) {
+      return originalFolderName;
+    }
+    
+    // If there's only one .toc file, use its basename (without .toc extension)
+    if (tocFiles.length === 1) {
+      const tocFileName = pathUtils.basename(tocFiles[0], '.toc');
+      return tocFileName;
+    }
+    
+    // If there are multiple .toc files, try to find the main one
+    // Priority: exact match with folder name > repo name match > main addon .toc > first .toc
+    const normalizedFolderName = originalFolderName.toLowerCase();
+    const normalizedRepoName = repoName ? repoName.toLowerCase() : null;
+    
+    // Look for exact match with folder name
+    const exactMatch = tocFiles.find(tocPath => {
+      const tocName = pathUtils.basename(tocPath, '.toc').toLowerCase();
+      return tocName === normalizedFolderName;
+    });
+    
+    if (exactMatch) {
+      return pathUtils.basename(exactMatch, '.toc');
+    }
+    
+    // Look for match with repository name
+    if (normalizedRepoName) {
+      const repoMatch = tocFiles.find(tocPath => {
+        const tocName = pathUtils.basename(tocPath, '.toc').toLowerCase();
+        return tocName === normalizedRepoName || tocName.includes(normalizedRepoName);
+      });
+      
+      if (repoMatch) {
+        return pathUtils.basename(repoMatch, '.toc');
+      }
+    }
+    
+    // Look for .toc files that might be the main addon (not localization or options)
+    const excludePatterns = ['_options', '_locale', '_localization', 'locale', 'localization'];
+    const mainTocFile = tocFiles.find(tocPath => {
+      const tocName = pathUtils.basename(tocPath, '.toc').toLowerCase();
+      return !excludePatterns.some(pattern => tocName.includes(pattern));
+    });
+    
+    if (mainTocFile) {
+      return pathUtils.basename(mainTocFile, '.toc');
+    }
+    
+    // Fallback to first .toc file
+    return pathUtils.basename(tocFiles[0], '.toc');
+    
+  } catch (error) {
+    console.error('Error determining best folder name:', error);
+    return originalFolderName;
+  }
+}
+
 async function findTocFiles(addonDir) {
   try {
     const items = await fileSystem.readdir(addonDir);
@@ -440,33 +508,37 @@ export async function installAddon(repoUrl, release, customOptions = {}) {
     const installedFolders = [];
     for (const addonFolderPath of addonFolderPaths) {
       const sourcePath = pathUtils.join(extractPath, addonFolderPath);
-      let addonFolderName = pathUtils.basename(addonFolderPath);
+      let originalFolderName = pathUtils.basename(addonFolderPath);
       
-        // Normalize folder names coming from GitHub/GitLab archive zips which
-        // often append `-main` or `-master` (or case variants). Remove those
-        // suffixes so installed addon folders match expected addon folder names.
-        function normalizeExtractedFolderName(name) {
-          if (!name) return name;
-          // Remove repeated trailing -main or -master (case-insensitive)
-          let newName = name;
-          const pattern = /(-|_)?(?:main|master)$/i;
-          // Keep stripping while matches (handles names like "Foo-main-main")
-          while (pattern.test(newName)) {
-            newName = newName.replace(pattern, '');
-          }
-          // Trim any trailing separators left behind
-          newName = newName.replace(/[-_\s]+$/g, '');
-          return newName || name; // fallback to original if empty
+      // Normalize folder names coming from GitHub/GitLab archive zips which
+      // often append `-main` or `-master` (or case variants). Remove those
+      // suffixes so installed addon folders match expected addon folder names.
+      function normalizeExtractedFolderName(name) {
+        if (!name) return name;
+        // Remove repeated trailing -main or -master (case-insensitive)
+        let newName = name;
+        const pattern = /(-|_)?(?:main|master)$/i;
+        // Keep stripping while matches (handles names like "Foo-main-main")
+        while (pattern.test(newName)) {
+          newName = newName.replace(pattern, '');
         }
+        // Trim any trailing separators left behind
+        newName = newName.replace(/[-_\s]+$/g, '');
+        return newName || name; // fallback to original if empty
+      }
       
-        // Apply normalization unless a custom folder name was explicitly provided
-        if (!(customOptions.customFolderName && addonFolderPaths.length === 1)) {
-          addonFolderName = normalizeExtractedFolderName(addonFolderName);
-        }
+      // Apply normalization to get a clean folder name
+      const normalizedFolderName = normalizeExtractedFolderName(originalFolderName);
       
-      // Apply custom folder name if specified (override normalization)
+      let addonFolderName;
+      
+      // Determine the best folder name based on .toc files and other factors
       if (customOptions.customFolderName && addonFolderPaths.length === 1) {
+        // Custom folder name takes highest priority for single-folder addons
         addonFolderName = customOptions.customFolderName;
+      } else {
+        // For new addon installations, prefer .toc filename over folder name
+        addonFolderName = await determineBestFolderName(sourcePath, normalizedFolderName, repoInfo?.repo);
       }
       
       const destPath = pathUtils.join(wowAddonsPath, addonFolderName);
