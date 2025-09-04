@@ -116,16 +116,20 @@
 .settings-help ul {
   color: var(--text-secondary-color);
   font-size: 14px;
+  padding-left: 20px; /* Add padding to make room for bullet points */
+  list-style-type: disc; /* Ensure bullet points are shown */
 }
 
 .settings-help li {
   margin-bottom: 8px;
   line-height: 1.4;
+  padding-left: 5px; /* Add a bit more space between bullet and text */
 }
 
 .settings-help ul ul {
   margin-top: 5px;
   margin-bottom: 5px;
+  padding-left: 20px; /* Nested lists need padding too */
 }
 
 .settings-help code {
