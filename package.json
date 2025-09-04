@@ -1,6 +1,6 @@
 {
   "name": "brownies-addon-manager",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "A Windows desktop application for managing WoW addons from GitHub and GitLab",
   "author": "LoneBrownie",
   "main": "public/electron.js",
