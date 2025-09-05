@@ -1,6 +1,5 @@
 .settings {
   margin-top: 0;
-  border-top: none;
   padding-top: 0;
 }
 
@@ -241,7 +240,7 @@
 .update-info {
   margin-top: 15px;
   padding-top: 15px;
-  border-top: 1px solid var(--border-color);
+  /* border-top removed per global divider removal */
 }
 
 .update-info p {

@@ -7,6 +7,16 @@
   position: relative;
 }
 
+/* Theme variables */
+:root {
+  --checkbox-bg: #e6e6e6; /* light grey for unchecked checkbox */
+}
+
+/* Align checkbox bg with form input background */
+:root {
+  --checkbox-bg: var(--input-bg-color);
+}
+
 /* Sidebar */
 .app-sidebar {
   width: 250px;
@@ -131,9 +141,8 @@
 
 /* Addon List Divider */
 .addon-list-divider {
-  height: 1px;
-  background-color: var(--border-color);
-  margin-bottom: 12px;
+  /* removed visual divider per user request */
+  display: none;
 }
 
 /* Addon List Toolbar */

@@ -13,17 +13,37 @@
   gap: 8px;
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--border-color);
+  /* border-bottom removed per user request to eliminate the grey divider */
 }
 
-.handy-list-controls {
+/* Left controls container for placing small toggles at the start of the filters row */
+.handy-addons .left-controls {
+  display: flex;
+  align-items: center;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.handy-addons .handy-list-controls {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }
 
-.refresh-list-btn {
+/* Place the control row under filters and align items to the right */
+.handy-addons .handy-list-controls {
+  width: 100%;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.handy-addons .view-toggle-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.handy-addons .refresh-list-btn {
   background: transparent;
   color: var(--primary-color);
   border: 1px solid var(--border-color);
@@ -34,36 +54,30 @@
   transition: all 0.15s ease;
 }
 
-.refresh-list-btn:hover:not(:disabled) {
+.handy-addons .refresh-list-btn:hover:not(:disabled) {
   background: var(--surface-hover-color);
   color: var(--text-primary-color);
   border-color: var(--primary-color);
   box-shadow: 0 2px 8px rgba(85, 85, 85, 0.2);
 }
 
-.refresh-list-btn.large {
+.handy-addons .refresh-list-btn.large {
   padding: 12px 18px;
   font-size: 1rem;
 }
 
-.list-error {
+.handy-addons .list-error {
   color: var(--danger-color);
   font-size: 0.9rem;
 }
 
-.add-addon-button-wrapper {
-  margin-left: auto;
-}
-
-/* Ensure the refresh button sits next to the Add New Addon button with proper spacing
-   and has similar sizing to primary action buttons */
-.add-addon-button-wrapper {
+.handy-addons .add-addon-button-wrapper {
   display: flex;
   gap: 12px;
   align-items: center;
 }
 
-.add-addon-button-wrapper .refresh-list-btn {
+.handy-addons .add-addon-button-wrapper .refresh-list-btn {
   padding: 10px 20px;
   border-radius: 6px;
   min-width: 120px;
@@ -73,15 +87,33 @@
   font-weight: 600;
 }
 
+/* Small toggle button for switching between compact and comfortable spacing */
+.handy-addons .view-toggle {
+  background: transparent;
+  color: var(--text-secondary-color);
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-left: 0;
+}
+
+.handy-addons .view-toggle.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
 /* Grey theme override for the refresh button when paired with the primary Add New Addon */
-.add-addon-button-wrapper .refresh-list-btn {
+.handy-addons .add-addon-button-wrapper .refresh-list-btn {
   background: var(--surface-color);
   color: var(--text-primary-color);
   border: 1px solid var(--border-color);
   box-shadow: none;
 }
 
-.add-addon-button-wrapper .refresh-list-btn:hover:not(:disabled) {
+.handy-addons .add-addon-button-wrapper .refresh-list-btn:hover:not(:disabled) {
   background: var(--surface-hover-color);
   color: var(--text-primary-color);
   border-color: var(--primary-color);
@@ -89,7 +121,7 @@
 }
 
 @media (max-width: 480px) {
-  .add-addon-button-wrapper .refresh-list-btn {
+  .handy-addons .add-addon-button-wrapper .refresh-list-btn {
     padding: 8px 12px;
     min-width: 96px;
   }
@@ -122,61 +154,173 @@
 
 .handy-addons-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-  gap: 16px;
-  margin-top: 20px;
+  /* allow more cards per row by lowering the min column width */
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .handy-addon-card {
   background: var(--surface-color);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 20px;
-  transition: all 0.2s ease;
+  border-radius: 6px;
+  padding: 10px 12px;
+  transition: all 0.15s ease;
   display: flex;
   flex-direction: column;
   height: 100%;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-/* Error / retry block when list fails to load */
-.handy-addons-error-block {
-  background: transparent;
-  border: 1px dashed var(--border-color);
-  padding: 28px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 12px;
-  margin: 18px 0 32px 0;
-}
-
-.handy-addons-error-block .section-title {
-  color: var(--text-primary-color);
-  margin: 0;
-}
-
-.handy-addons-error-content {
-  color: var(--text-secondary-color);
-  text-align: center;
-  max-width: 720px;
-}
-
-.handy-addons-error-content p {
-  margin: 0 0 12px 0;
-}
-
-.handy-addon-card:hover {
+/* Hover effect: lift card slightly and highlight border/background */
+.handy-addon-card:hover,
+.handy-addons.compact .handy-addon-card:hover {
   border-color: var(--primary-color);
   background: var(--surface-hover-color);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.24);
+}
+
+/* Compact variant: tighter grid and smaller card elements */
+.handy-addons.compact .handy-addons-grid {
+  /* switch compact to a vertical list of full-width rows */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.handy-addons.compact .handy-addon-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 6px;
+  gap: 12px;
+  /* Make each compact row a consistent height */
+  height: 72px;
+  min-height: 72px;
+  box-sizing: border-box;
+}
+
+.handy-addons.compact .addon-header {
+  margin-bottom: 0;
+}
+
+/* compact title/description rules moved further down (unclamped title, truncated description) */
+
+.handy-addons.compact .addon-dependency {
+  display: none;
+}
+
+.handy-addons.compact .addon-title-info {
+  /* Give the title more room so long addon names are not truncated */
+  flex: 0 1 60%;
+  min-width: 0;
+  padding-right: 2px;
+}
+.handy-addons.compact .addon-title {
+  font-size: 1rem;
+  margin: 0 0 2px 0;
+  line-height: 1.15;
+  /* Allow title to wrap naturally and avoid artificial clamping/hidden overflow */
+  display: block;
+  white-space: normal;
+  overflow: visible;
+  /* Prevent breaking words in the middle; prefer wrapping at word boundaries */
+  word-break: normal;
+  hyphens: none;
+}
+.handy-addons.compact .addon-description {
+  /* Keep description as a single truncated line to preserve row height */
+  flex: 0 0 30%;
+  margin: 0 6px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.85rem;
+}
+
+/* Hide per-addon category/tag chips in compact list view */
+.handy-addons.compact .addon-category {
+  display: none !important;
+}
+/* In compact view the filter chips remain visible and clickable; ensure spacing is preserved */
+.handy-addons.compact .handy-addon-card {
+  display: grid;
+  grid-template-columns: 200px 1fr auto;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  gap: 8px;
+  /* Make each compact row a consistent height */
+  height: 72px;
+  min-height: 72px;
+  box-sizing: border-box;
+}
+
+.handy-addons.compact .addon-header {
+  margin-bottom: 0;
+}
+
+/* Left column: title area - fixed width so descriptions start at the same x */
+.handy-addons.compact .addon-title-info {
+  display: block;
+  padding-right: 4px;
+  box-sizing: border-box;
+}
+.handy-addons.compact .addon-title {
+  font-size: 1rem;
+  margin: 0 0 2px 0;
+  line-height: 1.15;
+  display: block;
+  white-space: normal;
+  overflow: visible;
+  word-break: normal;
+  hyphens: none;
+}
+
+/* Middle column: description - flexible and truncated */
+.handy-addons.compact .addon-description {
+  margin: 0 12px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.9rem;
+  align-self: center;
+}
+
+/* Right column: actions - auto width, align items to the right */
+.handy-addons.compact .addon-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-self: end;
+}
+
+@media (max-width: 700px) {
+  .handy-addons.compact .handy-addon-card {
+    grid-template-columns: 1fr auto;
+    height: auto;
+    min-height: auto;
+    padding: 10px;
+  }
+
+  .handy-addons.compact .addon-description {
+    display: block;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    margin: 6px 0 0 0;
+  }
+
+  .handy-addons.compact .addon-title-info {
+    grid-column: 1 / -1;
+  }
 }
 
 .addon-header {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .addon-title-info {
@@ -185,45 +329,45 @@
 }
 
 .addon-title {
-  margin: 0 0 6px 0;
+  margin: 0 0 4px 0;
   color: var(--text-primary-color);
-  font-size: 1.25rem;
+  font-size: 1rem;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.2;
 }
 
 .addon-category {
   background: var(--primary-color);
   color: white;
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 6px;
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  opacity: 0.9;
+  opacity: 0.95;
 }
 
 /* Section titles consistent with app theme */
 .section-title {
   color: var(--text-primary-color);
-  font-size: 1.5rem;
-  margin: 0 0 12px 0;
+  font-size: 1.15rem;
+  margin: 0 0 10px 0;
   letter-spacing: -0.01em;
 }
 
 .addon-description {
   color: var(--text-secondary-color);
-  margin-bottom: 20px;
-  line-height: 1.6;
+  margin-bottom: 12px;
+  line-height: 1.4;
   flex-grow: 1;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
 }
 
 .addon-dependency {
-  font-size: 0.825rem;
+  font-size: 0.78rem;
   color: var(--primary-hover-color);
-  margin: 8px 0 12px 0;
+  margin: 6px 0 8px 0;
   padding: 0;
   display: block;
   text-align: right;
@@ -232,25 +376,39 @@
 
 .addon-actions {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   margin-top: auto;
   padding-top: 4px;
-  border-top: 1px solid var(--border-color);
+  /* divider removed globally per user request */
+}
+
+/* Remove divider in compact rows (actions sit inline) */
+.handy-addons.compact .addon-actions {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+/* Also remove divider for the card (comfortable) variant in this view */
+.handy-addon-card .addon-actions {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
 }
 
 .repo-link {
   color: var(--primary-color);
   background: none;
   border: none;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   font-weight: 500;
-  padding: 8px 0;
+  padding: 4px 0;
   flex-grow: 1;
   cursor: pointer;
   text-decoration: none;
   text-align: left;
-  transition: color 0.2s ease;
+  transition: color 0.15s ease;
 }
 
 .repo-link:hover {
@@ -263,14 +421,14 @@
   background: var(--primary-color);
   color: white;
   border: none;
-  padding: 10px 20px;
+  padding: 8px 12px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.82rem;
   font-weight: 600;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   white-space: nowrap;
-  min-width: 100px;
+  min-width: 80px;
 }
 
 .install-btn:hover:not(:disabled) {

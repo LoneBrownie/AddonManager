@@ -25,7 +25,7 @@
 .modal-header {
   background: var(--background-color);
   padding: 24px;
-  border-bottom: 1px solid var(--border-color);
+  /* border-bottom removed per global divider removal */
 }
 
 .modal-header h3 {
@@ -79,7 +79,7 @@
   gap: 12px;
   padding: 20px 24px;
   background: var(--surface-color);
-  border-top: 1px solid var(--border-color);
+  /* border-top removed per global divider removal */
 }
 
 /* Let existing .button styles handle look; ensure spacing matches */
