@@ -263,28 +263,32 @@ const ExistingAddonManager = ({ wowPath, existingAddons: propExistingAddons, onC
       <div className="existing-addon-manager">
         <div className="manager-header">
           <h2>Existing Addons</h2>
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="close-button"
-              title="Close"
-            >
-              ×
-            </button>
-          )}
+          <div className="manager-header-right">
+            <div className="manager-header-actions">
+              <button
+                onClick={handleScan}
+                disabled={scanning}
+                className="button primary header-scan-btn"
+                style={{ opacity: scanning ? 0.6 : 1 }}
+              >
+                {scanning ? 'Scanning...' : 'Scan Addons'}
+              </button>
+            </div>
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="close-button"
+                title="Close"
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="manager-content">
-          <div className="manager-header-controls">
-            <button
-              onClick={handleScan}
-              disabled={scanning}
-              className="button primary"
-              style={{ opacity: scanning ? 0.6 : 1 }}
-            >
-              {scanning ? 'Scanning...' : 'Scan Addons'}
-            </button>
-          </div>
+          {/* Move scan control into header actions for inline placement with Close */}
+          {/* scan control moved into header for inline placement */}
 
           {localExistingAddons.length === 0 ? (
             <div className="no-addons-message">

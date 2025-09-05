@@ -76,9 +76,15 @@ async function findAddonFoldersRecursive(searchPath, basePath) {
   
   try {
     const items = await fileSystem.readdir(searchPath);
+    // Filter out common archive metadata folders (macOS) and system files
+    const filteredItems = items.filter(i => {
+      const lower = i.name.toLowerCase();
+      if (lower === '__macosx' || lower === '_macosx' || lower === '.ds_store') return false;
+      return true;
+    });
     
     // Check if current directory contains .toc files
-    const hasTocFiles = items.some(item => 
+    const hasTocFiles = filteredItems.some(item => 
       item.isFile && item.name.endsWith('.toc')
     );
     
@@ -98,8 +104,10 @@ async function findAddonFoldersRecursive(searchPath, basePath) {
       }
     } else {
       // No .toc files here, search subdirectories
-      for (const item of items) {
+      for (const item of filteredItems) {
         if (item.isDirectory) {
+          const lower = item.name.toLowerCase();
+          if (lower === '__macosx' || lower === '_macosx' || lower === '.ds_store') continue;
           const subPath = pathUtils.join(searchPath, item.name);
           const subFolders = await findAddonFoldersRecursive(subPath, basePath);
           addonFolders.push(...subFolders);
@@ -498,8 +506,17 @@ export async function installAddon(repoUrl, release, customOptions = {}) {
     
     // Extract to temp directory and find addon folders
     await ensureDirectory(extractPath);
-    const addonFolderPaths = await extractZipAndGetAddonFolders(zipPath, extractPath);
-    
+    let addonFolderPaths = await extractZipAndGetAddonFolders(zipPath, extractPath);
+    // Remove common archive metadata directories (macOS) from the results
+    addonFolderPaths = addonFolderPaths.filter(p => {
+      const lower = p.replace(/\\/g, '/').toLowerCase();
+      // also filter out single-file markers like .ds_store
+      if (lower === '__macosx' || lower === '_macosx' || lower === '.ds_store' || lower.endsWith('/.ds_store')) return false;
+      // filter paths that begin with __macosx
+      if (lower.startsWith('__macosx/') || lower.startsWith('_macosx/')) return false;
+      return true;
+    });
+
     if (addonFolderPaths.length === 0) {
       throw new Error('No addon folders with .toc files found in the ZIP file');
     }
@@ -507,6 +524,11 @@ export async function installAddon(repoUrl, release, customOptions = {}) {
     // Copy addon folders to WoW addons directory
     const installedFolders = [];
     for (const addonFolderPath of addonFolderPaths) {
+      // Defensive skip for any extracted path that is just metadata
+      const pLower = addonFolderPath.replace(/\\/g, '/').toLowerCase();
+      if (pLower === '__macosx' || pLower === '_macosx' || pLower === '.ds_store') {
+        continue;
+      }
       const sourcePath = pathUtils.join(extractPath, addonFolderPath);
       let originalFolderName = pathUtils.basename(addonFolderPath);
       

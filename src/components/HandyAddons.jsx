@@ -20,6 +20,13 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
   const [handyAddons, setHandyAddons] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
   const [listError, setListError] = useState(null);
+  const [compactView, setCompactView] = useState(() => {
+    try {
+      return localStorage.getItem('handyAddonsCompact') === '1';
+    } catch (e) {
+      return false;
+    }
+  });
 
   const fetchHandyAddons = async () => {
     setLoadingList(true);
@@ -50,6 +57,14 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
   useEffect(() => {
     fetchHandyAddons();
   }, []);
+
+  const toggleCompact = () => {
+    setCompactView(prev => {
+      const next = !prev;
+      try { localStorage.setItem('handyAddonsCompact', next ? '1' : '0'); } catch (e) {}
+      return next;
+    });
+  };
 
   // Partition the curated list into Project Epoch addons and other 3.3.5a addons
   // Use explicit epochAddon boolean when provided, otherwise fall back to heuristics.
@@ -210,9 +225,9 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
   };
 
   return (
-    <div className="handy-addons">
+    <div className={`handy-addons ${compactView ? 'compact' : ''}`}>
     {/* refresh control moved into the filters row */}
-      <div className="category-filters">
+  <div className="category-filters">
         {CATEGORIES.map(category => (
           <button
             key={category}
@@ -222,6 +237,19 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
             {category}
           </button>
         ))}
+      </div>
+
+      <div className="handy-list-controls">
+        <div className="view-toggle-wrapper">
+          <button
+            className={`view-toggle ${compactView ? 'active' : ''}`}
+            onClick={toggleCompact}
+            title={compactView ? 'Switch to Card spacing' : 'Switch to List spacing'}
+            aria-pressed={compactView}
+          >
+            {compactView ? 'List' : 'Card'}
+          </button>
+        </div>
         <div className="add-addon-button-wrapper">
           <button className="refresh-list-btn" onClick={fetchHandyAddons} disabled={loadingList}>
             {loadingList ? 'Refreshing…' : 'Refresh Addons'}

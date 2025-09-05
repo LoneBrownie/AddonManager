@@ -30,8 +30,20 @@
   justify-content: space-between;
   align-items: center;
   padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
+  /* border-bottom removed per global divider removal */
   background: var(--surface-color);
+}
+
+/* Header actions (scan button) placed inline with the close button */
+.manager-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-scan-btn {
+  padding: 8px 14px;
+  min-width: auto;
 }
 
 .manager-header h2 {
@@ -67,7 +79,6 @@
   overflow-y: auto;
   background: var(--surface-color);
 }
-
 .scan-section {
   text-align: center;
   padding: 40px 20px;
@@ -82,6 +93,28 @@
   margin-bottom: 20px;
   font-size: 1.1rem;
   font-weight: 500;
+}
+
+/* Header right container holds header actions (scan) and the close button */
+.manager-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.manager-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-scan-btn {
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.close-button {
+  margin-left: 8px;
 }
 
 .error-message {
@@ -429,7 +462,7 @@
 .rescan-section {
   text-align: center;
   padding-top: 20px;
-  border-top: 1px solid var(--border-color);
+  /* border-top removed per global divider removal */
 }
 
 /* Responsive design */
@@ -560,10 +593,50 @@
 }
 
 .checkbox-input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--primary-color);
+  width: 18px;
+  height: 18px;
   cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-block;
+  vertical-align: middle;
+  background-color: var(--input-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  box-sizing: border-box;
+  position: relative;
+}
+
+/* Higher specificity to override native UA styles */
+input[type="checkbox"].checkbox-input {
+  background-color: var(--input-bg-color) !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure unchecked state shows the input-bg color */
+input[type="checkbox"].checkbox-input:not(:checked) {
+  background-color: var(--input-bg-color) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Checked state: fill with primary color and show white checkmark */
+.checkbox-input:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.checkbox-input:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 6px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .checkbox-text {
