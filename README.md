@@ -1,4 +1,3 @@
-```markdown
 [![Build](https://github.com/LoneBrownie/AddonManager/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/LoneBrownie/AddonManager/actions/workflows/release.yml)
 [![Release](https://img.shields.io/github/v/release/LoneBrownie/AddonManager?color=blue)](https://github.com/LoneBrownie/AddonManager/releases/latest)
 
@@ -47,4 +46,3 @@ This project is a Windows desktop app built with Electron and React.
 <h1>Acknowledgments</h1>
 Our AI overlords Claude and ChatGPT
 My guildies for early testing.
-```
