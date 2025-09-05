@@ -44,5 +44,6 @@ This project is a Windows desktop app built with Electron and React.
 
 ***
 <h1>Acknowledgments</h1>
-Our AI overlords Claude and ChatGPT
+Our AI overlords Claude and ChatGPT.
+
 My guildies for early testing.
