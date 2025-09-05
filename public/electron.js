@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs').promises;
+const fssync = require('fs');
 
 // Better development check - look for build folder and dev environment
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
@@ -19,7 +20,21 @@ function createWindow() {
     width: 1440,  // 1200 * 1.2 = 1440
     height: 960,  // 800 * 1.2 = 960
     autoHideMenuBar: true, // Hide the File/Edit/View/Window/Help menu bar
-    icon: path.join(__dirname, 'Logo.ico'), // Application icon
+    // Resolve icon path: prefer a Logo.ico next to this file, otherwise check repo assets (useful in dev)
+    icon: (function resolveIcon() {
+      try {
+        const candidates = [
+          path.join(__dirname, 'Logo.ico'),
+          path.join(__dirname, '..', 'assets', 'Logo.ico')
+        ];
+        for (const c of candidates) {
+          if (fssync.existsSync(c)) return c;
+        }
+      } catch (e) {
+        // ignore and let Electron use default
+      }
+      return undefined;
+    })(), // Application icon
     title: "Brownie's Addon Manager", // Set window title
     webPreferences: {
       // ✅ Security: Disable Node.js integration in renderer
