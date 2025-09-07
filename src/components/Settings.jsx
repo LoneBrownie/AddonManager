@@ -8,7 +8,7 @@ import AdminRestartModal from './AdminRestartModal';
 const electronAPI = window.electronAPI;
 
 function Settings({ alwaysExpanded = false, hideTitle = false }) {
-  const [settings, setSettings] = useState({ wowPath: '', tempPath: '' });
+  const [settings, setSettings] = useState({ wowPath: '', tempPath: '', downloadPriority: 'releases' });
   const [isOpen, setIsOpen] = useState(alwaysExpanded);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -103,6 +103,23 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
     setSuccess('');
   };
 
+  const handleDownloadPriorityChange = async (e) => {
+    const newPriority = e.target.value;
+    const newSettings = { ...settings, downloadPriority: newPriority };
+    setSettings(newSettings);
+    
+    try {
+      await saveSettings(newSettings);
+      setSuccess('Download priority updated successfully!');
+      setError('');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError('Failed to save download priority setting: ' + err.message);
+    }
+  };
+
   const handleAdminConfirm = async () => {
     setShowAdminModal(false);
     // Call into the secure electron API to restart elevated
@@ -170,6 +187,25 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
                 <code>{getAddonsPath()}</code>
               </div>
             )}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="download-priority">Download Priority</label>
+            <select
+              id="download-priority"
+              className="input"
+              value={settings.downloadPriority || 'releases'}
+              onChange={handleDownloadPriorityChange}
+            >
+              <option value="releases">Prefer Releases</option>
+              <option value="code">Prefer Latest Code</option>
+            </select>
+            <div className="setting-help">
+              <small>
+                <strong>Prefer Releases:</strong> Download official releases first, fall back to latest code if no releases exist.<br/>
+                <strong>Prefer Latest Code:</strong> Always download the latest code from the main branch.
+              </small>
+            </div>
           </div>
 
           {error && <div className="error">{error}</div>}

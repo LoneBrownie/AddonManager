@@ -243,8 +243,12 @@ export function useAddons() {
         
         setAddons(prev => sortAddonsAlphabetically([...prev, installedAddon]));
       } else {
+        // Get download priority from settings
+        const settings = await getSettings();
+        const downloadPriority = settings.downloadPriority || 'releases';
+        
         // Get release info from API, passing preferred asset name if specified
-        const release = await getLatestRelease(repoUrl, customOptions.preferredAssetName);
+        const release = await getLatestRelease(repoUrl, customOptions.preferredAssetName, downloadPriority);
         
         // Install the addon
         const installedAddon = await installAddon(repoUrl, release, customOptions);

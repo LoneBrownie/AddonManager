@@ -168,7 +168,8 @@ async function getSettings() {
   
   const defaultSettings = {
     wowPath: '',
-    tempPath: pathUtils.join(process.env.TEMP || 'C:\\temp', 'wow-addon-manager')
+    tempPath: pathUtils.join(process.env.TEMP || 'C:\\temp', 'wow-addon-manager'),
+    downloadPriority: 'releases' // 'releases' or 'code'
   };
   
   // Save default settings
@@ -745,7 +746,9 @@ export async function updateAddon(addon) {
     };
   }
   
-  const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName);
+  const settings = await getSettings();
+  const downloadPriority = settings.downloadPriority || 'releases';
+  const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName, downloadPriority);
   
   if (release.version === addon.currentVersion) {
     return {
@@ -798,7 +801,9 @@ export async function updateAddon(addon) {
  * @returns {Promise<Object>} Updated addon object
  */
 export async function forceUpdateImportedAddon(addon) {
-  const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName);
+  const settings = await getSettings();
+  const downloadPriority = settings.downloadPriority || 'releases';
+  const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName, downloadPriority);
   
   // Preserve custom options from the original addon
   const customOptions = {
@@ -829,12 +834,14 @@ export async function forceUpdateImportedAddon(addon) {
  */
 export async function checkForUpdates(addons) {
   console.log(`Checking for updates for ${addons.length} addons...`);
+  const settings = await getSettings();
+  const downloadPriority = settings.downloadPriority || 'releases';
   const updatedAddons = [];
   
   for (const addon of addons) {
     try {
       console.log(`Checking updates for: ${addon.name} (${addon.repoUrl})`);
-      const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName);
+      const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName, downloadPriority);
       const needsUpdate = isUpdateAvailable(addon.currentVersion, release.version);
       
       console.log(`${addon.name}: Current=${addon.currentVersion}, Latest=${release.version}, NeedsUpdate=${needsUpdate}`);
@@ -1467,7 +1474,9 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl) {
     }
 
     // Get release info from API
-    const release = await getLatestRelease(approvedRepoUrl);
+    const settings = await getSettings();
+    const downloadPriority = settings.downloadPriority || 'releases';
+    const release = await getLatestRelease(approvedRepoUrl, null, downloadPriority);
     
     // Determine addon name - prefer special cases, then .toc title, then repo name
     let addonName;

@@ -220,9 +220,17 @@ async function getGitHubCodeFallback(repoInfo) {
  * Get the latest release from GitHub
  * @param {Object} repoInfo - Repository information from parseRepoFromUrl
  * @param {string} preferredAssetName - Optional preferred asset name to download
+ * @param {string} downloadPriority - 'releases' or 'code' priority
  * @returns {Promise<Object>} - Release information
  */
-async function getGitHubLatestRelease(repoInfo, preferredAssetName = null) {
+async function getGitHubLatestRelease(repoInfo, preferredAssetName = null, downloadPriority = 'releases') {
+  // If user prefers code, go straight to code fallback
+  if (downloadPriority === 'code') {
+    console.log(`User prefers code priority, getting latest code for ${repoInfo.owner}/${repoInfo.repo}`);
+    return await getGitHubCodeFallback(repoInfo);
+  }
+
+  // Otherwise, try releases first (existing logic)
   let response;
   try {
     response = await fetch(`${repoInfo.apiUrl}/releases/latest`);
@@ -299,9 +307,17 @@ async function getGitHubLatestRelease(repoInfo, preferredAssetName = null) {
 /**
  * Get the latest release from GitLab
  * @param {Object} repoInfo - Repository information from parseRepoFromUrl
+ * @param {string} downloadPriority - 'releases' or 'code' priority
  * @returns {Promise<Object>} - Release information
  */
-async function getGitLabLatestRelease(repoInfo) {
+async function getGitLabLatestRelease(repoInfo, downloadPriority = 'releases') {
+  // If user prefers code, go straight to code fallback
+  if (downloadPriority === 'code') {
+    console.log(`User prefers code priority, getting latest code for GitLab ${repoInfo.owner}/${repoInfo.repo}`);
+    return await getGitLabCodeFallback(repoInfo);
+  }
+
+  // Otherwise, try releases first (existing logic)
   const cacheKey = `gitlab:release:${repoInfo.owner}/${repoInfo.repo}`;
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
@@ -452,10 +468,11 @@ async function getGitLabCodeFallback(repoInfo) {
  * Get the latest release from any supported platform
  * @param {string} repoUrl - Repository URL
  * @param {string} preferredAssetName - Optional preferred asset name for download
+ * @param {string} downloadPriority - 'releases' or 'code' priority
  * @returns {Promise<Object>} - Release information
  */
-export async function getLatestRelease(repoUrl, preferredAssetName = null) {
-  const cacheKey = `latest:${repoUrl}:${preferredAssetName || 'default'}`;
+export async function getLatestRelease(repoUrl, preferredAssetName = null, downloadPriority = 'releases') {
+  const cacheKey = `latest:${repoUrl}:${preferredAssetName || 'default'}:${downloadPriority}`;
   const cached = cacheGet(cacheKey);
   if (cached) return cached;
 
@@ -464,9 +481,9 @@ export async function getLatestRelease(repoUrl, preferredAssetName = null) {
     
     let result;
     if (repoInfo.platform === 'github') {
-      result = await getGitHubLatestRelease(repoInfo, preferredAssetName);
+      result = await getGitHubLatestRelease(repoInfo, preferredAssetName, downloadPriority);
     } else if (repoInfo.platform === 'gitlab') {
-      result = await getGitLabLatestRelease(repoInfo);
+      result = await getGitLabLatestRelease(repoInfo, downloadPriority);
     } else {
       throw new Error(`Unsupported platform: ${repoInfo.platform}`);
     }
