@@ -857,6 +857,16 @@ export async function checkForUpdates(addons) {
   for (const addon of addons) {
     try {
       console.log(`Checking updates for: ${addon.name} (${addon.repoUrl})`);
+  // If updates are disabled for this addon, don't perform network checks or update lastChecked
+  if (addon.allowUpdates === false) {
+    console.log(`Skipping update check for ${addon.name} because allowUpdates is false`);
+    // Preserve lastChecked as-is and don't modify addon metadata related to updates
+    updatedAddons.push({
+      ...addon
+    });
+    continue;
+  }
+
   // Respect per-addon priority when choosing which source to query first
   const perAddonPriority = addon.downloadPriority || downloadPriority;
 
@@ -868,7 +878,7 @@ export async function checkForUpdates(addons) {
         console.log(`Skipping ${addon.name} - checked recently (${addon.lastChecked})`);
         updatedAddons.push({
           ...addon,
-          lastChecked: new Date().toISOString()
+          lastChecked: addon.lastChecked
         });
         continue;
       }

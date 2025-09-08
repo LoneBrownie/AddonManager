@@ -370,13 +370,12 @@ export function useAddons() {
       
       console.log('Update check completed, processing results...');
       
-      // Combine checked addons with non-updateable addons (preserving their current state)
+      // Combine checked addons with non-updateable addons (preserving their current state and lastChecked)
       const allAddons = [
         ...updatedAddons,
         ...addonsWithoutUpdates.map(addon => ({
           ...addon,
-          needsUpdate: false, // Force no updates for these addons
-          lastChecked: new Date().toISOString()
+          needsUpdate: false // Force no updates for these addons; preserve lastChecked
         }))
       ];
       
