@@ -29,6 +29,7 @@ function App() {
     checkAddonExistenceManually,
     isAddonUpdating,
     toggleUpdatePermission,
+  setAddonDownloadPriority,
     loading,
     error
   } = useAddons();
@@ -39,6 +40,9 @@ function App() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [adminRestartMessage, setAdminRestartMessage] = useState('');
   const [activeTab, setActiveTab] = useState('addons'); // 'addons', 'get-addons', 'settings'
+
+  // Count addons that currently have updates available
+  const updatableCount = addons.filter(a => a.needsUpdate).length;
 
   // Check for admin requirements on startup
   useEffect(() => {
@@ -144,6 +148,16 @@ function App() {
                 >
                   Import Existing Addons
                 </button>
+                {updatableCount > 0 && (
+                  <button
+                    className="button success"
+                    onClick={updateAllAddons}
+                    disabled={loading}
+                    title={`Update all addons (${updatableCount})`}
+                  >
+                    {loading ? 'Updating...' : `Update All (${updatableCount})`}
+                  </button>
+                )}
                 <button
                   className="button primary"
                   onClick={checkForUpdates}
@@ -162,6 +176,7 @@ function App() {
               onCheckExistence={checkAddonExistenceManually}
               onRemoveAddon={removeAddon}
               onToggleUpdatePermission={toggleUpdatePermission}
+              onSetDownloadPriority={setAddonDownloadPriority}
               isAddonUpdating={isAddonUpdating}
               loading={loading}
               hideHeader={true}

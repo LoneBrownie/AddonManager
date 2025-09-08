@@ -63,6 +63,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   }
   ,
+  // Show native context menu and return the selected id
+  showContextMenu: (items) => ipcRenderer.invoke('show-context-menu', items),
   // Fetch release/tag info via main process (avoids CORS)
   fetchReleaseWeb: (repoUrl) => ipcRenderer.invoke('fetch-release-web', repoUrl)
   ,

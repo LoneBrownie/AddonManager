@@ -10,6 +10,7 @@ function AddonList({
   onCheckExistence,
   onRemoveAddon, 
   onToggleUpdatePermission,
+  onSetDownloadPriority,
   isAddonUpdating,
   loading,
   hideHeader = false,
@@ -84,6 +85,7 @@ function AddonList({
             onUpdate={() => onUpdateAddon(addon.id)}
             onRemove={() => onRemoveAddon(addon.id)}
             onToggleUpdatePermission={() => onToggleUpdatePermission(addon.id)}
+            onSetDownloadPriority={onSetDownloadPriority}
             isUpdating={isAddonUpdating ? isAddonUpdating(addon.id) : false}
             loading={loading}
           />

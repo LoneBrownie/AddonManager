@@ -1,0 +1,74 @@
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content.confirm-modal {
+  background: var(--surface-color);
+  padding: 0;
+  border-radius: 10px;
+  width: 480px;
+  max-width: calc(100% - 48px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.confirm-modal .modal-header {
+  background: var(--background-color);
+  padding: 12px 16px;
+}
+
+.confirm-modal .modal-header h3 {
+  color: var(--text-primary-color);
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.confirm-modal .modal-body {
+  padding: 12px 18px;
+  color: var(--text-secondary-color);
+  background: var(--surface-color);
+  font-size: 14px;
+  line-height: 1.4;
+  /* Prevent inherited large min-height from other modal styles */
+  min-height: auto;
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.modal-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 0;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--surface-color);
+}
+
+.modal-footer .button {
+  min-width: 90px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+@media (max-width: 600px) {
+  .modal-content.confirm-modal { width: calc(100% - 40px); }
+  .confirm-modal .modal-body { padding: 12px 14px; font-size: 13px; }
+  .confirm-modal .modal-header h3 { font-size: 18px; }
+}
