@@ -7,14 +7,14 @@ Provides a few addons for 3.3.5a as one-click installs.
 Built using React & Electron
 
 ***
-<h1>Known Issues</h1>
+### Known Issues
 
 - If your WoW directory is in Program Files then you will need to run this as admin.
 
 Please create a github issue for any problems you find and I'll take a look at some point.
 
 ***
-<h1>Installation</h1>
+### Installation
 
 Download the latest Windows installer from the releases page and run it:
 
@@ -22,7 +22,7 @@ Download the latest Windows installer from the releases page and run it:
 
 ***
 
-<h1>Screenshots</h1>
+### Screenshots
 
 ![Brownie's Addon Manager](docs/images/MyAddonPage.png)
 
@@ -38,7 +38,14 @@ Download the latest Windows installer from the releases page and run it:
 
 
 ***
-<h1>Acknowledgments</h1>
+### Acknowledgments
 Our AI overlords Claude and ChatGPT.
 
 My guildies for early testing.
+
+***
+
+### Support Development
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20Development-orange?style=for-the-badge&logo=buy-me-a-coffee)](https://buymeacoffee.com/LoneBrownie)
+
+If you find this addon manager helpful, consider [buying me a coffee](https://buymeacoffee.com/LoneBrownie).
