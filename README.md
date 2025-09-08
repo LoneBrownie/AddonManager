@@ -1,11 +1,10 @@
-[![Build](https://github.com/LoneBrownie/AddonManager/actions/workflows/release.yml/badge.svg?branch=main)](https://github.com/LoneBrownie/AddonManager/actions/workflows/release.yml)
-[![Release](https://img.shields.io/github/v/release/LoneBrownie/AddonManager?color=blue)](https://github.com/LoneBrownie/AddonManager/releases/latest)
-
 <h1>About</h1>
 I wanted a simple application to help with updating addons for Project Epoch so I used claude to create this.
 
 It currently allows installing/updating of addons from both github and gitlab. 
 Provides a few addons for 3.3.5a as one-click installs.
+
+Built using React & Electron
 
 ***
 <h1>Known Issues</h1>
@@ -23,15 +22,11 @@ Download the latest Windows installer from the releases page and run it:
 
 ***
 
-<h1>Tech stack</h1>
-
-This project is a Windows desktop app built with Electron and React. 
-
-***
-
 <h1>Screenshots</h1>
 
 ![Brownie's Addon Manager](docs/images/MyAddonPage.png)
+
+![Brownie's Addon Manager](docs/images/RightClickMenu.png)
 
 ![Brownie's Addon Manager](docs/images/ExportAddonList.png)
 
