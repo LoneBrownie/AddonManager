@@ -8,7 +8,7 @@ import AdminRestartModal from './AdminRestartModal';
 const electronAPI = window.electronAPI;
 
 function Settings({ alwaysExpanded = false, hideTitle = false }) {
-  const [settings, setSettings] = useState({ wowPath: '', tempPath: '' });
+  const [settings, setSettings] = useState({ wowPath: '', tempPath: '', downloadPriority: 'releases' });
   const [isOpen, setIsOpen] = useState(alwaysExpanded);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -171,6 +171,8 @@ function Settings({ alwaysExpanded = false, hideTitle = false }) {
               </div>
             )}
           </div>
+
+          {/* Download priority is now a per-addon preference and can be set per addon via its context menu. */}
 
           {error && <div className="error">{error}</div>}
           {success && <div className="success">{success}</div>}

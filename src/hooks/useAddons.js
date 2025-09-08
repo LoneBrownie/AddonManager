@@ -235,6 +235,9 @@ export function useAddons() {
       // Handle direct download case
       if (customOptions.isDirectDownload) {
         // For direct downloads, we need to handle them differently
+  // Ensure per-addon download priority is preserved (fallback to global)
+  const settings = await getSettings();
+  customOptions.downloadPriority = customOptions.downloadPriority || settings.downloadPriority || 'releases';
         const installedAddon = await installAddon(repoUrl, {
           downloadUrl: repoUrl,
           version: 'latest',
@@ -243,11 +246,30 @@ export function useAddons() {
         
         setAddons(prev => sortAddonsAlphabetically([...prev, installedAddon]));
       } else {
-        // Get release info from API, passing preferred asset name if specified
-        const release = await getLatestRelease(repoUrl, customOptions.preferredAssetName);
-        
-        // Install the addon
-        const installedAddon = await installAddon(repoUrl, release, customOptions);
+  // Determine download priority handling
+  const settings = await getSettings();
+  const defaultPriority = settings.downloadPriority || 'releases';
+
+  // Detect whether caller explicitly provided a downloadPriority property
+  const hasExplicitPriority = Object.prototype.hasOwnProperty.call(customOptions, 'downloadPriority');
+
+  // Fetch release info. If caller provided an explicit preference, pass it; otherwise let the API client use its default.
+  const release = await getLatestRelease(repoUrl, customOptions.preferredAssetName, hasExplicitPriority ? customOptions.downloadPriority : undefined);
+
+  // Decide final per-addon download priority:
+  // - If explicit, keep it (even if it's falsy).
+  // - If not explicit and the release source is a branch, default to 'code'.
+  // - Otherwise use the global/default priority.
+  if (hasExplicitPriority) {
+    // leave customOptions.downloadPriority as provided
+  } else if (release && release.source === 'branch') {
+    customOptions.downloadPriority = 'code';
+  } else {
+    customOptions.downloadPriority = defaultPriority;
+  }
+
+  // Install the addon (customOptions includes downloadPriority)
+  const installedAddon = await installAddon(repoUrl, release, customOptions);
         
         setAddons(prev => sortAddonsAlphabetically([...prev, installedAddon]));
       }
@@ -348,13 +370,12 @@ export function useAddons() {
       
       console.log('Update check completed, processing results...');
       
-      // Combine checked addons with non-updateable addons (preserving their current state)
+      // Combine checked addons with non-updateable addons (preserving their current state and lastChecked)
       const allAddons = [
         ...updatedAddons,
         ...addonsWithoutUpdates.map(addon => ({
           ...addon,
-          needsUpdate: false, // Force no updates for these addons
-          lastChecked: new Date().toISOString()
+          needsUpdate: false // Force no updates for these addons; preserve lastChecked
         }))
       ];
       
@@ -579,6 +600,9 @@ export function useAddons() {
           latestSource: release.source || 'unknown',
           latestBranch: release.branch || 'main',
           latestCommit: release.commit || null
+          ,
+          // Default download priority to 'code' when the source is a branch unless explicitly specified
+          downloadPriority: options.downloadPriority || (release && release.source === 'branch' ? 'code' : undefined)
         };
         
         setAddons(prev => sortAddonsAlphabetically([...prev, managedAddon]));
@@ -718,6 +742,20 @@ export function useAddons() {
     })));
   }, []);
 
+  // Set per-addon download priority ('releases' or 'code')
+  const setAddonDownloadPriority = useCallback((addonId, priority) => {
+    if (!['releases', 'code'].includes(priority)) return;
+    setAddons(prev => sortAddonsAlphabetically(prev.map(addon => {
+      if (addon.id === addonId) {
+        return {
+          ...addon,
+          downloadPriority: priority
+        };
+      }
+      return addon;
+    })));
+  }, []);
+
   return {
     addons,
     addAddon,
@@ -735,6 +773,7 @@ export function useAddons() {
     checkAddonExistenceManually,
     isAddonUpdating,
     toggleUpdatePermission,
+  setAddonDownloadPriority,
     loading,
     error
   };

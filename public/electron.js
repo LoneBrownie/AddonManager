@@ -662,6 +662,44 @@ ipcMain.handle('get-app-version', async () => {
   return app.getVersion();
 });
 
+// Show a native context menu and return the selected id
+ipcMain.handle('show-context-menu', async (event, items) => {
+  try {
+    if (!Array.isArray(items)) throw new Error('Invalid menu items');
+    const { Menu } = require('electron');
+
+    // Build a radio menu so the current choice is visually checked
+    const template = items.map(it => ({
+      label: String(it.label || ''),
+      type: 'radio',
+      checked: !!it.checked,
+      id: it.id,
+      click: () => {
+        // No-op here; we'll resolve via promise mapping below
+      }
+    }));
+
+    return await new Promise((resolve) => {
+      // Attach click handlers that resolve with the selected id
+      const mapped = template.map((t, idx) => ({
+        label: t.label,
+        type: 'radio',
+        checked: !!items[idx].checked,
+        click: () => resolve(items[idx].id)
+      }));
+
+      const menu = Menu.buildFromTemplate(mapped);
+      menu.popup({ window: BrowserWindow.fromWebContents(event.sender) });
+
+      // If the menu is dismissed without selection, resolve null after a short timeout
+      setTimeout(() => resolve(null), 5000);
+    });
+  } catch (error) {
+    console.error('show-context-menu error:', error);
+    return null;
+  }
+});
+
 ipcMain.handle('check-for-updates', async () => {
   if (isDev) {
     return { message: 'Updates not available in development mode' };

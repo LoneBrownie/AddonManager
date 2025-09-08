@@ -168,7 +168,8 @@ async function getSettings() {
   
   const defaultSettings = {
     wowPath: '',
-    tempPath: pathUtils.join(process.env.TEMP || 'C:\\temp', 'wow-addon-manager')
+    tempPath: pathUtils.join(process.env.TEMP || 'C:\\temp', 'wow-addon-manager'),
+    downloadPriority: 'releases' // 'releases' or 'code'
   };
   
   // Save default settings
@@ -696,7 +697,11 @@ export async function installAddon(repoUrl, release, customOptions = {}) {
       console.error('Failed to clean up temp files:', error);
     }
     
-    return {
+  // Ensure we persist a sensible per-addon download priority.
+  // If caller provided one, keep it. If not, prefer 'code' for branch-sourced releases.
+  const finalDownloadPriority = customOptions.downloadPriority || (release && release.source === 'branch' ? 'code' : undefined);
+
+  return {
       id: addonId,
       name: mainTocData?.title || repoInfo.repo,
       repoUrl,
@@ -710,6 +715,8 @@ export async function installAddon(repoUrl, release, customOptions = {}) {
       source: release.source,
       branch: release.branch,
       commit: release.commit,
+    // Preserve per-addon download priority if provided during install
+  downloadPriority: finalDownloadPriority,
       customFolderName: customOptions.customFolderName,
       isDirectDownload: customOptions.isDirectDownload,
       preferredAssetName: customOptions.preferredAssetName,
@@ -745,7 +752,10 @@ export async function updateAddon(addon) {
     };
   }
   
-  const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName);
+  const settings = await getSettings();
+  // Allow per-addon override of download priority; fall back to global setting
+  const downloadPriority = addon.downloadPriority || settings.downloadPriority || 'releases';
+  const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName, downloadPriority);
   
   if (release.version === addon.currentVersion) {
     return {
@@ -756,7 +766,7 @@ export async function updateAddon(addon) {
   
   // For imported existing addons, check if update is available but allow full update
   if (addon.importedExisting) {
-    const needsUpdate = isUpdateAvailable(addon.currentVersion || 'Imported', release.version);
+  const needsUpdate = isUpdateAvailable(addon.currentVersion || 'Imported', release.version, downloadPriority);
     
     // If no update needed, just return metadata update
     if (!needsUpdate) {
@@ -778,6 +788,8 @@ export async function updateAddon(addon) {
     isDirectDownload: addon.isDirectDownload,
     preferredAssetName: addon.preferredAssetName
   };
+  // Preserve per-addon download preference when performing an update
+  if (addon.downloadPriority) customOptions.downloadPriority = addon.downloadPriority;
   
   // Install the new version (this will overwrite the old one)
   const updatedAddon = await installAddon(addon.repoUrl, release, customOptions);
@@ -787,6 +799,8 @@ export async function updateAddon(addon) {
     ...updatedAddon,
     id: addon.id,
     installPath: addon.installPath,
+  // Preserve per-addon download preference
+  downloadPriority: addon.downloadPriority,
     customFolderName: addon.customFolderName,
     isDirectDownload: addon.isDirectDownload
   };
@@ -798,7 +812,9 @@ export async function updateAddon(addon) {
  * @returns {Promise<Object>} Updated addon object
  */
 export async function forceUpdateImportedAddon(addon) {
-  const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName);
+  const settings = await getSettings();
+  const downloadPriority = addon.downloadPriority || settings.downloadPriority || 'releases';
+  const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName, downloadPriority);
   
   // Preserve custom options from the original addon
   const customOptions = {
@@ -806,6 +822,7 @@ export async function forceUpdateImportedAddon(addon) {
     isDirectDownload: addon.isDirectDownload,
     preferredAssetName: addon.preferredAssetName
   };
+  if (addon.downloadPriority) customOptions.downloadPriority = addon.downloadPriority;
   
   // Install the new version (this will overwrite the old one)
   const updatedAddon = await installAddon(addon.repoUrl, release, customOptions);
@@ -815,6 +832,8 @@ export async function forceUpdateImportedAddon(addon) {
     ...updatedAddon,
     id: addon.id,
     installPath: addon.installPath,
+  // Preserve per-addon download preference
+  downloadPriority: addon.downloadPriority,
     customFolderName: addon.customFolderName,
     isDirectDownload: addon.isDirectDownload,
     // Remove importedExisting flag since it's now a fresh install
@@ -829,13 +848,48 @@ export async function forceUpdateImportedAddon(addon) {
  */
 export async function checkForUpdates(addons) {
   console.log(`Checking for updates for ${addons.length} addons...`);
+  const settings = await getSettings();
+  const downloadPriority = settings.downloadPriority || 'releases';
   const updatedAddons = [];
+  // Minimum interval between network checks for a single addon (ms)
+  const MIN_CHECK_INTERVAL = 30 * 1000; // 30 seconds
   
   for (const addon of addons) {
     try {
       console.log(`Checking updates for: ${addon.name} (${addon.repoUrl})`);
-      const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName);
-      const needsUpdate = isUpdateAvailable(addon.currentVersion, release.version);
+  // If updates are disabled for this addon, don't perform network checks or update lastChecked
+  if (addon.allowUpdates === false) {
+    console.log(`Skipping update check for ${addon.name} because allowUpdates is false`);
+    // Preserve lastChecked as-is and don't modify addon metadata related to updates
+    updatedAddons.push({
+      ...addon
+    });
+    continue;
+  }
+
+  // Respect per-addon priority when choosing which source to query first
+  const perAddonPriority = addon.downloadPriority || downloadPriority;
+
+  // If we checked this addon recently, skip network call to avoid excessive requests
+  if (addon.lastChecked) {
+    try {
+      const last = Date.parse(addon.lastChecked);
+      if (!isNaN(last) && (Date.now() - last) < MIN_CHECK_INTERVAL) {
+        console.log(`Skipping ${addon.name} - checked recently (${addon.lastChecked})`);
+        updatedAddons.push({
+          ...addon,
+          lastChecked: addon.lastChecked
+        });
+        continue;
+      }
+    } catch (e) {
+      // ignore parse errors and continue
+    }
+  }
+
+  // Query only the preferred source first to reduce extra fallbacks
+  const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName, perAddonPriority);
+  const needsUpdate = isUpdateAvailable(addon.currentVersion, release.version, perAddonPriority);
       
       console.log(`${addon.name}: Current=${addon.currentVersion}, Latest=${release.version}, NeedsUpdate=${needsUpdate}`);
       
@@ -897,7 +951,7 @@ export function compareVersions(version1, version2) {
  * @param {string} latestVersion
  * @returns {boolean} true if an update is available
  */
-function isUpdateAvailable(currentVersion, latestVersion) {
+function isUpdateAvailable(currentVersion, latestVersion, downloadPriority = 'releases') {
   if (!currentVersion && latestVersion) return true;
   if (!latestVersion) return false;
 
@@ -953,18 +1007,24 @@ function isUpdateAvailable(currentVersion, latestVersion) {
       }
     }
     
-    // If current is date-sha and latest is semver, prefer semver
+    // If current is date-sha and latest is semver, prefer semver (release wins)
     if (currentIsDateSha && latestIsSemver) {
       console.log(`  ✓ Update available: Current is date-sha (${currentVersion}), latest is release (${latestVersion})`);
       return true;
     }
-    
-    // If current is semver and latest is date-sha, no update needed (prefer releases)
+
+    // If current is semver and latest is date-sha, behavior depends on user preference.
+    // By default (releases), prefer semver (no update). If user prefers code, treat
+    // the date-sha (newer commits) as an update and return true.
     if (currentIsSemver && latestIsDateSha) {
+      if (downloadPriority === 'code') {
+        console.log(`  ✓ Update available (user prefers code): Current is release (${currentVersion}), latest is date-sha (${latestVersion})`);
+        return true;
+      }
       console.log(`  ✓ No update: Current is release (${currentVersion}), latest is date-sha (${latestVersion})`);
       return false;
     }
-    
+
     // If current is branch and latest is date-sha, update available
     if (currentIsBranch && latestIsDateSha) {
       console.log(`  ✓ Update available: Current is branch (${currentVersion}), latest is date-sha (${latestVersion})`);
@@ -1459,7 +1519,7 @@ async function suggestRepositories(tocData, folderName) {
  * @param {string} approvedRepoUrl - User-approved repository URL
  * @returns {Promise<Object>} Managed addon object
  */
-export async function addExistingAddon(existingAddon, approvedRepoUrl) {
+export async function addExistingAddon(existingAddon, approvedRepoUrl, options = {}) {
   try {
     // Validate repository URL
     if (!approvedRepoUrl) {
@@ -1467,7 +1527,9 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl) {
     }
 
     // Get release info from API
-    const release = await getLatestRelease(approvedRepoUrl);
+    const settings = await getSettings();
+    const downloadPriority = settings.downloadPriority || 'releases';
+    const release = await getLatestRelease(approvedRepoUrl, null, downloadPriority);
     
     // Determine addon name - prefer special cases, then .toc title, then repo name
     let addonName;
@@ -1500,6 +1562,10 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl) {
       currentVersion: 'Imported', // Always set to Imported for imported addons
       latestVersion: release.version,
       needsUpdate: true, // Allow updates for imported addons
+      // Per-addon preference defaults to passed option or current global setting at import time
+      downloadPriority: options.downloadPriority || settings.downloadPriority || 'releases',
+      // Respect explicit allowUpdates option when provided
+      allowUpdates: options.allowUpdates !== undefined ? options.allowUpdates : true,
       lastUpdated: new Date().toISOString(),
       installedFolders: existingAddon.isGrouped ? existingAddon.relatedFolders : [existingAddon.folderName],
       tocData: existingAddon.tocData,

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './AddonListItem.css';
 import { sanitizeTocTitle } from '../services/addon-manager';
+import ConfirmModal from './ConfirmModal';
 
-function AddonListItem({ addon, onUpdate, onRemove, onToggleUpdatePermission, isUpdating, loading }) {
+function AddonListItem({ addon, onUpdate, onRemove, onToggleUpdatePermission, onSetDownloadPriority, isUpdating, loading }) {
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown';
     try {
@@ -35,10 +37,35 @@ function AddonListItem({ addon, onUpdate, onRemove, onToggleUpdatePermission, is
     }
   };
 
+  // Context menu for per-addon download priority
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    // Build a simple custom menu using browser prompt as fallback
+    // Prefer building a native menu in Electron; here we use a simple confirm prompt sequence
+    if (window.electronAPI && window.electronAPI.showContextMenu) {
+      // If the preload exposes a native menu helper, use it and pass checked state
+      const items = [
+        { label: 'Prefer Releases', id: 'releases', checked: (addon.downloadPriority || 'releases') === 'releases' },
+        { label: 'Prefer Latest Code', id: 'code', checked: (addon.downloadPriority || 'releases') === 'code' }
+      ];
+
+      window.electronAPI.showContextMenu(items).then(choice => {
+        if (choice && onSetDownloadPriority) onSetDownloadPriority(addon.id, choice);
+      }).catch(() => {});
+    } else {
+      // Web fallback: prompt user
+      const choice = window.prompt('Download preference for this addon (releases|code):', addon.downloadPriority || 'releases');
+      if (choice && onSetDownloadPriority) {
+        const normalized = choice.trim() === 'code' ? 'code' : 'releases';
+        onSetDownloadPriority(addon.id, normalized);
+      }
+    }
+  };
+
   const displayName = addon.tocData && addon.tocData.title ? addon.tocData.title : addon.name;
 
   return (
-    <div className={`addon-list-item ${addon.needsUpdate ? 'needs-update' : ''}`}>
+  <div className={`addon-list-item ${addon.needsUpdate ? 'needs-update' : ''}`} onContextMenu={handleContextMenu}>
       <div className="addon-main-info">
         <div className="addon-name-section">
           <h3 className="addon-name" title={sanitizeTocTitle(displayName) || addon.name}>
@@ -117,12 +144,20 @@ function AddonListItem({ addon, onUpdate, onRemove, onToggleUpdatePermission, is
         
         <button
           className="button danger small"
-          onClick={onRemove}
+          onClick={() => setShowConfirmDelete(true)}
           disabled={loading}
           title="Remove addon and delete all files"
         >
           Delete
         </button>
+        {showConfirmDelete && (
+          <ConfirmModal
+            title={`Delete ${addon.name}?`}
+            message={`This will permanently delete ${addon.name} from disk and remove it from the manager. Are you sure?`}
+            onCancel={() => setShowConfirmDelete(false)}
+            onConfirm={() => { setShowConfirmDelete(false); onRemove(); }}
+          />
+        )}
       </div>
     </div>
   );
