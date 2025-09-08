@@ -235,9 +235,8 @@ export function useAddons() {
       // Handle direct download case
       if (customOptions.isDirectDownload) {
         // For direct downloads, we need to handle them differently
-  // Ensure per-addon download priority is preserved (fallback to global)
-  const settings = await getSettings();
-  customOptions.downloadPriority = customOptions.downloadPriority || settings.downloadPriority || 'releases';
+  // Ensure per-addon download priority is preserved (default to 'releases')
+  customOptions.downloadPriority = customOptions.downloadPriority || 'releases';
         const installedAddon = await installAddon(repoUrl, {
           downloadUrl: repoUrl,
           version: 'latest',
@@ -246,10 +245,6 @@ export function useAddons() {
         
         setAddons(prev => sortAddonsAlphabetically([...prev, installedAddon]));
       } else {
-  // Determine download priority handling
-  const settings = await getSettings();
-  const defaultPriority = settings.downloadPriority || 'releases';
-
   // Detect whether caller explicitly provided a downloadPriority property
   const hasExplicitPriority = Object.prototype.hasOwnProperty.call(customOptions, 'downloadPriority');
 
@@ -258,14 +253,11 @@ export function useAddons() {
 
   // Decide final per-addon download priority:
   // - If explicit, keep it (even if it's falsy).
-  // - If not explicit and the release source is a branch, default to 'code'.
-  // - Otherwise use the global/default priority.
+  // - Otherwise default to 'releases'.
   if (hasExplicitPriority) {
     // leave customOptions.downloadPriority as provided
-  } else if (release && release.source === 'branch') {
-    customOptions.downloadPriority = 'code';
   } else {
-    customOptions.downloadPriority = defaultPriority;
+    customOptions.downloadPriority = 'releases';
   }
 
   // Install the addon (customOptions includes downloadPriority)
@@ -601,8 +593,8 @@ export function useAddons() {
           latestBranch: release.branch || 'main',
           latestCommit: release.commit || null
           ,
-          // Default download priority to 'code' when the source is a branch unless explicitly specified
-          downloadPriority: options.downloadPriority || (release && release.source === 'branch' ? 'code' : undefined)
+          // Use user's global download priority preference unless explicitly specified
+          downloadPriority: options.downloadPriority || undefined
         };
         
         setAddons(prev => sortAddonsAlphabetically([...prev, managedAddon]));

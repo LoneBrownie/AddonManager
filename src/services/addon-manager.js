@@ -697,9 +697,8 @@ export async function installAddon(repoUrl, release, customOptions = {}) {
       console.error('Failed to clean up temp files:', error);
     }
     
-  // Ensure we persist a sensible per-addon download priority.
-  // If caller provided one, keep it. If not, prefer 'code' for branch-sourced releases.
-  const finalDownloadPriority = customOptions.downloadPriority || (release && release.source === 'branch' ? 'code' : undefined);
+  // Use the provided download priority or let the global setting take precedence
+  const finalDownloadPriority = customOptions.downloadPriority;
 
   return {
       id: addonId,
@@ -752,9 +751,8 @@ export async function updateAddon(addon) {
     };
   }
   
-  const settings = await getSettings();
-  // Allow per-addon override of download priority; fall back to global setting
-  const downloadPriority = addon.downloadPriority || settings.downloadPriority || 'releases';
+  // Use per-addon download priority, defaulting to 'releases'
+  const downloadPriority = addon.downloadPriority || 'releases';
   const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName, downloadPriority);
   
   if (release.version === addon.currentVersion) {
@@ -812,8 +810,7 @@ export async function updateAddon(addon) {
  * @returns {Promise<Object>} Updated addon object
  */
 export async function forceUpdateImportedAddon(addon) {
-  const settings = await getSettings();
-  const downloadPriority = addon.downloadPriority || settings.downloadPriority || 'releases';
+  const downloadPriority = addon.downloadPriority || 'releases';
   const release = await getLatestRelease(addon.repoUrl, addon.preferredAssetName, downloadPriority);
   
   // Preserve custom options from the original addon
@@ -848,8 +845,7 @@ export async function forceUpdateImportedAddon(addon) {
  */
 export async function checkForUpdates(addons) {
   console.log(`Checking for updates for ${addons.length} addons...`);
-  const settings = await getSettings();
-  const downloadPriority = settings.downloadPriority || 'releases';
+  const downloadPriority = 'releases';
   const updatedAddons = [];
   // Minimum interval between network checks for a single addon (ms)
   const MIN_CHECK_INTERVAL = 30 * 1000; // 30 seconds
@@ -1527,8 +1523,7 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl, options =
     }
 
     // Get release info from API
-    const settings = await getSettings();
-    const downloadPriority = settings.downloadPriority || 'releases';
+    const downloadPriority = 'releases';
     const release = await getLatestRelease(approvedRepoUrl, null, downloadPriority);
     
     // Determine addon name - prefer special cases, then .toc title, then repo name
@@ -1562,8 +1557,8 @@ export async function addExistingAddon(existingAddon, approvedRepoUrl, options =
       currentVersion: 'Imported', // Always set to Imported for imported addons
       latestVersion: release.version,
       needsUpdate: true, // Allow updates for imported addons
-      // Per-addon preference defaults to passed option or current global setting at import time
-      downloadPriority: options.downloadPriority || settings.downloadPriority || 'releases',
+      // Per-addon preference defaults to passed option or 'releases'
+      downloadPriority: options.downloadPriority || 'releases',
       // Respect explicit allowUpdates option when provided
       allowUpdates: options.allowUpdates !== undefined ? options.allowUpdates : true,
       lastUpdated: new Date().toISOString(),
