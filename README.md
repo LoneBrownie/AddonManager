@@ -16,11 +16,11 @@ Built using React & Electron
 - Curated list of addons as one click installs for 3.3.5 with a Project Epoch specific section.
   -  (This is a manually updated list, if a repository is moved/deleted the install will fail)
 - Export a list of your managed addons to help out your friends and guildies.
+- Import addons from a list.
 
 ***
 ### Planned Features
-- Import a list of addons (No Timeline).
-
+- Currently none
 If you have feature suggestions please open an issue.
 
 ***
