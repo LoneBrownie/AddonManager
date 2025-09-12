@@ -15,7 +15,7 @@ A simple addon manager to help with installing and updating addons for World of 
 
 ***
 ### Planned Features
-- Currently none
+- Multiple Directory Support
 
 If you have feature suggestions please open an issue.
 
