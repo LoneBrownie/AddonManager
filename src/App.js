@@ -6,6 +6,7 @@ import HandyAddons from './components/HandyAddons';
 import Settings from './components/Settings';
 import ExistingAddonManager from './components/ExistingAddonManager';
 import ExportAddonListModal from './components/ExportAddonListModal';
+import ImportAddonListModal from './components/ImportAddonListModal';
 import { useAddons } from './hooks/useAddons';
 import { getSettings } from './services/addon-manager';
 import logo from './img/Logo.png';
@@ -38,6 +39,7 @@ function App() {
   const [showAddAddonModal, setShowAddAddonModal] = useState(false);
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [adminRestartMessage, setAdminRestartMessage] = useState('');
   const [activeTab, setActiveTab] = useState('addons'); // 'addons', 'get-addons', 'settings'
 
@@ -111,6 +113,23 @@ function App() {
     setShowExportModal(true);
   };
 
+  const handleImportAddonList = async (addonsToImport) => {
+    try {
+      // Import each addon one by one
+      for (const addon of addonsToImport) {
+        try {
+          await addAddon(addon.repoUrl);
+        } catch (error) {
+          console.error(`Failed to import ${addon.name}:`, error);
+          // Continue with other addons even if one fails
+        }
+      }
+      setShowImportModal(false);
+    } catch (error) {
+      console.error('Import failed:', error);
+    }
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'addons':
@@ -140,6 +159,14 @@ function App() {
                   title="Export addon list to text"
                 >
                   Export Addon List
+                </button>
+                <button
+                  className="button secondary"
+                  onClick={() => setShowImportModal(true)}
+                  disabled={loading}
+                  title="Import addon list from text"
+                >
+                  Import Addon List
                 </button>
                 <button
                   className="button secondary"
@@ -294,6 +321,14 @@ function App() {
         <ExportAddonListModal
           addons={addons}
           onClose={() => setShowExportModal(false)}
+        />
+      )}
+
+      {showImportModal && (
+        <ImportAddonListModal
+          onImport={handleImportAddonList}
+          onClose={() => setShowImportModal(false)}
+          loading={loading}
         />
       )}
 

@@ -5,9 +5,16 @@ const ExportAddonListModal = ({ addons, onClose }) => {
   const [copySuccess, setCopySuccess] = useState(false);
   const textAreaRef = useRef(null);
 
+  // Clean WoW color codes from addon names
+  const cleanAddonName = (name) => {
+    if (!name) return name;
+    // Remove WoW color codes (e.g., |cff33ffcc, |r)
+    return name.replace(/\|c[a-fA-F0-9]{8}/g, '').replace(/\|r/g, '').trim();
+  };
+
   // Generate the addon list text
   const addonListText = addons.length > 0 
-    ? addons.map(addon => `${addon.name}: ${addon.repoUrl}`).join('\n')
+    ? addons.map(addon => `${cleanAddonName(addon.name)}: ${addon.repoUrl}`).join('\n')
     : 'No addons installed to export';
 
   // Select all text when modal opens

@@ -1,13 +1,8 @@
 <h1>About</h1>
-I wanted a simple application to help with updating addons for Project Epoch so I used claude to create this.
-
-It currently allows installing/updating of addons from both github and gitlab using releases/tags or code. 
-Provides a few addons for 3.3.5a as one-click installs.
-
-Built using React & Electron
+A simple addon manager to help with installing and updating addons for World of Warcraft.
 
 ***
-### Current Features
+### Features
 - Add new github/gitlab addons.
 - Import existing addons (Requires a github/gitlab URL for the addon)
 - Check for and download new updates.
@@ -16,10 +11,11 @@ Built using React & Electron
 - Curated list of addons as one click installs for 3.3.5 with a Project Epoch specific section.
   -  (This is a manually updated list, if a repository is moved/deleted the install will fail)
 - Export a list of your managed addons to help out your friends and guildies.
+- Import addons from a list.
 
 ***
 ### Planned Features
-- Import a list of addons (No Timeline).
+- Multiple Directory Support
 
 If you have feature suggestions please open an issue.
 
@@ -59,6 +55,10 @@ Download the latest Windows installer from the releases page and run it:
 Our AI overlords Claude and ChatGPT.
 
 My guildies for early testing.
+
+***
+
+Built using React & Electron
 
 ***
 
