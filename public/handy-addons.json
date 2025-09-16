@@ -167,5 +167,22 @@
     "repoUrl": "https://github.com/NoM0Re/WeakAuras-WotLK",
     "category": "Interface",
     "epochAddon": false
+  },
+  {
+    "id": "atlasquest-epoch",
+    "name": "AtlasQuest Epoch",
+    "description": "Provides detailed quest information for dungeons, raids, and instances.",
+    "repoUrl": "https://github.com/Rofos2011/AtlasQuest",
+    "category": "Interface",
+    "epochAddon": true,
+    "dependencies": ["atlasloot-epoch"]
+  },
+  {
+    "id": "Auctionator",
+    "name": "Auctionator",
+    "description": "Comprehensive auction house management addon.",
+    "repoUrl": "https://github.com/thierbig/Auctionator-3.3.5-Fixed",
+    "category": "Interface",
+    "epochAddon": false
   }
 ]
