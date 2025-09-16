@@ -135,15 +135,6 @@
     "dependencies": ["pfquest-full"]
   },
   {
-    "id": "pfquest-worldmap-epoch",
-    "name": "pfQuest Worldmap Epoch",
-    "description": "Adds quest availability pins to continent maps for pfQuest-wotlk.",
-    "repoUrl": "https://github.com/trav346/pfquest-worldmap-epoch",
-    "category": "Interface",
-    "epochAddon": true,
-    "dependencies": ["pfquest-full", "pfquest-epoch"]
-  },
-  {
     "id": "EpochDeltaFix",
     "name": "Epoch Delta Fix",
     "description": "Replaces Epochs stat-compare with correct deltas.",
