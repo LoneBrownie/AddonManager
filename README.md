@@ -59,10 +59,3 @@ My guildies for early testing.
 ***
 
 Built using React & Electron
-
-***
-
-### Support Development
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-Support%20Development-orange?style=for-the-badge&logo=buy-me-a-coffee)](https://buymeacoffee.com/LoneBrownie)
-
-If you find this addon manager helpful, consider [buying me a coffee](https://buymeacoffee.com/LoneBrownie).
