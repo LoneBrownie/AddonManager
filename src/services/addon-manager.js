@@ -258,7 +258,8 @@ async function parseAddonToc(tocPath) {
     }
     
     return {
-      title: sanitizeTocTitle(metadata.title || pathUtils.basename(tocPath, '.toc')),
+      title: pathUtils.basename(tocPath, '.toc'), // Use .toc filename as primary source
+      titleFromToc: sanitizeTocTitle(metadata.title || ''), // Keep original title for reference
       version: metadata.version || 'Unknown',
       author: metadata.author || 'Unknown',
       interface: metadata.interface || 'Unknown',
@@ -269,7 +270,8 @@ async function parseAddonToc(tocPath) {
   } catch (error) {
     console.error('Failed to parse .toc file:', error);
     return {
-      title: sanitizeTocTitle(pathUtils.basename(tocPath, '.toc')),
+      title: pathUtils.basename(tocPath, '.toc'),
+      titleFromToc: '',
       version: 'Unknown',
       author: 'Unknown',
       interface: 'Unknown'
@@ -299,7 +301,8 @@ function parseTocContent(content) {
   }
   
   return {
-    title: sanitizeTocTitle(metadata.title || 'Unknown'),
+    title: 'Unknown', // Will be overridden by filename in calling functions
+    titleFromToc: sanitizeTocTitle(metadata.title || 'Unknown'), // Keep original title for reference
     version: metadata.version || 'Unknown',
     author: metadata.author || 'Unknown',
     interface: metadata.interface || 'Unknown',
@@ -1163,6 +1166,9 @@ export async function scanExistingAddons(settings = null) {
           const tocPath = pathUtils.join(folderPath, mainTocFile.name);
           const tocContent = await fileSystem.readFile(tocPath);
           const tocData = parseTocContent(tocContent);
+          
+          // Use .toc filename as the primary title
+          const tocFileName = pathUtils.basename(mainTocFile.name, '.toc');
 
           // Get folder stats for last modified time
           const stats = await fileSystem.stat(folderPath);
@@ -1171,7 +1177,7 @@ export async function scanExistingAddons(settings = null) {
             folderName,
             folderPath,
             tocData,
-            title: tocData.title || folderName,
+            title: tocFileName, // Use .toc filename as primary title
             version: tocData.version || 'Unknown',
             author: tocData.author || 'Unknown',
             notes: tocData.notes || '',

@@ -12,7 +12,7 @@ import { getSettings } from './services/addon-manager';
 import logo from './img/Logo.png';
 import './App.css';
 
-// ✅ Security: Use secure Electron API access
+// Security: Use secure Electron API access
 const electronAPI = window.electronAPI;
 
 function App() {
