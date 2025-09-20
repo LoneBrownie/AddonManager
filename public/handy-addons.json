@@ -184,5 +184,13 @@
     "repoUrl": "https://github.com/thierbig/Auctionator-3.3.5-Fixed",
     "category": "Interface",
     "epochAddon": false
+  },
+  {
+    "id": "PallyPower",
+    "name": "Pally Power",
+    "description": "Paladin blessings management addon.",
+    "repoUrl": "https://github.com/NoM0Re/PallyPower-Improved-3.3.5",
+    "category": "Interface",
+    "epochAddon": false
   }
 ]
