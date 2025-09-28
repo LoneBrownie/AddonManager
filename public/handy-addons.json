@@ -71,15 +71,6 @@
     "dependencies": ["classicapi", "compactraidframe"]
   },
   {
-    "id": "questie-epoch",
-    "name": "Questie (No Longer Maintained)",
-    "description": "Enhanced version of Questie with improved quest tracking and database for WotLK.",
-    "repoUrl": "https://github.com/trav346/Questie-Epoch/",
-    "category": "Questing",
-    "customFolderName": "Questie",
-    "epochAddon": true
-  },
-  {
     "id": "dragonui",
     "name": "DragonUI",
     "description": "Modern Dragonflight-style user interface for Classic WoW with updated visuals and functionality.",
