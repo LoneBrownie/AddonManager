@@ -1,3 +1,5 @@
+<h1>This repository is now archived and no longer being developed. I'd recommend using Warperia's addon manager</h1>
+
 <h1>About</h1>
 A simple addon manager to help with installing and updating addons for World of Warcraft.
 
