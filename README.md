@@ -10,7 +10,7 @@ A simple addon manager to help with installing and updating addons for World of 
 - Check for and download new updates.
 - Enable or Disable Update checking per addon.
 - Allows per addon choice of using either releases or source code.
-- Curated list of addons as one click installs for 3.3.5 with a Project Epoch specific section.
+- Curated list of addons as one click installs for 3.3.5.
   -  (This is a manually updated list, if a repository is moved/deleted the install will fail)
 - Export a list of your managed addons to help out your friends and guildies.
 - Import addons from a list.

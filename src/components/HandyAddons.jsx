@@ -66,21 +66,9 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
     });
   };
 
-  // Partition the curated list into Project Epoch addons and other 3.3.5a addons
-  // Use explicit epochAddon boolean when provided, otherwise fall back to heuristics.
-  const isProjectEpoch = (addon) => {
-    if (typeof addon.epochAddon === 'boolean') return addon.epochAddon === true;
-    return /epoch/i.test(addon.name || '') || /epoch/i.test(addon.id || '') || /epoch/i.test(addon.repoUrl || '');
-  };
-
-  const projectEpochAddons = handyAddons.filter(isProjectEpoch);
-  // Any addon not marked as Project Epoch goes into the "Other Addons" section
-  const otherAddons = handyAddons.filter(a => !isProjectEpoch(a));
-
-  const applyCategory = (list) => selectedCategory === 'All' ? list : list.filter(addon => addon.category === selectedCategory);
-
-  const filteredProjectEpochAddons = applyCategory(projectEpochAddons);
-  const filteredOtherAddons = applyCategory(otherAddons);
+  const filteredAddons = selectedCategory === 'All'
+    ? handyAddons
+    : handyAddons.filter(addon => addon.category === selectedCategory);
 
   const handleInstall = async (addon) => {
     // Install dependencies first (recursively), then the addon itself.
@@ -270,31 +258,16 @@ function HandyAddons({ onAddAddon, installedAddons, loading, addButton }) {
           </div>
         </div>
       ) : (
-        <>
-          {/* Project Epoch curated section */}
-          <div className="epoch-section">
-            <h2 className="section-title">Project Epoch Addons</h2>
-            <div className="handy-addons-grid">
-              {filteredProjectEpochAddons.length > 0 ? (
-                filteredProjectEpochAddons.map(addon => renderAddonCard(addon))
-              ) : (
-                <div className="no-addons"><p>No Project Epoch addons found for "{selectedCategory}".</p></div>
-              )}
-            </div>
+        <div className="other-335-section">
+          <h2 className="section-title">General Addons</h2>
+          <div className="handy-addons-grid">
+            {filteredAddons.length > 0 ? (
+              filteredAddons.map(addon => renderAddonCard(addon))
+            ) : (
+              <div className="no-addons"><p>No addons found for "{selectedCategory}".</p></div>
+            )}
           </div>
-
-          {/* Other Addons section */}
-          <div className="other-335-section">
-            <h2 className="section-title">General Addons</h2>
-            <div className="handy-addons-grid">
-              {filteredOtherAddons.length > 0 ? (
-                filteredOtherAddons.map(addon => renderAddonCard(addon))
-              ) : (
-                <div className="no-addons"><p>No General addons found for "{selectedCategory}".</p></div>
-              )}
-            </div>
-          </div>
-        </>
+        </div>
       )}
 
   {/* Note: category-specific empty states are shown per-section above */}
