@@ -80,14 +80,6 @@
     "epochAddon": false
   },
   {
-    "id": "atlasloot-epoch",
-    "name": "AtlasLoot Epoch",
-    "description": "Complete loot browser for Classic WoW showing items, locations, and drop rates.",
-    "repoUrl": "https://github.com/Raynbock/AtlaslootProjectEpoch",
-    "category": "Interface",
-    "epochAddon": true
-  },
-  {
     "id": "bagnon",
     "name": "Bagnon",
     "description": "All-in-one bag replacement addon that merges all your bags into one frame.",
@@ -105,44 +97,6 @@
     "epochAddon": false
   },
   {
-    "id": "pfquest-full",
-    "name": "pfQuest",
-    "description": "Complete quest helper addon with database and map integration.",
-    "repoUrl": "https://github.com/shagu/pfQuest/releases/latest/download/pfQuest-full-wotlk.zip",
-    "category": "Questing",
-    "isDirectDownload": true,
-    "customFolderName": "pfQuest-wotlk",
-    "preferredAssetName": "pfQuest-enUS-wotlk.zip",
-    "epochAddon": false
-  },
-  {
-    "id": "pfquest-epoch",
-    "name": "pfQuest Epoch",
-    "description": "An extension for pfQuest-wotlk which adds support for Project Epoch.",
-    "repoUrl": "https://github.com/Bennylavaa/pfQuest-epoch",
-    "category": "Questing",
-    "customFolderName": "pfQuest-epoch",
-    "epochAddon": true,
-    "dependencies": ["pfquest-full"]
-  },
-  {
-    "id": "EpochDeltaFix",
-    "name": "Epoch Delta Fix",
-    "description": "Replaces Epochs stat-compare with correct deltas.",
-    "repoUrl": "https://github.com/dellmas/WoW-Epoch-Delta-Fix/",
-    "category": "Interface",
-    "epochAddon": true
-  },
-  {
-    "id": "LFG",
-    "name": "Looking for Group",
-    "description": "Find groups for dungeons and raids easily.",
-    "repoUrl": "https://github.com/Bennylavaa/LFG",
-    "category": "Interface",
-    "epochAddon": true,
-    "customFolderName": "LFG"
-  },
-  {
     "id": "Aux",
     "name": "Aux Epoch",
     "description": "Auction house addOn for the 3.3.5 client with some features more advanced than anything even on retail.",
@@ -158,15 +112,6 @@
     "repoUrl": "https://github.com/NoM0Re/WeakAuras-WotLK",
     "category": "Interface",
     "epochAddon": false
-  },
-  {
-    "id": "atlasquest-epoch",
-    "name": "AtlasQuest Epoch",
-    "description": "Provides detailed quest information for dungeons, raids, and instances.",
-    "repoUrl": "https://github.com/Rofos2011/AtlasQuest",
-    "category": "Interface",
-    "epochAddon": true,
-    "dependencies": ["atlasloot-epoch"]
   },
   {
     "id": "Auctionator",
