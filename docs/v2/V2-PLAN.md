@@ -1,6 +1,6 @@
 # Brownie's Addon Manager — V2 Plan
 
-**Status:** Decided — D1–D3, D5–D10 settled. Only D4 (macOS) remains open.
+**Status:** All decisions settled (D1–D11). Phase 0 and Phase 1 in progress.
 **Author:** Claude (via Claude Code)
 **Target:** V2.0.0
 **Scope:** Modernisation, multiple server support (CurseForge/WowUp-style switcher), Windows + Linux
@@ -32,7 +32,8 @@ Read this section first — everything downstream depends on it. Struck-through 
 | **D1** | ~~Stack~~ | — | ✅ **DECIDED: Tauri v2 + Rust + React/TypeScript.** Author's call, against the recommendation in §5.1. Accepted trade-offs recorded in §5.1.4. |
 | **D2** | ~~Auto-update continuity~~ | — | ✅ **DECIDED: break it.** Small user base. V1 users install V2 once by hand. **V2 still has its own auto-updater** — see §9.1. |
 | **D3** | ~~Repo strategy~~ | — | ✅ **DECIDED: build on the existing `dev` branch. Do not merge to `main`.** `main` continues to hold shipping V1. |
-| **D4** | **macOS** | Support / ignore | ⚠️ **Still open — the only one left.** Recommendation: **skip for 2.0.** Proceeding on that basis unless told otherwise; adding it later is ~1 day of CI plus a signing decision. |
+| **D4** | ~~macOS~~ | — | ✅ **DECIDED: no macOS.** Windows + Linux only. |
+| **D11** | ~~Backup / rollback~~ | — | ✅ **DECIDED: out of scope.** B2 is instead fixed by collision detection — see §6.2. |
 | **D5** | ~~Curated list hosting~~ | — | ✅ **DECIDED: GitHub raw only.** Azure Blob dropped — see §9.3. |
 | **D6** | ~~GitHub token~~ | — | ✅ **DECIDED: optional PAT.** Anonymous is 60 req/hr per IP; a token gives 5,000 and retires ~200 lines of HTML scraping. Never required. |
 | **D7** | ~~Product identity~~ | — | ✅ **DECIDED by implication of D10.** Keep the name, new `appId`, separate userData directory. V1 and V2 are independent apps that can coexist. |
@@ -254,7 +255,7 @@ The single most important structural change: **the frontend never touches the fi
 │  │ gh/gl/     │ download,  │ schema v2, │ register,  │  │
 │  │ direct     │ verify,    │ atomic     │ validate,  │  │
 │  │ resolution │ extract,   │ writes,    │ availabil- │  │
-│  │            │ place,     │ backups    │ ity        │  │
+│  │            │ place      │ writes     │ ity        │  │
 │  │            │ backup     │            │            │  │
 │  └────────────┴────────────┴────────────┴────────────┘  │
 │  All paths validated. All writes confined. All logged.  │
@@ -303,7 +304,6 @@ This is the headline feature, and it's a schema change more than a UI change.
   "folders": ["SomeAddon", "SomeAddon_Options"],  // exactly what we wrote
   "archiveSha256": "…",
   "installedAt": "2026-08-11T…",
-  "backupId": "bk_…"                     // previous version, for rollback
 }
 ```
 
@@ -401,7 +401,7 @@ Everything V1 does today, on the new engine: GitHub + GitLab sources, release-vs
 
 - **Multiple installations** (§5.3) — switcher, per-install addon sets, install-to-many, copy set between installs.
 - **Linux support** — proper paths, case-insensitive `Interface/AddOns` resolution (Wine prefixes vary in casing), AppImage + .deb + .rpm.
-- **Backup and rollback.** Before overwriting, move the existing folders to a timestamped backup under app data; keep the last 3 per addon; expose "Restore previous version". This directly retires bug B2.
+- **Collision detection instead of backups.** Backup/rollback is **out of scope** (D11). B2 — install silently deleting an unrelated folder — is therefore fixed differently, and arguably better: before writing, every destination folder is classified as *owned by this addon* (overwrite freely), *owned by another managed addon* (refuse, naming the owner), or *unmanaged and pre-existing* (refuse and ask, since we did not create it and cannot know what it is). **Nothing the app did not create is ever deleted without explicit confirmation.** Cheaper than backups, and it prevents the data loss rather than making it recoverable.
 - **Version mismatch warnings.** Compare the `## Interface` value in an addon's `.toc` against the server's interface version and warn *before* installing — "this addon targets 2.4.3, this server is 3.3.5a". The interface number is a fixed lookup from the chosen version (`wotlk` → 30300, `tbc` → 20400, `vanilla` → 11200), not something detected. Prevents the most common private-server support question.
 - **Real dependency handling.** The curated list already carries a `dependencies` array that nothing enforces. Resolve it on install; warn on removal when something still depends on it.
 - **Bounded parallelism + progress.** Update checks 6-at-a-time; per-addon download progress; a cancel button that actually cancels.
@@ -442,7 +442,7 @@ Linux path resolution and case handling, permission errors with actionable messa
 **Exit:** installable artifacts for both OSes from a tagged CI run, auto-update verified end to end.
 
 ### Phase 5 — New capabilities · ~1.5 weekends
-Backup/rollback, dependency resolution, version-mismatch warnings, PAT + keychain, parallel checks with cancellation, diagnostics and log export.
+Collision detection, dependency resolution, version-mismatch warnings, PAT + keychain, parallel checks with cancellation, diagnostics and log export.
 **Exit:** the §6.2 list is done.
 
 ### Phase 6 — Beta and release · ~1 weekend
@@ -486,7 +486,6 @@ D2 ("break continuity") means *existing V1 users install V2 once by hand*. It do
 | Manifest | `latest.json` on GitHub Releases | `latest.yml` on GitHub Releases |
 | Windows | ✅ NSIS / MSI self-update | ✅ NSIS self-update |
 | Linux | ✅ **AppImage only** | ✅ **AppImage only** |
-| macOS | ✅ (needs a signing decision — D4) | ✅ (same) |
 
 Behaviour matches V1: check on launch and on an interval, download in the background with progress, install and relaunch.
 
@@ -540,7 +539,7 @@ src-tauri/
     commands/        # the intent-level API surface — the ONLY frontend entry point
     core/
       sources/       # github.rs, gitlab.rs, direct.rs, mod.rs
-      installer/     # download.rs, extract.rs, place.rs, backup.rs
+      installer/     # download.rs, extract.rs, place.rs
       store/         # schema.rs, atomic.rs
       servers/       # register, validate, availability (no detection)
       toc.rs

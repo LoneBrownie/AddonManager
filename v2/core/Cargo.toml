@@ -1,0 +1,35 @@
+[package]
+name = "bam-core"
+description = "Addon engine for Brownie's Addon Manager. Headless, no UI dependencies."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+zip.workspace = true
+sha2.workspace = true
+uuid.workspace = true
+walkdir.workspace = true
+tracing.workspace = true
+async-trait.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+tempfile.workspace = true
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+# A panic in the engine takes the app down mid-install. Every fallible
+# path returns a typed error instead. See V2-PLAN.md section 5.1.2.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"

@@ -1,0 +1,81 @@
+name: V2 CI
+
+# The V2 rewrite lives on `dev` and is never merged to `main` (D3).
+# Windows and Linux both run from the first commit, because a cross-platform
+# project whose CI only runs one OS quietly stops being cross-platform.
+
+on:
+  push:
+    branches: [dev]
+    paths: ['v2/**', '.github/workflows/v2-ci.yml']
+  pull_request:
+    paths: ['v2/**', '.github/workflows/v2-ci.yml']
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+defaults:
+  run:
+    working-directory: v2
+
+jobs:
+  engine:
+    name: Engine (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            v2/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('v2/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      # The engine is a plain library with no Tauri or webview dependency, so
+      # it builds and tests on a bare runner. That is the point of keeping it
+      # headless (V2-PLAN.md phase 1).
+      - name: Format
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Test
+        run: cargo test --all-features
+
+  guardrails:
+    name: Guardrails
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Drift is the top risk for an AI-written codebase with no human
+      # reviewing the diffs (V2-PLAN.md 10). Enforced, not hoped for.
+      - name: Module size
+        run: python scripts/check_module_size.py
+
+      - name: Licence headers present
+        run: |
+          test -f ../LICENSE || { echo "LICENSE missing"; exit 1; }
+          grep -q "GNU GENERAL PUBLIC LICENSE" ../LICENSE || {
+            echo "LICENSE is not the GPL text"; exit 1; }

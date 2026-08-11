@@ -1,0 +1,565 @@
+//! End-to-end engine tests against a synthetic WoW directory.
+//!
+//! This is the Phase 1 exit criteria from V2-PLAN.md: install and update a real
+//! addon archive into a temp tree, with no network and no UI. The same tests
+//! run on Windows and Linux in CI.
+
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use std::path::Path;
+
+use bam_core::error::Error;
+use bam_core::install::{self, InstallOptions};
+use bam_core::model::{Channel, GameVersion, Server, Source, Store};
+use bam_core::testing::{addon_zip, fake_wow_dir, zip_from, FakeHttp};
+use bam_core::version::{Ref, UpdateStatus};
+
+const RELEASES_URL: &str = "https://api.github.com/repos/o/r/releases/latest";
+
+fn source() -> Source {
+    Source::Github {
+        owner: "o".into(),
+        repo: "r".into(),
+    }
+}
+
+/// A FakeHttp serving one release whose asset is `zip`.
+fn forge_serving(tag: &str, zip: Vec<u8>) -> FakeHttp {
+    let asset_url = format!("https://github.com/o/r/releases/download/{tag}/MyAddon.zip");
+    FakeHttp::new()
+        .json(
+            RELEASES_URL,
+            &format!(
+                r#"{{"tag_name":"{tag}","published_at":"2026-01-01T00:00:00Z",
+                     "assets":[{{"name":"MyAddon.zip","browser_download_url":"{asset_url}"}}]}}"#
+            ),
+        )
+        .file(&asset_url, zip)
+}
+
+fn register_server(store: &mut Store, root: &Path) -> String {
+    fake_wow_dir(root).expect("create fake wow dir");
+    let server = Server::new("Epoch", root, GameVersion::Wotlk);
+    let id = server.id.clone();
+    store.servers.push(server);
+    id
+}
+
+#[tokio::test]
+async fn installs_an_addon_into_the_addons_directory() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let client = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+
+    let installed = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install should succeed");
+
+    let addons = tmp.path().join("Interface").join("AddOns");
+    assert!(addons.join("MyAddon").is_dir(), "addon folder written");
+    assert!(addons.join("MyAddon/MyAddon.toc").is_file(), "toc written");
+    assert!(addons.join("MyAddon/Core.lua").is_file(), "content written");
+
+    assert_eq!(installed.folders, vec!["MyAddon".to_string()]);
+    assert_eq!(
+        installed.installed_ref,
+        Ref::Release {
+            tag: "v1.0.0".into(),
+            published_at: Some("2026-01-01T00:00:00Z".into())
+        }
+    );
+    assert!(installed.archive_sha256.is_some(), "archive hash recorded");
+    assert_eq!(store.installed_for(&server_id).len(), 1);
+    assert_eq!(store.addons.len(), 1);
+}
+
+#[tokio::test]
+async fn detects_and_applies_an_update() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let old = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+    install::install(
+        &old,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("first install");
+
+    // Upstream publishes a newer tag.
+    let new = forge_serving("v1.1.0", addon_zip("MyAddon", 30300, "1.1.0"));
+    let report = install::check_update(&new, &store, &server_id, "github:o/r", None)
+        .await
+        .expect("check should succeed");
+    assert_eq!(report.status, UpdateStatus::UpdateAvailable);
+
+    install::install(
+        &new,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("update install");
+
+    assert_eq!(store.installed_for(&server_id).len(), 1, "still one row");
+    let row = store.installation(&server_id, "github:o/r").unwrap();
+    assert_eq!(
+        row.installed_ref,
+        Ref::Release {
+            tag: "v1.1.0".into(),
+            published_at: Some("2026-01-01T00:00:00Z".into())
+        }
+    );
+
+    let toc =
+        std::fs::read_to_string(tmp.path().join("Interface/AddOns/MyAddon/MyAddon.toc")).unwrap();
+    assert!(toc.contains("1.1.0"), "files on disk actually replaced");
+}
+
+#[tokio::test]
+async fn reports_up_to_date_when_the_tag_has_not_moved() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let client = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+    install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install");
+
+    let report = install::check_update(&client, &store, &server_id, "github:o/r", None)
+        .await
+        .expect("check");
+    assert_eq!(report.status, UpdateStatus::UpToDate);
+}
+
+#[tokio::test]
+async fn removes_exactly_the_folders_it_wrote() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+    let addons = tmp.path().join("Interface").join("AddOns");
+
+    // A folder the user put there themselves.
+    std::fs::create_dir_all(addons.join("HandInstalled")).unwrap();
+    std::fs::write(addons.join("HandInstalled/x.lua"), b"mine").unwrap();
+
+    let client = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+    install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install");
+
+    let removed = install::remove(&mut store, &server_id, "github:o/r").expect("remove");
+
+    assert_eq!(removed, vec!["MyAddon".to_string()]);
+    assert!(!addons.join("MyAddon").exists(), "our folder is gone");
+    assert!(
+        addons.join("HandInstalled/x.lua").is_file(),
+        "an unrelated folder must be untouched"
+    );
+    assert!(store.installed.is_empty());
+    assert!(store.addons.is_empty(), "orphan addon record pruned");
+}
+
+/// V2-PLAN.md B2 — the V1 data-loss bug, through the full install path.
+#[tokio::test]
+async fn refuses_to_overwrite_a_hand_installed_folder() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let addons = tmp.path().join("Interface").join("AddOns");
+    std::fs::create_dir_all(addons.join("MyAddon")).unwrap();
+    std::fs::write(addons.join("MyAddon/precious.lua"), b"user data").unwrap();
+
+    let client = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+    let result = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await;
+
+    assert!(
+        matches!(result, Err(Error::UnmanagedCollision { .. })),
+        "install must refuse, got {result:?}"
+    );
+    assert_eq!(
+        std::fs::read_to_string(addons.join("MyAddon/precious.lua")).unwrap(),
+        "user data",
+        "the user's file must survive"
+    );
+}
+
+#[tokio::test]
+async fn overwrites_a_hand_installed_folder_only_when_explicitly_allowed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let addons = tmp.path().join("Interface").join("AddOns");
+    std::fs::create_dir_all(addons.join("MyAddon")).unwrap();
+
+    let client = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+    let options = InstallOptions {
+        overwrite_unmanaged: true,
+        ..InstallOptions::default()
+    };
+
+    install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &options,
+        work.path(),
+    )
+    .await
+    .expect("install with explicit consent should succeed");
+
+    assert!(addons.join("MyAddon/MyAddon.toc").is_file());
+}
+
+/// The headline feature: one addon, two servers, independent versions.
+#[tokio::test]
+async fn the_same_addon_installs_independently_to_two_servers() {
+    let epoch = tempfile::tempdir().unwrap();
+    let warmane = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+
+    let epoch_id = register_server(&mut store, epoch.path());
+    fake_wow_dir(warmane.path()).unwrap();
+    let warmane_server = Server::new("Warmane", warmane.path(), GameVersion::Wotlk);
+    let warmane_id = warmane_server.id.clone();
+    store.servers.push(warmane_server);
+
+    let old = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+    install::install(
+        &old,
+        &mut store,
+        &epoch_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install to epoch");
+
+    let new = forge_serving("v2.0.0", addon_zip("MyAddon", 30300, "2.0.0"));
+    install::install(
+        &new,
+        &mut store,
+        &warmane_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install to warmane");
+
+    assert_eq!(store.installed.len(), 2, "one row per (addon, server)");
+    assert_eq!(
+        store
+            .installation(&epoch_id, "github:o/r")
+            .map(|i| i.installed_ref.display()),
+        Some("v1.0.0".to_string())
+    );
+    assert_eq!(
+        store
+            .installation(&warmane_id, "github:o/r")
+            .map(|i| i.installed_ref.display()),
+        Some("v2.0.0".to_string())
+    );
+
+    // Removing from one server leaves the other alone.
+    install::remove(&mut store, &epoch_id, "github:o/r").expect("remove from epoch");
+    assert!(!epoch.path().join("Interface/AddOns/MyAddon").exists());
+    assert!(warmane.path().join("Interface/AddOns/MyAddon").is_dir());
+    assert_eq!(store.installed.len(), 1);
+}
+
+#[tokio::test]
+async fn installs_every_folder_of_a_multi_folder_addon() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let zip = zip_from(&[
+        ("WeakAuras/WeakAuras.toc", b"## Interface: 30300\n"),
+        ("WeakAuras/Core.lua", b"-- code\n"),
+        (
+            "WeakAuras_Options/WeakAuras_Options.toc",
+            b"## Interface: 30300\n",
+        ),
+    ]);
+    let client = forge_serving("v1.0.0", zip);
+
+    let installed = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install");
+
+    assert_eq!(
+        installed.folders,
+        vec!["WeakAuras".to_string(), "WeakAuras_Options".to_string()],
+        "both folders recorded as one addon — no relatedness guessing needed"
+    );
+
+    let addons = tmp.path().join("Interface").join("AddOns");
+    assert!(addons.join("WeakAuras").is_dir());
+    assert!(addons.join("WeakAuras_Options").is_dir());
+
+    install::remove(&mut store, &server_id, "github:o/r").expect("remove");
+    assert!(!addons.join("WeakAuras").exists());
+    assert!(!addons.join("WeakAuras_Options").exists(), "both removed");
+}
+
+#[tokio::test]
+async fn strips_the_github_wrapper_directory_from_folder_names() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    // What a codeload source archive actually looks like.
+    let zip = zip_from(&[
+        ("r-main/MyAddon/MyAddon.toc", b"## Interface: 30300\n"),
+        ("r-main/MyAddon/Core.lua", b"-- code\n"),
+    ]);
+    let client = forge_serving("v1.0.0", zip);
+
+    let installed = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install");
+
+    assert_eq!(installed.folders, vec!["MyAddon".to_string()]);
+    assert!(tmp
+        .path()
+        .join("Interface/AddOns/MyAddon/MyAddon.toc")
+        .is_file());
+    assert!(
+        !tmp.path().join("Interface/AddOns/r-main").exists(),
+        "the wrapper directory must not be installed"
+    );
+}
+
+/// V2-PLAN.md S2 — zip slip must fail closed through the whole install path,
+/// not just in the extractor's unit tests.
+#[tokio::test]
+async fn a_malicious_archive_cannot_escape_the_addons_directory() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let evil = zip_from(&[
+        ("MyAddon/MyAddon.toc", b"## Interface: 30300\n"),
+        ("../../../../evil.lua", b"pwned"),
+    ]);
+    let client = forge_serving("v1.0.0", evil);
+
+    let result = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await;
+
+    assert!(
+        matches!(result, Err(Error::UnsafePath { .. })),
+        "traversal must be rejected, got {result:?}"
+    );
+    assert!(
+        store.installed.is_empty(),
+        "nothing recorded for a failed install"
+    );
+    assert!(
+        !tmp.path().join("Interface/AddOns/MyAddon").exists(),
+        "no partial install survives"
+    );
+}
+
+/// V2-PLAN.md B8 — an unreachable path is "cannot check", never "deleted".
+#[tokio::test]
+async fn an_offline_server_errors_rather_than_dropping_its_addons() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let client = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+    install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install");
+
+    // Simulate the external drive being unplugged.
+    let moved = tmp.path().with_extension("unplugged");
+    std::fs::rename(tmp.path(), &moved).unwrap();
+
+    let result = install::remove(&mut store, &server_id, "github:o/r");
+    assert!(
+        matches!(result, Err(Error::ServerUnavailable { .. })),
+        "should report unavailable, got {result:?}"
+    );
+    assert_eq!(
+        store.installed.len(),
+        1,
+        "records must survive an unreachable drive"
+    );
+
+    std::fs::rename(&moved, tmp.path()).unwrap();
+}
+
+#[tokio::test]
+async fn a_failed_install_leaves_no_staging_debris() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let client = forge_serving("v1.0.0", zip_from(&[("docs/README.md", b"no addon")]));
+    let result = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await;
+
+    assert!(matches!(result, Err(Error::NoAddonFolders)));
+    let leftovers: Vec<_> = std::fs::read_dir(work.path())
+        .unwrap()
+        .flatten()
+        .map(|e| e.file_name())
+        .collect();
+    assert!(
+        leftovers.is_empty(),
+        "staging cleaned up, found {leftovers:?}"
+    );
+}
+
+#[tokio::test]
+async fn the_source_channel_installs_the_branch_head() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let client = FakeHttp::new()
+        .json(
+            "https://api.github.com/repos/o/r",
+            r#"{"default_branch":"master"}"#,
+        )
+        .json(
+            "https://api.github.com/repos/o/r/commits/master",
+            r#"{"sha":"abc1234def","commit":{"author":{"date":"2026-02-02T00:00:00Z"}}}"#,
+        )
+        .file(
+            "https://codeload.github.com/o/r/zip/refs/heads/master",
+            addon_zip("MyAddon", 30300, "dev"),
+        );
+
+    let options = InstallOptions {
+        channel: Channel::Source,
+        ..InstallOptions::default()
+    };
+    let installed = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &options,
+        work.path(),
+    )
+    .await
+    .expect("source install");
+
+    assert_eq!(installed.installed_ref.display(), "master@abc1234");
+    assert_eq!(installed.channel, Channel::Source);
+}
+
+#[tokio::test]
+async fn installing_to_an_unknown_server_is_an_error() {
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let client = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+
+    let result = install::install(
+        &client,
+        &mut store,
+        "srv_does_not_exist",
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await;
+
+    assert!(matches!(result, Err(Error::UnknownServer(_))));
+}
