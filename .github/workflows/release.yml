@@ -32,9 +32,15 @@ jobs:
             args: --bundles nsis
           - os: ubuntu-22.04
             label: Linux
-            # AppImage is the only Linux artifact that can self-update; deb and
-            # rpm are convenience downloads (V2-PLAN.md 9.1).
-            args: --bundles appimage,deb,rpm
+            # AppImage is the only Linux artifact that can self-update; deb is a
+            # convenience download (V2-PLAN.md 9.1).
+            #
+            # rpm is dropped for the beta. RPM forbids a hyphen in its Version
+            # field, and Tauri's bundler writes the config version there
+            # verbatim — so a 2.0.0-beta.1 build produces an .rpm whose NEVRA
+            # cannot be parsed. Verified by reading the header out of a real
+            # bundle. Restore it when the version loses its prerelease suffix.
+            args: --bundles appimage,deb
 
     steps:
       - uses: actions/checkout@v4
@@ -42,6 +48,30 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+
+      # The tag names the release; the config files name the build. Nothing
+      # reconciles them, so a tag of v2.0.0-beta.2 against a config still saying
+      # beta.1 produces installers, a release title and a Copy-diagnostics
+      # string that all disagree with the tag people downloaded. Cheaper to
+      # catch here than to re-cut a beta.
+      - name: Tag agrees with the declared version
+        shell: bash
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const declared = {
+              "src-tauri/tauri.conf.json": JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8")).version,
+              "package.json": JSON.parse(fs.readFileSync("package.json", "utf8")).version,
+              "Cargo.toml": (fs.readFileSync("Cargo.toml", "utf8").match(/^version = "(.+)"$/m) || [])[1],
+            };
+            const tag = process.env.TAG.replace(/^v/, "");
+            const wrong = Object.entries(declared).filter(([, v]) => v !== tag);
+            for (const [file, v] of wrong) console.error(`${file} declares ${v}, tag is ${tag}`);
+            if (wrong.length) process.exit(1);
+            console.log(`tag and all three version files agree on ${tag}`);
+          '
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -88,20 +118,50 @@ jobs:
           releaseBody: |
             ## Brownie's Addon Manager __VERSION__
 
-            **This installs alongside V1 rather than over the top.** It is a
+            > **This is a beta.** V2 is a rewrite, and this build has had far
+            > less real-world use than V1. Back up your `Interface/AddOns`
+            > folder before pointing it at a game directory you care about, and
+            > please report anything that misbehaves — **Settings → Copy
+            > diagnostics** produces a redacted summary worth attaching.
+
+            **It installs alongside V1 rather than over the top.** It is a
             separate application with its own settings, so V1 keeps working and
-            nothing is migrated automatically. To carry your addons across: add
-            your game folder as a server, then use Import Existing Addons.
+            nothing is migrated automatically. To carry your addons across:
+            export your list from V1 (**My Addons → Export Addon List**), add
+            your game folder here as a server, then **Import list**.
 
             ### Windows
             Download and run the `.exe` installer.
 
             ### Linux
-            The **AppImage** is the one that updates itself. `.deb` and `.rpm`
-            are convenience downloads — your package manager owns updates for
-            those, so re-download to upgrade.
-          releaseDraft: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
+            Take the **AppImage** unless you have a reason not to. A `.deb` is
+            also published; your package manager owns updates for it. There is
+            no `.rpm` during the beta — RPM refuses a version like
+            `2.0.0-beta.1` — so on Fedora or openSUSE, take the AppImage.
+
+            ### Updating
+            There is no in-app update during the beta. Betas are published as
+            pre-releases, which GitHub deliberately keeps out of
+            `releases/latest`, so watch this repository and install new ones by
+            hand. Self-updating switches on for 2.0.0 proper.
+          # Published, not a draft. A draft is invisible to everyone but the
+          # repository owner, so a beta nobody can download is not a beta.
+          #
+          # The two matrix jobs share one release, so whichever finishes first
+          # publishes it and the other adds its artifacts a few minutes later.
+          # A watcher can catch it with only one platform present. That is the
+          # price of not drafting; drafting and flipping it published at the end
+          # trades it for a silent failure mode, where a signing job that cannot
+          # see the draft ships unsigned artifacts and says nothing.
+          releaseDraft: false
+          # Any tag with a hyphen — v2.0.0-beta.1, v2.0.0-rc.1 — is a
+          # pre-release. That keeps `releases/latest` pointing at V1's last
+          # stable installer, which is still what the README sends people to.
+          #
+          # `github.ref_name` is the *branch* on a workflow_dispatch run, so the
+          # dispatch input has to be consulted first or a hand-triggered beta
+          # would publish itself as stable.
+          prerelease: ${{ contains(github.event.inputs.tag || github.ref_name, '-') }}
           args: ${{ matrix.args }}
 
   sign:
@@ -122,9 +182,12 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts && cd artifacts
 
+          # Fails the job rather than shrugging. The build jobs have finished by
+          # now and the release is published, so nothing to download means
+          # something went wrong upstream — and unsigned artifacts that nobody
+          # was told about are worse than a red tick.
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
-            --pattern '*.exe' --pattern '*.AppImage' --pattern '*.deb' --pattern '*.rpm' \
-            || { echo "No artifacts to sign yet"; exit 0; }
+            --pattern '*.exe' --pattern '*.AppImage' --pattern '*.deb' --pattern '*.rpm'
 
           for file in *; do
             [ -f "$file" ] || continue

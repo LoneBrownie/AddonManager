@@ -1,16 +1,63 @@
-# Promoting `dev` to `main`
+# Releasing V2
 
-**Do not do this yet.** V2 has not been validated against a real game client.
-The engine and interface are tested, but nobody has installed a real addon into
-a real WoW folder with this build. That has to happen first.
+## Where things stand
 
-This branch is *shaped* to become `main` — the layout, workflows and docs are
-already what `main` should look like — so this is a checklist rather than a
-migration.
+- **`v1-archive`** holds the final V1 code. It was `main`, renamed rather than
+  force-pushed over, so V1's history is intact and its release assets — which
+  hang off tags, not branches — are untouched.
+- **`dev`** is the default branch and holds V2.
+- **`dev` has not been renamed to `main`,** and does not need to be in order to
+  ship a beta. That rename is a tidying-up step for 2.0.0 proper; see below.
+
+Because `dev` is the default branch, `raw.githubusercontent.com/.../HEAD/...`
+resolves to it, which is how the app reaches the curated lists. That URL names
+no branch, so the eventual rename costs nothing.
 
 ---
 
-## Before promoting
+## Shipping a beta
+
+1. **Check the three version strings agree.** They are the beta's identity —
+   the release name, the installer filenames and the string in
+   **Settings → Copy diagnostics** all come from them.
+
+   | File | Field |
+   |---|---|
+   | `Cargo.toml` | `workspace.package.version` |
+   | `package.json` | `version` |
+   | `src-tauri/tauri.conf.json` | `version` |
+
+2. **Tag and push.**
+
+   ```sh
+   git tag v2.0.0-beta.1
+   git push origin v2.0.0-beta.1
+   ```
+
+   The tag has to match the version, because the release is named from the
+   version and found by the tag.
+
+3. **The workflow does the rest.** `.github/workflows/release.yml` builds on
+   Windows and Linux, runs the engine's tests as a gate, publishes a
+   **pre-release** — not a draft — and then Cosign-signs the assets.
+
+   `workflow_dispatch` with a `tag` input does the same thing for a tag that
+   already exists.
+
+For the next beta, bump the three versions to `-beta.2`, commit, and tag again.
+
+### Why a pre-release rather than a normal one
+
+GitHub keeps pre-releases out of `releases/latest`. That is the behaviour we
+want: the README still sends people who are not ready for V2 to *Latest
+release*, and that has to stay V1's installer until V2 is actually stable.
+
+The cost is that the in-app updater cannot see betas either — which is moot for
+now, because it is not switched on (see below).
+
+---
+
+## Before 2.0.0 proper
 
 ### 1. Validate against a real client
 
@@ -28,101 +75,99 @@ The one thing no test here can substitute for. On a real machine:
       `NotPlater-3.3.5`; V2 derives the name from the `.toc`. If the game needs
       the suffixed name, the override has to come back before release.
 
+This is what the beta is *for*, so it can be done with real users rather than
+alone.
+
 ### 2. Generate the updater signing key
 
 Needs a repository secret, so it cannot be done from a coding session.
 
 ```sh
-npm run tauri signer generate -- -w ~/.tauri/bam.key
+npm install                                    # `tauri` is node_modules/.bin/tauri
+npm run tauri -- signer generate -w ~/.tauri/bam.key
+```
+
+On Windows, `~` does not expand — give the path in full:
+
+```powershell
+npx @tauri-apps/cli signer generate -w "$env:USERPROFILE\.tauri\bam.key"
 ```
 
 - [ ] Put the **public** half in `src-tauri/tauri.conf.json` → `plugins.updater.pubkey`.
 - [ ] Put the **private** half in the `TAURI_SIGNING_PRIVATE_KEY` repository secret.
 - [ ] If you set a password, add `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` too.
 
-Until this is done the release still builds, but produces unsigned artifacts the
-in-app updater will refuse to install.
+Until this is done the release still builds — it simply produces no updater
+artifacts, because `createUpdaterArtifacts` is off. See the next section before
+turning it back on.
 
-### 3. Publish the curated lists
+### 3. Switch the in-app updater on
 
-The app fetches `public/catalog/<version>.json` from **`main`**. Those files
-exist on this branch but not yet on `main`.
+Four separate things are missing, and all four are needed:
 
-- [ ] Copy `public/catalog/` to `main`, **or** let the promotion carry it.
+- [ ] The signing key above. Without a `pubkey` the plugin has nothing to
+      verify against.
+- [ ] **`createUpdaterArtifacts` is `false`** in `src-tauri/tauri.conf.json`.
+      Set it back to `true` *at the same time as* the signing secret, not
+      before: with it `true` and no `TAURI_SIGNING_PRIVATE_KEY`, the bundler
+      builds every installer and then fails the job outright — *"a public key
+      has been found, but no private key"* — so the release never gets
+      published. That is a hard dependency on a repository secret, which is why
+      it is off for the beta.
+- [ ] **Nothing calls it.** `tauri-plugin-updater` is registered in
+      `src-tauri/src/lib.rs`, but no command or startup hook invokes a check, so
+      the app never looks. This is deliberate for the beta rather than an
+      oversight.
+- [ ] The endpoint is `releases/latest/download/latest.json`, which resolves
+      only once there is a non-pre-release. It will start working by itself when
+      2.0.0 ships; it cannot be made to serve betas without publishing them as
+      normal releases, which would hijack the link V1 users follow.
 
-Until then a shim in `src-tauri/src/commands/catalog.rs` falls back to the old
-`public/handy-addons.json` path for WotLK. Once the lists are live on `main`:
+Only the AppImage self-updates on Linux; `.deb` and `.rpm` are owned by the
+package manager.
 
-- [ ] Delete `LEGACY_URL` and its fallback branch.
+### 4. Put the `.rpm` back
 
----
+Dropped for the beta, from both `bundle.targets` in
+`src-tauri/tauri.conf.json` and the Linux `args` in the release workflow.
 
-## Promoting
+RPM forbids a hyphen in its `Version` field, and Tauri's bundler writes the
+config version there verbatim, so `2.0.0-beta.1` produces a package whose NEVRA
+cannot be parsed. Confirmed by reading `VERSION` out of a real bundle's header,
+not inferred. Once the version is plain `2.0.0` the problem disappears.
 
-**Rename both branches. Do not force-push `main`.**
+The `.deb` has a milder version of the same wart and is shipped anyway: Debian
+reads `2.0.0-beta.1` as upstream `2.0.0` with revision `beta.1`, which sorts
+*newer* than a future plain `2.0.0`. `dpkg -i` installs over it regardless, and
+beta updates are manual, so it does not bite in practice — but do not be
+surprised if `apt` calls the stable release a downgrade.
 
-`main` holds V1 and shares no layout history with this branch, so a normal merge
-would conflict across every file. The obvious alternative — force-pushing this
-tree over `main` — works, but it rewrites the default branch of a public
-repository: anyone who has cloned gets a divergence git cannot reconcile, and
-undoing it means recovering a SHA from the reflog.
+### 5. Rename `dev` to `main`
 
-Renaming avoids all of that. Neither history is rewritten, GitHub retargets open
-issues and pull requests automatically, and anyone with a clone is shown the
-commands to update.
+Optional, and purely cosmetic now that `dev` is already the default branch. If
+you want the conventional name back:
 
-**Release assets are unaffected either way** — they hang off tags, not branches
-— so V1's installers stay downloadable regardless. That is the part existing
-users care about.
+1. Rename `dev` → `main` in *Settings → Branches*.
+2. Confirm `main` is still the default afterwards.
+3. Nothing in the code needs editing. `ci.yml` already triggers on `[main, dev]`,
+   and the curated-list URL uses `HEAD` rather than a branch name.
 
-### Steps
+Decide afterwards whether to create a fresh `dev` to work on or commit to `main`
+directly, rather than drifting into one.
 
-1. **Tag V1's tip.** The `v1.4.0` tag is one commit behind `main`, so tag the
-   exact archived state. A tag is harder to delete by accident than a branch.
+### 6. Housekeeping
 
-   ```sh
-   git fetch origin
-   git tag v1-final origin/main
-   git push origin v1-final
-   ```
-
-2. **Rename `main` → `v1-archive`** in GitHub's branch settings
-   (*Settings → Branches*, or the pencil icon on the branches page). GitHub
-   retargets open PRs and shows a rename notice to anyone with a clone.
-
-3. **Rename `dev` → `main`.**
-
-4. **Set `main` as the default branch.** Renaming step 2 leaves `v1-archive`
-   as default, so this must be done explicitly.
-
-5. **Check CI ran** on the new `main`. The workflow triggers on `[main, dev]`,
-   so it should fire on the first push after promotion.
-
-### Afterwards
-
-There is no `dev` branch any more, because it became `main`. Either work
-directly on `main` or create a fresh `dev` — decide rather than drift into it.
-
-> If you would rather keep `main` as a continuous branch and accept the
-> rewrite, the equivalent is `git push origin dev:main --force-with-lease`
-> after tagging V1. `--force-with-lease` at least refuses if someone else has
-> pushed since you fetched. The rename is still the better option.
-
----
-
-## After promoting
-
-- [ ] Update the README: swap the "not released yet" warning for real download
-      links, and repoint the *Using V1* section at the `v1-archive` branch once
-      V2 has an actual release.
-- [ ] Tag a release: `git tag v2.0.0-beta.1 && git push origin v2.0.0-beta.1`.
-      The release workflow builds Windows and Linux artifacts and opens a draft.
 - [ ] Revoke the `BlobKey` repository secret. The workflow that used it is gone,
       and a live storage key with nothing pointing at it is worth removing.
-- [ ] Decide whether to create a fresh `dev` branch or work on `main`
-      directly. The old `dev` no longer exists — it became `main`.
-- [ ] Check that `.claude/settings.json` is present on `main`, so the
-      session-start hook runs for future work.
+- [ ] Consider tagging V1's tip. The `v1.4.0` tag is one commit behind
+      `v1-archive`, so it does not name the exact archived state, and a tag is
+      harder to delete by accident than a branch.
+
+      ```sh
+      git fetch origin
+      git tag v1-final origin/v1-archive
+      git push origin v1-final
+      ```
 
 ---
 
@@ -133,12 +178,18 @@ be complete.
 
 - The `v2/` subdirectory has been flattened to the repository root.
 - V1's source, build files and workflows are removed from this branch. They
-  remain on `main` and in its releases.
+  remain on `v1-archive` and in its releases.
 - CI (`.github/workflows/ci.yml`) runs on `main` and `dev`, on Windows and
   Linux, and builds the engine, the frontend and the Tauri shell.
-- The release workflow (`.github/workflows/release.yml`) triggers on any `v*`
-  tag and keeps V1's Cosign signing.
+- The release workflow publishes rather than drafting, and derives
+  pre-release status from the tag — reading the `workflow_dispatch` input first,
+  since `github.ref_name` is a *branch* on a hand-triggered run.
+- The curated lists are served from `HEAD`, so they survive branch renames. The
+  `public/handy-addons.json` shim is gone; `catalog/wotlk.json` carries those
+  entries and only the default branch is consulted.
 - `vite.config.ts` sets `publicDir: false`, so the curated lists in `public/`
   are not bundled into the app as a stale copy.
 - The app identifier is `com.lonebrownie.browniesaddonmanager.v2`, distinct from
   V1's, so both can be installed at once.
+- The README describes V2 as a beta with real download instructions, and points
+  people who want V1 at `v1-archive` and at *Latest release*.

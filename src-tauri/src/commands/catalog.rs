@@ -9,16 +9,17 @@ use crate::dto::{CatalogEntryDto, CatalogResultDto};
 use crate::state::{AppState, Preferences};
 use bam_core::model::GameVersion;
 
-/// Base for the curated lists, pinned to `main` so edits in progress on `dev`
-/// never reach users (D5).
-const CATALOG_BASE: &str = "https://raw.githubusercontent.com/LoneBrownie/AddonManager/main/public";
-
-/// The pre-split location of the WotLK list.
+/// Base for the curated lists.
 ///
-/// Temporary shim so Browse keeps working before `catalog/wotlk.json` lands on
-/// `main`. Delete once it has.
-const LEGACY_URL: &str =
-    "https://raw.githubusercontent.com/LoneBrownie/AddonManager/main/public/handy-addons.json";
+/// `HEAD` rather than a branch name. This was pinned to `main`, which broke the
+/// moment `main` was renamed to `v1-archive` — a shipped binary cannot be told
+/// about a rename, so every installed copy would have lost Browse. `HEAD` is
+/// served by raw.githubusercontent as an alias for whatever the default branch
+/// currently is, so the rename of `dev` to `main` later on costs nothing.
+///
+/// It also keeps the original intent (D5): the default branch is what users
+/// get, so unreviewed edits on a side branch still never reach them.
+const CATALOG_BASE: &str = "https://raw.githubusercontent.com/LoneBrownie/AddonManager/HEAD/public";
 
 fn catalog_url(version: GameVersion) -> String {
     let name = match version {
@@ -53,15 +54,13 @@ pub async fn get_catalog(
         });
     };
 
-    let mut response = state
+    // The pre-split `public/handy-addons.json` fallback is gone: that file now
+    // only exists on `v1-archive`, and `catalog/wotlk.json` carries the same
+    // entries on the default branch.
+    let response = state
         .client
         .get(&catalog_url(server.version), &api_headers(None, None))
         .await;
-
-    // Shim: fall back to the pre-split file for WotLK only.
-    if server.version == GameVersion::Wotlk && !matches!(&response, Ok(r) if r.is_success()) {
-        response = state.client.get(LEGACY_URL, &api_headers(None, None)).await;
-    }
 
     let response = match response {
         Ok(response) => response,
