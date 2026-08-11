@@ -124,11 +124,30 @@ first.
 
 ---
 
+## Building the GUI in a web session
+
+The Tauri app **can** be compiled and run here. The base container lacks
+WebKitGTK and its apt index is stale enough that a plain `apt-get install`
+404s — which looks like a blocked network but is not. `.claude/hooks/session-start.sh`
+runs `apt-get update` first and installs the toolchain, so this is handled
+automatically at session start.
+
+The React frontend needs none of that: it is an ordinary web app, so it can be
+served with Vite and driven with the preinstalled Playwright Chromium against a
+mocked `invoke` bridge. Screenshots of real UI are therefore possible without
+Tauri at all.
+
+What still cannot be done here: running the finished app against a **real WoW
+folder with a real network**. That is release acceptance testing and belongs to
+the author regardless of tooling.
+
+---
+
 ## Not yet built
 
-Phases 2 onward, tracked in V2-PLAN.md:
+Phases 3 onward, tracked in V2-PLAN.md:
 
-- The Tauri shell and its command surface (needs `webkit2gtk-4.1` on Linux).
+- The Tauri shell and its command surface.
 - The `reqwest`-backed `HttpClient`. The trait and its host allowlist exist;
   the concrete client belongs in the app layer so `core` stays dependency-light
   and network-free in tests.
