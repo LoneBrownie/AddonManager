@@ -67,8 +67,13 @@ export interface CatalogEntry {
   repoUrl: string;
   category: string;
   dependencies: string[];
-  gameVersions: GameVersion[];
   installed: boolean;
+}
+
+/** The curated list, plus why it might be empty. */
+export interface CatalogResult {
+  status: "ok" | "noServer" | "noListForVersion" | "unavailable" | "malformed";
+  entries: CatalogEntry[];
 }
 
 /** An addon folder on disk that this app does not manage yet. */
@@ -215,7 +220,7 @@ export const setAddonChannel = (
 // --- catalogue, sharing, settings ------------------------------------------
 
 export const getCatalog = (serverId: string | null) =>
-  call<CatalogEntry[]>("get_catalog", { serverId });
+  call<CatalogResult>("get_catalog", { serverId });
 export const exportAddonList = (serverId: string) =>
   call<string>("export_addon_list", { serverId });
 export const parseAddonList = (text: string) =>

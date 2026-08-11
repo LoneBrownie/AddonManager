@@ -169,6 +169,28 @@ the author regardless of tooling.
 
 ---
 
+## Open question: `customFolderName`
+
+**Verify before reimplementing.** V1's curated list has a `customFolderName`
+field that forced an addon's install folder name. Two entries use it:
+
+| Entry | Forced name |
+|---|---|
+| `dragonui` | `DragonUI` |
+| `notplater` | `NotPlater-3.3.5` |
+
+V2 ignores it and derives folder names from `.toc` base names instead, which is
+correct for the overwhelming majority of addons and is what removed V1's
+folder-name guessing. But it is a **behaviour change**, and `NotPlater-3.3.5`
+looks like a case where the two disagree: a `NotPlater.toc` would install to
+`NotPlater`.
+
+Before adding the override back, install both addons on a real client and check
+whether the game loads them from the folder V2 chooses. The override may have
+been added to V1 for a reason that no longer applies, or for one that still
+does — that is what needs establishing. If it is needed, it belongs as an
+explicit per-entry escape hatch, not as a general mechanism.
+
 ## Not yet built
 
 Phases 3 onward, tracked in V2-PLAN.md:

@@ -218,6 +218,18 @@ pub struct UnmetDto {
     pub missing: Vec<String>,
 }
 
+/// The curated list, plus why it might be empty.
+///
+/// "You are offline" and "nobody has curated a list for TBC yet" are different
+/// situations and deserve different words, so they are not both an empty array.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CatalogResultDto {
+    /// "ok" | "noServer" | "noListForVersion" | "unavailable" | "malformed"
+    pub status: String,
+    pub entries: Vec<CatalogEntryDto>,
+}
+
 /// One entry from the curated catalogue.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -231,9 +243,6 @@ pub struct CatalogEntryDto {
     pub category: String,
     #[serde(default)]
     pub dependencies: Vec<String>,
-    /// Which game versions this entry targets. Absent means "all".
-    #[serde(default)]
-    pub game_versions: Vec<GameVersion>,
     #[serde(default)]
     pub installed: bool,
 }

@@ -5,54 +5,115 @@ use bam_core::sources;
 use tauri::State;
 
 use super::{CommandError, CommandResult};
-use crate::dto::CatalogEntryDto;
+use crate::dto::{CatalogEntryDto, CatalogResultDto};
 use crate::state::{AppState, Preferences};
+use bam_core::model::GameVersion;
 
-/// Served from this repository, pinned to `main` so edits in progress on `dev`
-/// never reach users (D5). Azure Blob is retired.
-const CATALOG_URL: &str =
+/// Base for the curated lists, pinned to `main` so edits in progress on `dev`
+/// never reach users (D5).
+const CATALOG_BASE: &str = "https://raw.githubusercontent.com/LoneBrownie/AddonManager/main/public";
+
+/// The pre-split location of the WotLK list.
+///
+/// Temporary shim so Browse keeps working before `catalog/wotlk.json` lands on
+/// `main`. Delete once it has.
+const LEGACY_URL: &str =
     "https://raw.githubusercontent.com/LoneBrownie/AddonManager/main/public/handy-addons.json";
 
-/// Fetch the curated list, marking anything already installed on this server.
+fn catalog_url(version: GameVersion) -> String {
+    let name = match version {
+        GameVersion::Vanilla => "vanilla",
+        GameVersion::Tbc => "tbc",
+        GameVersion::Wotlk => "wotlk",
+    };
+    format!("{CATALOG_BASE}/catalog/{name}.json")
+}
+
+/// Fetch the curated list for a server's game version.
 ///
-/// A network failure returns an empty list rather than an error: the catalogue
-/// is a convenience, and the rest of the app works fine without it.
+/// One file per version rather than one file with version tags: a 3.3.5a addon
+/// and its Vanilla equivalent are almost always different repositories, not the
+/// same entry tagged twice. So there is no client-side filtering — the file
+/// fetched is the list shown.
+///
+/// The three outcomes are reported separately, because "you are offline" and
+/// "nobody has curated a list for TBC yet" need different words.
 #[tauri::command]
 pub async fn get_catalog(
     state: State<'_, AppState>,
     server_id: Option<String>,
-) -> CommandResult<Vec<CatalogEntryDto>> {
-    let response = state
+) -> CommandResult<CatalogResultDto> {
+    let store = state.snapshot()?;
+    let server = server_id.as_ref().and_then(|id| store.server(id).cloned());
+
+    let Some(server) = server else {
+        return Ok(CatalogResultDto {
+            status: "noServer".into(),
+            entries: Vec::new(),
+        });
+    };
+
+    let mut response = state
         .client
-        .get(CATALOG_URL, &api_headers(None, None))
+        .get(&catalog_url(server.version), &api_headers(None, None))
         .await;
 
-    let Ok(response) = response else {
-        return Ok(Vec::new());
-    };
-    if !response.is_success() {
-        return Ok(Vec::new());
+    // Shim: fall back to the pre-split file for WotLK only.
+    if server.version == GameVersion::Wotlk && !matches!(&response, Ok(r) if r.is_success()) {
+        response = state.client.get(LEGACY_URL, &api_headers(None, None)).await;
     }
-    let Ok(mut entries) = serde_json::from_slice::<Vec<CatalogEntryDto>>(&response.body) else {
-        return Ok(Vec::new());
-    };
 
-    if let Some(server_id) = server_id {
-        let store = state.snapshot()?;
-        let installed: Vec<String> = store
-            .installed_for(&server_id)
-            .into_iter()
-            .map(|i| i.addon_id.clone())
-            .collect();
-
-        for entry in entries.iter_mut() {
-            entry.installed = sources::parse_repo_url(&entry.repo_url)
-                .map(|source| installed.contains(&source.id()))
-                .unwrap_or(false);
+    let response = match response {
+        Ok(response) => response,
+        Err(error) => {
+            tracing::warn!(%error, "curated list unreachable");
+            return Ok(CatalogResultDto {
+                status: "unavailable".into(),
+                entries: Vec::new(),
+            });
         }
+    };
+
+    if response.status == 404 {
+        return Ok(CatalogResultDto {
+            status: "noListForVersion".into(),
+            entries: Vec::new(),
+        });
+    }
+    if !response.is_success() {
+        return Ok(CatalogResultDto {
+            status: "unavailable".into(),
+            entries: Vec::new(),
+        });
     }
 
-    Ok(entries)
+    let mut entries: Vec<CatalogEntryDto> = match serde_json::from_slice(&response.body) {
+        Ok(entries) => entries,
+        Err(error) => {
+            // A malformed list is a maintenance mistake, not a user problem.
+            tracing::warn!(%error, "curated list is not valid JSON");
+            return Ok(CatalogResultDto {
+                status: "malformed".into(),
+                entries: Vec::new(),
+            });
+        }
+    };
+
+    let installed: Vec<String> = store
+        .installed_for(&server.id)
+        .into_iter()
+        .map(|i| i.addon_id.clone())
+        .collect();
+    for entry in entries.iter_mut() {
+        entry.installed = sources::parse_repo_url(&entry.repo_url)
+            .map(|source| installed.contains(&source.id()))
+            .unwrap_or(false);
+    }
+
+    Ok(CatalogResultDto {
+        status: "ok".into(),
+        entries,
+    })
 }
 
 /// Render a server's addons as shareable text.
@@ -120,7 +181,9 @@ pub async fn resolve_catalog_install(
     server_id: String,
     entry_id: String,
 ) -> CommandResult<Vec<CatalogEntryDto>> {
-    let entries = get_catalog(state.clone(), Some(server_id.clone())).await?;
+    let entries = get_catalog(state.clone(), Some(server_id.clone()))
+        .await?
+        .entries;
 
     let edges: std::collections::BTreeMap<String, Vec<String>> = entries
         .iter()

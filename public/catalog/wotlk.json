@@ -1,0 +1,134 @@
+[
+  {
+    "id": "classicapi",
+    "name": "Classic API",
+    "description": "Essential API functions for Classic WoW addons compatibility.",
+    "repoUrl": "https://gitlab.com/Tsoukie/classicapi",
+    "category": "Core"
+  },
+  {
+    "id": "compactraidframe",
+    "name": "Compact Raid Frames",
+    "description": "Compact and customizable raid frame addon for improved raid visibility.",
+    "repoUrl": "https://gitlab.com/Tsoukie/compactraidframe-3.3.5",
+    "category": "Raid Frames",
+    "dependencies": [
+      "classicapi"
+    ]
+  },
+  {
+    "id": "enhancedraidframes",
+    "name": "Enhanced Raid Frames",
+    "description": "Enhanced raid frames with additional features and customization options.",
+    "repoUrl": "https://gitlab.com/Tsoukie/enhancedraidframes-3.3.5",
+    "category": "Raid Frames",
+    "dependencies": [
+      "classicapi",
+      "compactraidframe"
+    ]
+  },
+  {
+    "id": "addonlist",
+    "name": "Addon List",
+    "description": "Manage and organize your addons with an in-game interface.",
+    "repoUrl": "https://gitlab.com/Tsoukie/addonlist-3.3.5",
+    "category": "Management",
+    "dependencies": [
+      "classicapi"
+    ]
+  },
+  {
+    "id": "clique",
+    "name": "Clique",
+    "description": "Click-casting addon for healers and support classes.",
+    "repoUrl": "https://gitlab.com/Tsoukie/clique-3.3.5",
+    "category": "Healing",
+    "dependencies": [
+      "classicapi"
+    ]
+  },
+  {
+    "id": "compactraidframe-healex",
+    "name": "Compact Raid Frame - HealEx",
+    "description": "Extended healing features for Compact Raid Frames.",
+    "repoUrl": "https://gitlab.com/Tsoukie/compactraidframe_healex",
+    "category": "Raid Frames",
+    "dependencies": [
+      "classicapi",
+      "compactraidframe"
+    ]
+  },
+  {
+    "id": "raidframesorter",
+    "name": "Raid Frame Sorter",
+    "description": "Sort and organize raid frames for better group management.",
+    "repoUrl": "https://gitlab.com/Tsoukie/raidframesorter-3.3.5",
+    "category": "Raid Frames",
+    "dependencies": [
+      "classicapi",
+      "compactraidframe"
+    ]
+  },
+  {
+    "id": "framesort",
+    "name": "FrameSort",
+    "description": "Sort and organize unit frames and raid frames for better group management.",
+    "repoUrl": "https://gitlab.com/Tsoukie/framesort-3.3.5",
+    "category": "Raid Frames",
+    "dependencies": [
+      "classicapi",
+      "compactraidframe"
+    ]
+  },
+  {
+    "id": "dragonui",
+    "name": "DragonUI",
+    "description": "Modern Dragonflight-style user interface for Classic WoW with updated visuals and functionality.",
+    "repoUrl": "https://github.com/NeticSoul/DragonUI",
+    "category": "Interface",
+    "customFolderName": "DragonUI"
+  },
+  {
+    "id": "bagnon",
+    "name": "Bagnon",
+    "description": "All-in-one bag replacement addon that merges all your bags into one frame.",
+    "repoUrl": "https://github.com/RichSteini/Bagnon-3.3.5",
+    "category": "Interface"
+  },
+  {
+    "id": "notplater",
+    "name": "NotPlater",
+    "description": "Advanced nameplate addon with extensive customization options.",
+    "repoUrl": "https://github.com/RichSteini/NotPlater",
+    "category": "Interface",
+    "customFolderName": "NotPlater-3.3.5"
+  },
+  {
+    "id": "WeakAuras",
+    "name": "Weak Auras",
+    "description": "Powerful aura management addon for tracking buffs, debuffs, and other important information.",
+    "repoUrl": "https://github.com/NoM0Re/WeakAuras-WotLK",
+    "category": "Interface"
+  },
+  {
+    "id": "Auctionator",
+    "name": "Auctionator",
+    "description": "Comprehensive auction house management addon.",
+    "repoUrl": "https://github.com/thierbig/Auctionator-3.3.5-Fixed",
+    "category": "Interface"
+  },
+  {
+    "id": "PallyPower",
+    "name": "Pally Power",
+    "description": "Paladin blessings management addon.",
+    "repoUrl": "https://github.com/NoM0Re/PallyPower-Improved-3.3.5",
+    "category": "Interface"
+  },
+  {
+    "id": "Details Damage Meter",
+    "name": "Details",
+    "description": "Damage Meter with extensive features for tracking and analyzing combat performance.",
+    "repoUrl": "https://github.com/NoM0Re/Details-WotLK",
+    "category": "Interface"
+  }
+]

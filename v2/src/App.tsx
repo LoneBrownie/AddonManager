@@ -527,26 +527,31 @@ function BrowsePage({
   server: Server | null;
   onInstall: (entry: CatalogEntry) => Promise<void>;
 }) {
-  const [entries, setEntries] = useState<CatalogEntry[]>([]);
+  const [result, setResult] = useState<api.CatalogResult | null>(null);
   const [category, setCategory] = useState("All");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
+    setResult(null);
     api
       .getCatalog(server?.id ?? null)
-      .then(setEntries)
-      .catch(() => setEntries([]));
+      .then(setResult)
+      .catch(() => setResult({ status: "unavailable", entries: [] }));
   }, [server?.id]);
 
-  const relevant = server
-    ? entries.filter(
-        (entry) =>
-          entry.gameVersions.length === 0 || entry.gameVersions.includes(server.version),
-      )
-    : entries;
+  const entries = result?.entries ?? [];
+  const categories = ["All", ...new Set(entries.map((entry) => entry.category))];
 
-  const categories = ["All", ...new Set(relevant.map((entry) => entry.category))];
-  const shown =
-    category === "All" ? relevant : relevant.filter((entry) => entry.category === category);
+  const needle = query.trim().toLowerCase();
+  const shown = entries.filter((entry) => {
+    if (category !== "All" && entry.category !== category) return false;
+    if (!needle) return true;
+    return (
+      entry.name.toLowerCase().includes(needle) ||
+      entry.description.toLowerCase().includes(needle) ||
+      entry.category.toLowerCase().includes(needle)
+    );
+  });
 
   return (
     <>
@@ -561,17 +566,23 @@ function BrowsePage({
         </div>
       </div>
       <div className="page-body">
-        {relevant.length === 0 ? (
-          <div className="empty">
-            <h3>Nothing to show</h3>
-            <p>
-              The curated list could not be loaded, or nothing in it targets this
-              game version. You can still add addons by URL.
-            </p>
-          </div>
+        {result === null ? (
+          <p>
+            <span className="spinner" /> Loading the curated list…
+          </p>
+        ) : entries.length === 0 ? (
+          <EmptyCatalog status={result.status} server={server} />
         ) : (
           <>
             <div className="searchbar">
+              <input
+                className="input"
+                type="search"
+                placeholder="Search the curated list…"
+                aria-label="Search the curated list"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
               <select
                 className="select"
                 aria-label="Category"
@@ -585,29 +596,97 @@ function BrowsePage({
                 ))}
               </select>
             </div>
-            <div className="cards">
-              {shown.map((entry) => (
-                <div className="card" key={entry.id}>
-                  <h4>{entry.name}</h4>
-                  <p>{entry.description}</p>
-                  <div className="foot">
-                    <span className="tag">{entry.category}</span>
-                    <button
-                      type="button"
-                      className="btn small primary"
-                      disabled={!server?.canInstall || entry.installed}
-                      onClick={() => void onInstall(entry)}
-                    >
-                      {entry.installed ? "Installed" : "Install"}
-                    </button>
+
+            {shown.length === 0 ? (
+              <div className="empty">
+                <h3>Nothing matches</h3>
+                <p>No curated addon matches that search and category.</p>
+              </div>
+            ) : (
+              <div className="cards">
+                {shown.map((entry) => (
+                  <div className="card" key={entry.id}>
+                    <h4>{entry.name}</h4>
+                    <p>{entry.description}</p>
+                    <div className="foot">
+                      <span className="tag">{entry.category}</span>
+                      <button
+                        type="button"
+                        className="btn small primary"
+                        disabled={!server?.canInstall || entry.installed}
+                        onClick={() => void onInstall(entry)}
+                      >
+                        {entry.installed ? "Installed" : "Install"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * Why the curated list is empty.
+ *
+ * Being offline and nobody having curated a list for TBC yet are different
+ * situations; showing one message for both left the user unable to tell whether
+ * to check their connection or stop waiting.
+ */
+function EmptyCatalog({
+  status,
+  server,
+}: {
+  status: api.CatalogResult["status"];
+  server: Server | null;
+}) {
+  if (status === "noServer") {
+    return (
+      <div className="empty">
+        <h3>No server selected</h3>
+        <p>Add a server to see the curated list for its game version.</p>
+      </div>
+    );
+  }
+
+  if (status === "unavailable") {
+    return (
+      <div className="empty">
+        <h3>Could not reach the curated list</h3>
+        <p>
+          Check your connection and try again. Everything else still works —
+          you can add addons by URL in the meantime.
+        </p>
+      </div>
+    );
+  }
+
+  if (status === "malformed") {
+    return (
+      <div className="empty">
+        <h3>The curated list could not be read</h3>
+        <p>
+          It downloaded but is not valid. That is a problem with the list
+          itself rather than with your setup — please report it. You can still
+          add addons by URL.
+        </p>
+      </div>
+    );
+  }
+
+  // "noListForVersion", or an empty file.
+  return (
+    <div className="empty">
+      <h3>No curated list for {server?.versionLabel ?? "this version"} yet</h3>
+      <p>
+        The curated list currently covers WotLK 3.3.5a. You can still add any
+        addon by pasting its GitHub or GitLab URL.
+      </p>
+    </div>
   );
 }
 

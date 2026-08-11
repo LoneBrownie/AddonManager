@@ -114,28 +114,19 @@ function row(
 }
 
 const catalog: CatalogEntry[] = [
-  entry("classicapi", "Classic API", "Core", "Essential API functions for 3.3.5a addons.", [
-    "wotlk",
-  ]),
+  entry("classicapi", "Classic API", "Core", "Essential API functions for 3.3.5a addons."),
   entry(
     "compactraidframe",
     "Compact Raid Frames",
     "Raid Frames",
     "Compact, customisable raid frames.",
-    ["wotlk"],
     ["classicapi"],
   ),
-  entry("clique", "Clique", "Healing", "Click-casting for healers.", ["wotlk"], [
+  entry("clique", "Clique", "Healing", "Click-casting for healers.", [
     "classicapi",
   ]),
-  entry("atlasloot", "AtlasLoot", "Questing", "Loot tables for every instance.", [
-    "wotlk",
-    "tbc",
-  ]),
-  entry("questie", "Questie", "Questing", "Quest helper with map integration.", [
-    "wotlk",
-    "vanilla",
-  ]),
+  entry("atlasloot", "AtlasLoot", "Questing", "Loot tables for every instance."),
+  entry("questie", "Questie", "Questing", "Quest helper with map integration."),
 ];
 
 function entry(
@@ -143,7 +134,6 @@ function entry(
   name: string,
   category: string,
   description: string,
-  gameVersions: CatalogEntry["gameVersions"],
   dependencies: string[] = [],
 ): CatalogEntry {
   return {
@@ -153,7 +143,6 @@ function entry(
     repoUrl: `https://gitlab.com/Tsoukie/${id}`,
     category,
     dependencies,
-    gameVersions,
     installed: false,
   };
 }
@@ -388,7 +377,7 @@ export async function mockInvoke<T>(
     }
 
     case "get_catalog":
-      return catalog as T;
+      return { status: "ok", entries: catalog } as T;
 
     case "export_addon_list": {
       const rows = (serverId && addons[serverId]) || [];
