@@ -184,6 +184,17 @@ pub struct InstalledAddon {
     pub folders: Vec<String>,
     pub archive_sha256: Option<String>,
     pub installed_at: String,
+    /// False when the addon's `.toc` declares an interface this server is not.
+    ///
+    /// Persisted rather than raised once at install time: an addon built for
+    /// TBC sitting in a WotLK folder stays wrong, so the list should keep
+    /// saying so. An addon that declares nothing is never flagged.
+    #[serde(default = "default_true")]
+    pub version_matches: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 /// Everything persisted to disk.
@@ -409,6 +420,7 @@ mod tests {
             folders: vec!["Addon".into()],
             archive_sha256: None,
             installed_at: "2026-01-01T00:00:00Z".into(),
+            version_matches: true,
         }
     }
 }

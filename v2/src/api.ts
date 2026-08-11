@@ -43,6 +43,8 @@ export interface Addon {
   needsUpdate: boolean;
   folders: string[];
   installedAt: string;
+  /** False when the addon targets a different game version than this server. */
+  versionMatches: boolean;
 }
 
 export interface FolderVerdict {
@@ -207,3 +209,5 @@ export const hasGithubToken = () => call<boolean>("has_github_token");
 export const setGithubToken = (token: string | null) =>
   call<void>("set_github_token", { token });
 export const openUrl = (url: string) => call<void>("open_url", { url });
+export const openLogsFolder = () => call<void>("open_logs_folder");
+export const diagnostics = () => call<string>("diagnostics");

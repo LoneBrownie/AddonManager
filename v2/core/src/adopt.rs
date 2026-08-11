@@ -195,6 +195,7 @@ pub fn adopt(
         folders,
         archive_sha256: None,
         installed_at: String::new(),
+        version_matches: true,
     };
     store.upsert_installation(installation.clone());
     Ok(installation)
@@ -283,6 +284,7 @@ mod tests {
             folders: vec!["Questie".into()],
             archive_sha256: None,
             installed_at: "0".into(),
+            version_matches: true,
         });
         let server = store
             .server(&id)
@@ -410,6 +412,7 @@ mod tests {
             folders: vec!["Questie".into()],
             archive_sha256: None,
             installed_at: "0".into(),
+            version_matches: true,
         });
 
         let result = adopt(

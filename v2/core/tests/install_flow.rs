@@ -12,6 +12,7 @@ use bam_core::error::Error;
 use bam_core::install::{self, InstallOptions};
 use bam_core::model::{Channel, GameVersion, Server, Source, Store};
 use bam_core::testing::{addon_zip, fake_wow_dir, zip_from, FakeHttp};
+use bam_core::updates;
 use bam_core::version::{Ref, UpdateStatus};
 
 const RELEASES_URL: &str = "https://api.github.com/repos/o/r/releases/latest";
@@ -104,7 +105,7 @@ async fn detects_and_applies_an_update() {
 
     // Upstream publishes a newer tag.
     let new = forge_serving("v1.1.0", addon_zip("MyAddon", 30300, "1.1.0"));
-    let report = install::check_update(&new, &store, &server_id, "github:o/r", None)
+    let report = updates::check_update(&new, &store, &server_id, "github:o/r", None)
         .await
         .expect("check should succeed");
     assert_eq!(report.status, UpdateStatus::UpdateAvailable);
@@ -154,7 +155,7 @@ async fn reports_up_to_date_when_the_tag_has_not_moved() {
     .await
     .expect("install");
 
-    let report = install::check_update(&client, &store, &server_id, "github:o/r", None)
+    let report = updates::check_update(&client, &store, &server_id, "github:o/r", None)
         .await
         .expect("check");
     assert_eq!(report.status, UpdateStatus::UpToDate);
@@ -562,4 +563,94 @@ async fn installing_to_an_unknown_server_is_an_error() {
     .await;
 
     assert!(matches!(result, Err(Error::UnknownServer(_))));
+}
+
+#[tokio::test]
+async fn flags_an_addon_built_for_a_different_game_version() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    // The server is WotLK; the addon declares Vanilla.
+    let server_id = register_server(&mut store, tmp.path());
+
+    let client = forge_serving("v1.0.0", addon_zip("OldAddon", 11200, "1.0.0"));
+    let installed = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install still succeeds");
+
+    assert!(
+        !installed.version_matches,
+        "a Vanilla addon in a WotLK folder should be flagged"
+    );
+    assert!(
+        tmp.path().join("Interface/AddOns/OldAddon").is_dir(),
+        "flagged, not blocked — the user may know better than the .toc"
+    );
+}
+
+#[tokio::test]
+async fn does_not_flag_an_addon_that_declares_nothing() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let zip = zip_from(&[("Quiet/Quiet.toc", b"## Title: No interface line\n")]);
+    let installed = install::install(
+        &forge_serving("v1.0.0", zip),
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install");
+
+    assert!(installed.version_matches, "no claim means no warning");
+}
+
+#[tokio::test]
+async fn update_checks_run_in_parallel_and_skip_pinned_addons() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let client = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+    install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install");
+
+    // Unpinned: it is checked.
+    let reports = updates::check_updates_for_server(&client, &store, &server_id, None, 6).await;
+    assert_eq!(reports.len(), 1);
+
+    // Pinned: no request is made for it at all.
+    if let Some(row) = store
+        .installed
+        .iter_mut()
+        .find(|i| i.server_id == server_id)
+    {
+        row.pinned = true;
+    }
+    let reports = updates::check_updates_for_server(&client, &store, &server_id, None, 6).await;
+    assert!(
+        reports.is_empty(),
+        "a pinned addon must not be checked, let alone nag"
+    );
 }

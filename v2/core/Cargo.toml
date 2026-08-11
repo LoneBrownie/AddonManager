@@ -18,6 +18,7 @@ uuid.workspace = true
 walkdir.workspace = true
 tracing.workspace = true
 async-trait.workspace = true
+futures-util = { version = "0.3.34", default-features = false, features = ["std", "async-await"] }
 
 [dev-dependencies]
 tokio.workspace = true

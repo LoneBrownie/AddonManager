@@ -207,3 +207,96 @@ mod tests {
         assert!(parse_addon_list(String::new()).is_empty());
     }
 }
+
+/// Open the folder containing the app's logs and data.
+///
+/// Load-bearing rather than a convenience: the author cannot read the source,
+/// so this plus the rotating log is how a failure becomes reportable
+/// (V2-PLAN.md 5.1.5).
+#[tauri::command]
+pub fn open_logs_folder(app: tauri::AppHandle) -> CommandResult<()> {
+    use tauri::Manager;
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| CommandError {
+            kind: "unexpected".into(),
+            message: e.to_string(),
+            folder: None,
+        })?
+        .join("logs");
+
+    let _ = std::fs::create_dir_all(&dir);
+    tauri_plugin_opener::OpenerExt::opener(&app)
+        .open_path(dir.to_string_lossy().to_string(), None::<String>)
+        .map_err(|e| CommandError {
+            kind: "unexpected".into(),
+            message: e.to_string(),
+            folder: None,
+        })
+}
+
+/// A redacted summary to paste into a bug report.
+///
+/// Server *names* and game versions are included because they explain the
+/// shape of a problem; full paths are reduced to their last component, and the
+/// GitHub token is reported only as present or absent.
+#[tauri::command]
+pub fn diagnostics(state: State<'_, AppState>) -> CommandResult<String> {
+    let store = state.snapshot()?;
+    let mut lines = vec![
+        format!("Brownie's Addon Manager {}", env!("CARGO_PKG_VERSION")),
+        format!(
+            "Platform: {} {}",
+            std::env::consts::OS,
+            std::env::consts::ARCH
+        ),
+        format!("GitHub token configured: {}", state.token().is_some()),
+        format!("Servers: {}", store.servers.len()),
+    ];
+
+    for server in &store.servers {
+        let installed = store.installed_for(&server.id);
+        let leaf = server
+            .path
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "?".into());
+        lines.push(format!(
+            "\n  {} — {} — .../{} — {} — {} addon(s)",
+            server.name,
+            server.version.label(),
+            leaf,
+            if server.is_available() {
+                "available"
+            } else {
+                "UNAVAILABLE"
+            },
+            installed.len()
+        ));
+        for row in installed {
+            let name = store
+                .addon(&row.addon_id)
+                .map(|addon| addon.display_name.clone())
+                .unwrap_or_else(|| row.addon_id.clone());
+            lines.push(format!(
+                "    {} {} [{}]{}{}",
+                name,
+                row.installed_ref.display(),
+                if row.channel == bam_core::model::Channel::Source {
+                    "source"
+                } else {
+                    "release"
+                },
+                if row.pinned { " pinned" } else { "" },
+                if row.version_matches {
+                    ""
+                } else {
+                    " VERSION-MISMATCH"
+                },
+            ));
+        }
+    }
+
+    Ok(lines.join("\n"))
+}

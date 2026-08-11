@@ -108,6 +108,7 @@ function row(
     needsUpdate: false,
     folders: [name.replace(/\s+/g, "")],
     installedAt: "2026-08-01",
+    versionMatches: true,
     ...overrides,
   };
 }
@@ -372,6 +373,17 @@ export async function mockInvoke<T>(
       const matches = text.match(/https?:\/\/(?:www\.)?(?:github|gitlab)\.com\/[\w.-]+\/[\w.-]+/g);
       return Array.from(new Set(matches ?? [])) as T;
     }
+
+    case "diagnostics":
+      return [
+        "Brownie's Addon Manager 2.0.0",
+        "Platform: windows x86_64",
+        "GitHub token configured: false",
+        "Servers: 3",
+      ].join("\n") as T;
+
+    case "open_logs_folder":
+      return undefined as T;
 
     case "has_github_token":
       return (token !== null) as T;

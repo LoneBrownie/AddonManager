@@ -22,7 +22,6 @@ use crate::model::{Addon, Channel, InstalledAddon, Server, Source, Store};
 use crate::paths;
 use crate::sources;
 use crate::toc;
-use crate::version::{self, Ref, UpdateStatus};
 
 /// Knobs for a single install.
 #[derive(Debug, Clone, Default)]
@@ -156,6 +155,16 @@ pub async fn install(
         sources_and_targets.push((source_dir, target));
     }
 
+    // Does this addon claim to support the server's game version? Read from the
+    // staged files, before anything is copied into the game folder.
+    let version_matches = sources_and_targets.iter().all(|(dir, _)| {
+        archive::toc_file_names(dir)
+            .iter()
+            .filter_map(|name| std::fs::read_to_string(dir.join(name)).ok())
+            .map(|contents| toc::parse(&contents))
+            .all(|parsed| parsed.supports(server.version))
+    });
+
     if sources_and_targets.is_empty() {
         return Err(Error::NoAddonFolders);
     }
@@ -200,6 +209,7 @@ pub async fn install(
         folders: target_names,
         archive_sha256: sha256,
         installed_at: now_rfc3339(),
+        version_matches,
     };
 
     if store.addon(&addon_id).is_none() {
@@ -251,40 +261,6 @@ pub fn remove(store: &mut Store, server_id: &str, addon_id: &str) -> Result<Vec<
     store.prune_orphan_addons();
 
     Ok(removed)
-}
-
-/// What an update check found for one installation.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UpdateReport {
-    pub addon_id: String,
-    pub status: UpdateStatus,
-    pub installed: Ref,
-    pub latest: Ref,
-}
-
-/// Check one installation for an update.
-pub async fn check_update(
-    client: &dyn HttpClient,
-    store: &Store,
-    server_id: &str,
-    addon_id: &str,
-    token: Option<&str>,
-) -> Result<UpdateReport> {
-    let installation = store.installation(server_id, addon_id).ok_or_else(|| {
-        Error::UnknownServer(format!("{addon_id} is not installed to {server_id}"))
-    })?;
-    let addon = store
-        .addon(addon_id)
-        .ok_or_else(|| Error::UnknownServer(addon_id.to_string()))?;
-
-    let resolved = sources::resolve(client, &addon.source, installation.channel, token).await?;
-
-    Ok(UpdateReport {
-        addon_id: addon_id.to_string(),
-        status: version::check(&installation.installed_ref, &resolved.r#ref),
-        installed: installation.installed_ref.clone(),
-        latest: resolved.r#ref,
-    })
 }
 
 /// A server's path being unreachable means "cannot check right now".
@@ -364,6 +340,7 @@ fn now_rfc3339() -> String {
 mod tests {
     use super::*;
     use crate::model::{GameVersion, Server};
+    use crate::version::Ref;
 
     fn store_with_server(path: &Path) -> (Store, String) {
         let mut store = Store::default();
@@ -406,6 +383,7 @@ mod tests {
             folders: vec!["MyAddon".into()],
             archive_sha256: None,
             installed_at: "0".into(),
+            version_matches: true,
         });
         let server = store
             .server(&id)
@@ -436,6 +414,7 @@ mod tests {
             folders: vec!["MyAddon".into()],
             archive_sha256: None,
             installed_at: "0".into(),
+            version_matches: true,
         });
         let server = store
             .server(&id)
@@ -497,6 +476,7 @@ mod tests {
             folders: vec!["MyAddon".into()],
             archive_sha256: None,
             installed_at: "0".into(),
+            version_matches: true,
         });
 
         let server = store

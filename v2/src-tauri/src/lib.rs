@@ -108,6 +108,8 @@ pub fn run() {
             commands::catalog::has_github_token,
             commands::catalog::set_theme,
             commands::catalog::open_url,
+            commands::catalog::open_logs_folder,
+            commands::catalog::diagnostics,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|error| {

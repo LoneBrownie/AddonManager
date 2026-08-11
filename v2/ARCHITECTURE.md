@@ -47,7 +47,8 @@ v2/
       model.rs      Server / Addon / InstalledAddon, and the Store
       store.rs      Atomic persistence
       sources/      GitHub and GitLab resolution
-      install.rs    Install, update, remove orchestration
+      install.rs    Install and remove orchestration
+      updates.rs    Asking the forges whether something newer exists
       servers.rs    Registering and managing game folders (manual add only)
       bulk.rs       Install-to-many and copy-set-between-servers
       adopt.rs      Adopting addon folders already on disk
@@ -174,11 +175,10 @@ Phases 3 onward, tracked in V2-PLAN.md:
   exist; the manage-servers screen does not.
 - Copy-set and install-to-many are wired end to end, but only install-to-many
   has a UI entry point.
-- The manage-servers screen (rename, recolour, forget) and a copy-set entry
-  point. Their commands exist and are tested.
-- Dependency resolution, parallel update checks with cancellation, and
-  diagnostics export (phase 5). Version-mismatch data is already computed by
-  `adopt::scan`; the install path does not warn on it yet.
+- Dependency resolution. The curated list carries a `dependencies` array that
+  nothing enforces yet.
+- Cancelling an update check in progress. Checks are parallel and bounded, but
+  run to completion once started.
 - The updater's `pubkey` in `tauri.conf.json` is empty. Generate a keypair with
   `npm run tauri signer generate`, put the public half there and the private
   half in the `TAURI_SIGNING_PRIVATE_KEY` secret. Until then the release builds

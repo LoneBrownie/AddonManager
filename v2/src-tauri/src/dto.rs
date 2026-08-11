@@ -5,9 +5,9 @@
 //! the engine already owns — and so the engine can change shape without
 //! breaking the frontend.
 
-use bam_core::install::UpdateReport;
 use bam_core::model::{Channel, GameVersion, InstalledAddon, Store};
 use bam_core::servers::{Availability, PathVerdict, ServerSummary};
+use bam_core::updates::UpdateReport;
 use bam_core::version::UpdateStatus;
 use serde::{Deserialize, Serialize};
 
@@ -105,6 +105,8 @@ pub struct AddonDto {
     pub needs_update: bool,
     pub folders: Vec<String>,
     pub installed_at: String,
+    /// False when the addon targets a different game version than this server.
+    pub version_matches: bool,
 }
 
 impl AddonDto {
@@ -128,6 +130,7 @@ impl AddonDto {
             needs_update: false,
             folders: installation.folders.clone(),
             installed_at: installation.installed_at.clone(),
+            version_matches: installation.version_matches,
         })
     }
 
@@ -263,6 +266,7 @@ mod tests {
             needs_update: false,
             folders: vec!["R".into()],
             installed_at: "0".into(),
+            version_matches: true,
         }
     }
 

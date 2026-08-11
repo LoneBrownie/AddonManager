@@ -3,6 +3,7 @@
 use bam_core::install::{self, InstallOptions};
 use bam_core::model::{Channel, Source};
 use bam_core::sources;
+use bam_core::updates;
 use tauri::State;
 
 use super::{CommandError, CommandResult};
@@ -148,21 +149,22 @@ pub async fn check_updates(
         .filter_map(|installation| AddonDto::build(&store, installation))
         .collect();
 
-    for row in rows.iter_mut() {
-        // A pinned addon is not checked at all: no network call, no nagging.
-        if row.pinned {
-            row.update_status = "upToDate".into();
+    // Six at a time: the forges rate-limit, so unlimited concurrency turns a
+    // slow check into a failed one. Pinned addons are not requested at all.
+    let reports = updates::check_updates_for_server(
+        state.client.as_ref(),
+        &store,
+        &server_id,
+        token.as_deref(),
+        6,
+    )
+    .await;
+
+    for (addon_id, outcome) in reports {
+        let Some(row) = rows.iter_mut().find(|row| row.addon_id == addon_id) else {
             continue;
-        }
-        match install::check_update(
-            state.client.as_ref(),
-            &store,
-            &server_id,
-            &row.addon_id,
-            token.as_deref(),
-        )
-        .await
-        {
+        };
+        match outcome {
             Ok(report) => row.apply_report(&report),
             Err(error) => {
                 // One unreachable addon must not fail the whole sweep.
@@ -170,6 +172,9 @@ pub async fn check_updates(
                 row.latest_version = Some(CommandError::from(error).message);
             }
         }
+    }
+    for row in rows.iter_mut().filter(|row| row.pinned) {
+        row.update_status = "upToDate".into();
     }
 
     rows.sort_by_key(|row| row.name.to_lowercase());

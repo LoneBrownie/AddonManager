@@ -170,6 +170,14 @@ function AddonRow({
           {addon.updateStatus === "error" ? (
             <span className="tag error">check failed</span>
           ) : null}
+          {!addon.versionMatches ? (
+            <span
+              className="tag error"
+              title="This addon's .toc declares a different game version than this server"
+            >
+              built for another version
+            </span>
+          ) : null}
         </div>
         <div className="row-sub" title={addon.folders.join(", ")}>
           {addon.installedVersion} · {addon.folders.length} folder

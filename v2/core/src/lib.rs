@@ -19,7 +19,8 @@
 //! * [`model`] — servers, addons, and the join between them.
 //! * [`store`] — atomic persistence.
 //! * [`sources`] — resolving GitHub and GitLab.
-//! * [`install`] — install, update and remove orchestration.
+//! * [`install`] — install and remove orchestration.
+//! * [`updates`] — asking the forges whether something newer exists.
 //! * [`servers`] — registering and managing game folders.
 //! * [`bulk`] — install-to-many and copy-set-between-servers.
 //! * [`adopt`] — adopting addon folders already on disk.
@@ -49,6 +50,7 @@ pub mod sources;
 pub mod store;
 pub mod testing;
 pub mod toc;
+pub mod updates;
 pub mod version;
 
 pub use error::{Error, Result};

@@ -5,13 +5,14 @@ import type { Addon, CatalogEntry, Server } from "./api";
 import { AddonList } from "./components/AddonList";
 import { ServerSwitcher } from "./components/ServerSwitcher";
 import { AddAddonDialog, AddServerDialog, ConfirmDialog } from "./components/dialogs";
+import { ManageServers } from "./components/ManageServers";
 import {
   ExportListDialog,
   ImportExistingDialog,
   ImportListDialog,
 } from "./components/transfer";
 
-type Page = "addons" | "browse" | "settings";
+type Page = "addons" | "browse" | "servers" | "settings";
 type Toast = { id: number; kind: "info" | "error" | "success"; text: string };
 
 export default function App() {
@@ -230,6 +231,14 @@ export default function App() {
           </button>
           <button
             type="button"
+            aria-current={page === "servers" ? "page" : undefined}
+            onClick={() => setPage("servers")}
+          >
+            Servers
+            <span className="count">{servers.length}</span>
+          </button>
+          <button
+            type="button"
             aria-current={page === "settings" ? "page" : undefined}
             onClick={() => setPage("settings")}
           >
@@ -360,6 +369,15 @@ export default function App() {
                 notify("error", api.errorMessage(error));
               }
             }}
+          />
+        ) : null}
+
+        {page === "servers" ? (
+          <ManageServers
+            servers={servers}
+            onChanged={refreshServers}
+            onAddServer={() => setShowAddServer(true)}
+            notify={notify}
           />
         ) : null}
 
@@ -605,6 +623,39 @@ function SettingsPage({
                 Clear
               </button>
             ) : null}
+          </div>
+        </div>
+
+        <div className="field" style={{ maxWidth: 520, marginTop: 28 }}>
+          <label>Diagnostics</label>
+          <span className="hint">
+            If something goes wrong, this is what to attach to a bug report. The
+            summary lists your servers and addons with paths shortened and no
+            token included.
+          </span>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={async () => {
+                try {
+                  const text = await api.diagnostics();
+                  await navigator.clipboard.writeText(text);
+                  notify("success", "Diagnostics copied to the clipboard");
+                } catch (error) {
+                  notify("error", api.errorMessage(error));
+                }
+              }}
+            >
+              Copy diagnostics
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => void api.openLogsFolder()}
+            >
+              Open logs folder
+            </button>
           </div>
         </div>
       </div>
