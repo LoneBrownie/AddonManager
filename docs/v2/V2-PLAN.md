@@ -27,7 +27,7 @@ Read this section first — everything downstream depends on it.
 
 | # | Decision | Options | My recommendation |
 |---|---|---|---|
-| **D1** | **Stack** | (A) Tauri v2 + Rust + React/TS  (B) Electron + Vite + TS  (C) .NET + Avalonia | **Either A or B.** Pick on appetite for Rust — see §5.1. Deferrable until the end of Phase 1. |
+| **D1** | **Stack** | (A) Tauri v2 + Rust + React/TS  (B) Electron + Vite + TS  (C) .NET + Avalonia | **B — Electron + Vite + TypeScript.** Revised from an earlier Tauri recommendation; see §5.1 for the evidence that changed it. |
 | **D2** | ~~Auto-update continuity~~ | — | ✅ **DECIDED: break it.** Small user base. V1 users install V2 once by hand. **V2 still has its own auto-updater** — see §9.1. |
 | **D3** | **Repo strategy** | New repo vs. `v2` branch in this repo vs. rewrite on `main` | **`v2` branch here**, merged to `main` at release. Keeps issues, stars, release history, and the curated-list workflow in one place. |
 | **D4** | **macOS** | Support / ignore | **Build it, don't promise it.** Under Track A it's ~1 day of CI + a code-signing decision. Ship it unsigned as "community build" or skip. |
@@ -137,7 +137,9 @@ Extensive `console.log` throughout, all of it in a renderer with DevTools closed
 
 ### 5.1 Stack recommendation
 
-| | **A. Tauri v2** *(recommended)* | **B. Electron + Vite + TS** | **C. .NET 9 + Avalonia** |
+> **Revision note.** This section originally recommended Tauri. Two things changed it: (i) you confirmed you won't be writing any of the code yourself, which removes the costs Rust imposes on a *learner* but makes weak AI-assistance for Rust the dominant cost and leaves you unable to debug anything when a session isn't running; and (ii) checking the comparables (§5.1.1) showed the maintained apps in this exact niche are all Electron, and the one Rust attempt is archived. The recommendation is now **B**. The original Tauri case is preserved below because it isn't wrong — it's outweighed.
+
+| | **A. Tauri v2** | **B. Electron + Vite + TS** *(recommended)* | **C. .NET 9 + Avalonia** |
 |---|---|---|---|
 | Backend language | Rust | TypeScript (Node) | C# |
 | Installer size | ~8–12 MB | ~120–180 MB | ~35–70 MB |
@@ -148,7 +150,7 @@ Extensive `console.log` throughout, all of it in a renderer with DevTools closed
 | Auto-update | `tauri-plugin-updater` (signed manifest) | electron-updater (unchanged) | Custom / Velopack |
 | Main risk | **Rust learning curve**; Linux WebKitGTK quirks | Keeps the heavy runtime; discipline-only security | Full UI rewrite; smallest ecosystem for this niche |
 
-**Why A.** The defining defects in V1 are (i) privileged filesystem primitives exposed to web content and (ii) an engine that can't do real work efficiently. Tauri fixes (i) *by construction* — the frontend can only call the commands you explicitly define and permit, and there is no ambient `fs` bridge to leak. And (ii) is exactly what Rust is good at: `zip` for traversal-safe extraction, `reqwest` for streaming downloads with progress, `tokio` for bounded concurrency, `serde` for a typed schema, `sha2` for integrity. The parts of V1 that are slow and dangerous become the parts that are fast and boring.
+**The case for A, preserved.** The defining defects in V1 are (i) privileged filesystem primitives exposed to web content and (ii) an engine that can't do real work efficiently. Tauri fixes (i) *by construction* — the frontend can only call the commands you explicitly define and permit, and there is no ambient `fs` bridge to leak. And (ii) is exactly what Rust is good at: `zip` for traversal-safe extraction, `reqwest` for streaming downloads with progress, `tokio` for bounded concurrency, `serde` for a typed schema, `sha2` for integrity. The parts of V1 that are slow and dangerous become the parts that are fast and boring.
 
 The secondary wins are real for a utility people leave running: a ~10 MB installer instead of ~150 MB, and roughly a third of the memory.
 
@@ -163,15 +165,36 @@ The secondary wins are real for a utility people leave running: a ~10 MB install
 - **Prototyping is slower.** Rust makes you handle every error case up front — excellent for correctness, friction when you're still exploring a design.
 - **Linux rendering goes through WebKitGTK** (`webkit2gtk-4.1`), not Chromium. For a UI this simple that means "test on Ubuntu and Fedora", not "rewrite the CSS" — but it is a consistency you give up.
 
-**Prior art worth an evening:** *Ajour* was a Rust WoW addon manager and is no longer maintained. Worth understanding why before committing — though the likeliest reading is solo-maintainer bandwidth, which is a burnout story rather than a Rust story.
+### 5.1.1 What the comparables actually use
 
-**Why B is a legitimate choice — and why the gap is narrower than it first looks.** The security win Tauri gives you *by construction*, Electron gives you *by discipline*. V1 is unsafe not because it's Electron, but because its IPC surface is generic primitives (§4.1 S1). An Electron main process with a strict intent-level command surface — the §5.2 layering, which is stack-independent — closes most of that gap. On a solo project where you are the only person who could erode that discipline, discipline is cheaper than it sounds.
+Checked rather than assumed, because it's the strongest available evidence about what this domain rewards:
 
-Given the small user base, the installer-size and memory arguments also carry less weight than they would for a widely-distributed app. So:
+| App | Stack | Status |
+|---|---|---|
+| **WowUp** | Electron + Angular + TypeScript | Active. **Already implements multi-client detection** — the headline V2 feature |
+| **CurseForge** (standalone) | Electron | Active |
+| **Ajour** | Rust + `iced` | **Archived September 2024**, 1,020 stars |
 
-> **Take Tauri if learning Rust sounds like fun — the payoff is real and durable. Take Electron + Vite + TS if it sounds like a chore. Neither is the wrong answer.**
+**Why this is decisive here.** WowUp is open source and solves the exact problem in §5.3 — detecting multiple game clients, per-install addon lists, the switcher. When a session hits a question like *"how do you reliably identify a WoW install across Wine prefixes?"*, being in the same language as the best reference implementation means reading and adapting their approach directly, rather than performing a translation across a language boundary every time. **Because the code is AI-written rather than hand-written, proximity to the reference implementation is worth considerably more than it would otherwise be.**
 
-**Critically: Phase 1 is the same design either way.** The schema, the update-resolution model, the path-safety rules, and their tests are stack-independent. **This decision can be deferred to the end of Phase 1**, by which point you'll have written enough of the core to know how the language feels in your hands.
+Two out of two maintained apps in this niche chose Electron. That isn't fashion — it says the domain doesn't demand native performance, and the ecosystem gravity is in JS.
+
+Ajour deserves a fair reading rather than an opportunistic one: it used `iced`, a *native Rust GUI*, so its authors were writing the interface in Rust too — a considerably harder path than Tauri, where the UI stays React. Plenty of Electron addon managers have also died. It is nonetheless the closest comparable, and it stopped.
+
+### 5.1.2 What choosing B gives up, and how it gets paid for
+
+The compiler-as-substitute-for-review argument in favour of Rust is *correct*; it is simply outweighed. That safety therefore has to be bought explicitly rather than inherited:
+
+- **TypeScript strict**, `noUncheckedIndexedAccess`, no `any` — CI-enforced, not aspirational.
+- **The intent-level IPC surface of §5.2.** This was always the real fix for S1, and it is stack-independent. Electron is not why V1 is unsafe — generic primitives in the preload bridge are.
+- **Tests as the actual merge gate** (§8), since they are the only code review this project gets. Coverage floor on the core; every behaviour change ships a test.
+- **CI-enforced file-size and module limits**, so no future session recreates a 1,662-line `addon-manager.js`.
+
+### 5.1.3 Licensing note
+
+WowUp is **GPL-3**. Reading it to understand an approach is fine; lifting code is not, unless V2 is also GPL-3. This repo currently has **no LICENSE file at all** — worth choosing one for V2 either way.
+
+**Phase 1 remains stack-independent.** The schema, update-resolution model, path-safety rules and their tests carry over unchanged if this decision is ever revisited.
 
 ### 5.2 Layering
 
@@ -429,7 +452,8 @@ Behaviour matches V1: check on launch and on an interval, download in the backgr
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Rust learning curve stalls Track A | High | Phase 1 is stack-independent by design. If it stalls, fall back to Track B with the schema and tests intact. Decide by the end of Phase 1, not at the finish line. |
+| **Codebase drift across many AI sessions** — the failure mode that produced V1's 1,662-line file, triplicated special-cases, and 200 lines of unverifiable heuristics | **High** | This is now the top risk, since no human reviews the diffs. CI-enforced file-size and module limits, a coverage floor on the core, every behaviour change shipping a test, and a maintained architecture doc re-read at the start of each session. TypeScript strict with no `any`. |
+| No human can debug the code when a session isn't running | Medium | Chose the stack the author can at least read and inspect in DevTools (§5.1). Structured logs plus a one-click diagnostics export (§6.2) so failures are reportable without reading source. |
 | Migration corrupts a user's V1 data | High | Archive V1 files rather than deleting. Tested against real profiles. Migration summary screen with an "undo" that just restores the archive. |
 | Linux WebKitGTK rendering quirks | Medium | Simple UI, no exotic CSS. Test Ubuntu LTS + Fedora in CI. AppImage bundles what it can; document the `webkit2gtk-4.1` dependency. |
 | Auto-update break strands V1 users | Medium | A final V1.x release that surfaces an in-app "V2 available" notice with a link. Announce in the README and release notes. |
