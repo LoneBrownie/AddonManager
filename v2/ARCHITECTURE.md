@@ -55,7 +55,18 @@ v2/
     tests/
       install_flow.rs   End-to-end against a synthetic WoW directory
       multi_server.rs   Several servers side by side (phase 2 exit criteria)
-  scripts/       CI guardrails
+  net/           reqwest-backed HttpClient. Kept out of core so the engine
+                 stays network-free in tests.
+  src-tauri/     The Tauri shell — thin wrappers over the engine.
+    src/
+      commands/     The ONLY surface the UI can call
+      dto.rs        Flat, camelCase shapes for the frontend
+      state.rs      Store, preferences, work directory
+  src/           React + TypeScript frontend
+    api.ts          One function per Rust command. No primitives.
+    mock.ts         In-memory backend, so the UI runs in a plain browser
+    components/
+  scripts/       CI guardrails and the screenshot harness
 ```
 
 `core` being a plain library is deliberate: it builds and tests on a bare
@@ -147,11 +158,18 @@ the author regardless of tooling.
 
 Phases 3 onward, tracked in V2-PLAN.md:
 
-- The Tauri shell and its command surface.
-- The `reqwest`-backed `HttpClient`. The trait and its host allowlist exist;
-  the concrete client belongs in the app layer so `core` stays dependency-light
-  and network-free in tests.
-- The React/TypeScript frontend.
-- The switcher and manage-servers **UI**. Everything it renders and every
-  action it dispatches is built and tested in `servers.rs` and `bulk.rs`;
-  only the visual layer is outstanding, and it lands with the frontend.
+- Renaming, recolouring and forgetting a server from the UI. The commands
+  exist; the manage-servers screen does not.
+- Copy-set and install-to-many are wired end to end, but only install-to-many
+  has a UI entry point.
+- Import existing addon folders, and addon-list export/import screens. The
+  `export_addon_list` and `parse_addon_list` commands exist and are tested.
+- Dependency resolution, version-mismatch warnings, and diagnostics export
+  (phase 5).
+
+## Seeing the UI without a WoW install
+
+`npm run dev` serves the frontend against `mock.ts`, an in-memory backend, so
+the whole interface can be exercised in a plain browser. `node scripts/screenshot.mjs`
+drives it with Playwright and writes to `screenshots/`. Run `npx vite preview`
+first. Point `executablePath` at whatever Chromium the container has.

@@ -1,0 +1,209 @@
+//! The curated catalogue, addon-list sharing, and settings.
+
+use bam_core::http::api_headers;
+use bam_core::sources;
+use tauri::State;
+
+use super::{CommandError, CommandResult};
+use crate::dto::CatalogEntryDto;
+use crate::state::{AppState, Preferences};
+
+/// Served from this repository, pinned to `main` so edits in progress on `dev`
+/// never reach users (D5). Azure Blob is retired.
+const CATALOG_URL: &str =
+    "https://raw.githubusercontent.com/LoneBrownie/AddonManager/main/public/handy-addons.json";
+
+/// Fetch the curated list, marking anything already installed on this server.
+///
+/// A network failure returns an empty list rather than an error: the catalogue
+/// is a convenience, and the rest of the app works fine without it.
+#[tauri::command]
+pub async fn get_catalog(
+    state: State<'_, AppState>,
+    server_id: Option<String>,
+) -> CommandResult<Vec<CatalogEntryDto>> {
+    let response = state
+        .client
+        .get(CATALOG_URL, &api_headers(None, None))
+        .await;
+
+    let Ok(response) = response else {
+        return Ok(Vec::new());
+    };
+    if !response.is_success() {
+        return Ok(Vec::new());
+    }
+    let Ok(mut entries) = serde_json::from_slice::<Vec<CatalogEntryDto>>(&response.body) else {
+        return Ok(Vec::new());
+    };
+
+    if let Some(server_id) = server_id {
+        let store = state.snapshot()?;
+        let installed: Vec<String> = store
+            .installed_for(&server_id)
+            .into_iter()
+            .map(|i| i.addon_id.clone())
+            .collect();
+
+        for entry in entries.iter_mut() {
+            entry.installed = sources::parse_repo_url(&entry.repo_url)
+                .map(|source| installed.contains(&source.id()))
+                .unwrap_or(false);
+        }
+    }
+
+    Ok(entries)
+}
+
+/// Render a server's addons as shareable text.
+///
+/// Kept in V1's format — `Name: url`, one per line — so lists already floating
+/// around a guild's Discord still work.
+#[tauri::command]
+pub fn export_addon_list(state: State<'_, AppState>, server_id: String) -> CommandResult<String> {
+    let store = state.snapshot()?;
+    let mut lines: Vec<String> = store
+        .installed_for(&server_id)
+        .into_iter()
+        .filter_map(|installation| {
+            let addon = store.addon(&installation.addon_id)?;
+            Some(format!(
+                "{}: {}",
+                addon.display_name,
+                addon.source.web_url()
+            ))
+        })
+        .collect();
+    lines.sort_by_key(|line| line.to_lowercase());
+    Ok(lines.join("\n"))
+}
+
+/// Pull repository URLs out of pasted text.
+///
+/// Tolerant on purpose: people paste V1 exports, bare URL lists, and Discord
+/// messages with commentary around them. Anything that parses as a repo URL is
+/// taken; everything else is ignored.
+#[tauri::command]
+pub fn parse_addon_list(text: String) -> Vec<String> {
+    let mut found: Vec<String> = Vec::new();
+
+    for token in text.split([
+        ' ', '\t', '\n', '\r', ',', ';', '<', '>', '"', '\'', '(', ')',
+    ]) {
+        let cleaned = token.trim().trim_end_matches(['.', ':', '!', '?']);
+        if cleaned.is_empty() {
+            continue;
+        }
+        if !cleaned.contains("github.com") && !cleaned.contains("gitlab.com") {
+            continue;
+        }
+        if let Ok(source) = sources::parse_repo_url(cleaned) {
+            let url = source.web_url();
+            if !found.contains(&url) {
+                found.push(url);
+            }
+        }
+    }
+
+    found
+}
+
+#[tauri::command]
+pub fn get_preferences(state: State<'_, AppState>) -> CommandResult<Preferences> {
+    Ok(state.prefs()?)
+}
+
+/// Store or clear the GitHub token.
+///
+/// An empty string clears it. The token is never returned to the UI in full —
+/// see [`has_token`].
+#[tauri::command]
+pub fn set_github_token(state: State<'_, AppState>, token: Option<String>) -> CommandResult<()> {
+    let mut prefs = state.prefs()?;
+    prefs.github_token = token.filter(|t| !t.trim().is_empty());
+    state.set_prefs(prefs)?;
+    Ok(())
+}
+
+/// Whether a token is configured, without revealing it.
+#[tauri::command]
+pub fn has_github_token(state: State<'_, AppState>) -> CommandResult<bool> {
+    Ok(state.token().is_some())
+}
+
+#[tauri::command]
+pub fn set_theme(state: State<'_, AppState>, theme: Option<String>) -> CommandResult<()> {
+    let mut prefs = state.prefs()?;
+    prefs.theme = theme;
+    state.set_prefs(prefs)?;
+    Ok(())
+}
+
+/// Open a repository page in the user's browser.
+#[tauri::command]
+pub fn open_url(app: tauri::AppHandle, url: String) -> CommandResult<()> {
+    // Only ever a forge page — the same allowlist the engine uses for requests.
+    if !bam_core::http::is_allowed_url(&url) {
+        return Err(CommandError {
+            kind: "unsafeUrl".into(),
+            message: format!("refusing to open {url}"),
+            folder: None,
+        });
+    }
+    tauri_plugin_opener::OpenerExt::opener(&app)
+        .open_url(url, None::<String>)
+        .map_err(|e| CommandError {
+            kind: "unexpected".into(),
+            message: e.to_string(),
+            folder: None,
+        })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extracts_urls_from_a_v1_style_export() {
+        let text = "Questie: https://github.com/o/questie\nAtlasLoot: https://gitlab.com/t/atlas\n";
+        assert_eq!(
+            parse_addon_list(text.to_string()),
+            vec![
+                "https://github.com/o/questie".to_string(),
+                "https://gitlab.com/t/atlas".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn extracts_urls_from_prose() {
+        let text = "hey grab <https://github.com/o/r> and also (https://github.com/a/b), thanks!";
+        assert_eq!(
+            parse_addon_list(text.to_string()),
+            vec![
+                "https://github.com/o/r".to_string(),
+                "https://github.com/a/b".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn ignores_non_repository_links_and_noise() {
+        let text = "see https://example.com/nope and https://github.com/only-an-owner";
+        assert!(parse_addon_list(text.to_string()).is_empty());
+    }
+
+    #[test]
+    fn deduplicates_repeated_urls() {
+        let text = "https://github.com/o/r https://github.com/o/r.git https://github.com/o/r/";
+        assert_eq!(
+            parse_addon_list(text.to_string()),
+            vec!["https://github.com/o/r".to_string()]
+        );
+    }
+
+    #[test]
+    fn returns_nothing_for_empty_input() {
+        assert!(parse_addon_list(String::new()).is_empty());
+    }
+}

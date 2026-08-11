@@ -1,0 +1,36 @@
+[package]
+name = "bam-net"
+description = "The reqwest-backed HttpClient for Brownie's Addon Manager."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+bam-core = { path = "../core" }
+async-trait.workspace = true
+tracing.workspace = true
+tokio = { workspace = true, features = ["fs", "io-util"] }
+futures-util = "0.3"
+
+# rustls rather than native-tls: no OpenSSL system dependency, so the build is
+# the same on a bare Linux runner and on Windows.
+reqwest = { version = "0.12", default-features = false, features = [
+  "rustls-tls",
+  "stream",
+  "charset",
+  "http2",
+] }
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
