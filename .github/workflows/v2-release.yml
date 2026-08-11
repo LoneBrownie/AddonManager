@@ -1,0 +1,144 @@
+name: V2 Release
+
+# Triggered by a tag, not by a package.json diff. V1 released on a version
+# change in a pushed file, which fired on unrelated commits and made
+# re-releasing awkward (V2-PLAN.md 9.2).
+
+on:
+  push:
+    tags: ['v2.*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (e.g. v2.0.0-beta.1)'
+        required: true
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: Windows
+            # NSIS installer plus a portable zip, so users who cannot run an
+            # installer still have something.
+            args: --bundles nsis
+          - os: ubuntu-22.04
+            label: Linux
+            # AppImage is the only Linux artifact that can self-update; deb and
+            # rpm are convenience downloads (V2-PLAN.md 9.1).
+            args: --bundles appimage,deb,rpm
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            v2/target
+          key: ${{ runner.os }}-release-${{ hashFiles('v2/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-release-
+
+      # Built on 22.04 rather than latest: the glibc a binary is linked against
+      # sets the oldest distro it will run on, so building on the newest runner
+      # would silently drop support for anything older.
+      - name: Linux GUI dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
+
+      - name: Install frontend dependencies
+        working-directory: v2
+        run: npm ci || npm install
+
+      # The engine's own tests gate the release. Shipping a build whose test
+      # suite was never run defeats the point of having one.
+      - name: Test the engine
+        working-directory: v2
+        run: cargo test -p bam-core -p bam-net
+
+      - name: Build and bundle
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signing key for the updater. Until these secrets exist the build
+          # still succeeds; it just produces unsigned artifacts that the
+          # in-app updater will decline to install.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: v2
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: "Brownie's Addon Manager __VERSION__"
+          releaseBody: |
+            ## Brownie's Addon Manager __VERSION__
+
+            **This installs alongside V1 rather than over the top.** It is a
+            separate application with its own settings, so V1 keeps working and
+            nothing is migrated automatically. To carry your addons across: add
+            your game folder as a server, then use Import Existing Addons.
+
+            ### Windows
+            Download and run the `.exe` installer.
+
+            ### Linux
+            The **AppImage** is the one that updates itself. `.deb` and `.rpm`
+            are convenience downloads — your package manager owns updates for
+            those, so re-download to upgrade.
+          releaseDraft: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          args: ${{ matrix.args }}
+
+  sign:
+    name: Sign artifacts
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Carried over from V1, which signed its installers this way.
+      - uses: sigstore/cosign-installer@v3
+
+      - name: Sign release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts && cd artifacts
+
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern '*.exe' --pattern '*.AppImage' --pattern '*.deb' --pattern '*.rpm' \
+            || { echo "No artifacts to sign yet"; exit 0; }
+
+          for file in *; do
+            [ -f "$file" ] || continue
+            echo "Signing $file"
+            cosign sign-blob --yes "$file" \
+              --output-signature "$file.sig" \
+              --output-certificate "$file.crt"
+          done
+
+          shopt -s nullglob
+          uploads=(*.sig *.crt)
+          if [ ${#uploads[@]} -gt 0 ]; then
+            gh release upload "$TAG" "${uploads[@]}" --repo "$GITHUB_REPOSITORY" --clobber
+          fi

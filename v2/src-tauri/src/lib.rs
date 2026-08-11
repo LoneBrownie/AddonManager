@@ -53,6 +53,9 @@ fn init_logging(dir: &std::path::Path) -> Option<tracing_appender::non_blocking:
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Desktop only: the updater plugin has no mobile target, and mobile
+        // is not something this app builds for.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
@@ -84,6 +87,8 @@ pub fn run() {
             commands::servers::forget_server,
             commands::servers::copy_addon_set,
             commands::servers::set_selected_server,
+            commands::servers::scan_existing_addons,
+            commands::servers::adopt_addon,
             // addons
             commands::addons::list_addons,
             commands::addons::parse_source,

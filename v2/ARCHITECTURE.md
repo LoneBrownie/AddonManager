@@ -50,6 +50,7 @@ v2/
       install.rs    Install, update, remove orchestration
       servers.rs    Registering and managing game folders (manual add only)
       bulk.rs       Install-to-many and copy-set-between-servers
+      adopt.rs      Adopting addon folders already on disk
       http.rs       The network trait (no client lives here)
       testing.rs    Fakes — nothing in the suite touches the network
     tests/
@@ -162,10 +163,17 @@ Phases 3 onward, tracked in V2-PLAN.md:
   exist; the manage-servers screen does not.
 - Copy-set and install-to-many are wired end to end, but only install-to-many
   has a UI entry point.
-- Import existing addon folders, and addon-list export/import screens. The
-  `export_addon_list` and `parse_addon_list` commands exist and are tested.
-- Dependency resolution, version-mismatch warnings, and diagnostics export
-  (phase 5).
+- **UI** for importing existing addon folders. `scan_existing_addons` and
+  `adopt_addon` are built and tested; only the screen is missing.
+- Addon-list export/import screens. `export_addon_list` and `parse_addon_list`
+  exist and are tested.
+- Dependency resolution, parallel update checks with cancellation, and
+  diagnostics export (phase 5). Version-mismatch data is already computed by
+  `adopt::scan`; the install path does not warn on it yet.
+- The updater's `pubkey` in `tauri.conf.json` is empty. Generate a keypair with
+  `npm run tauri signer generate`, put the public half there and the private
+  half in the `TAURI_SIGNING_PRIVATE_KEY` secret. Until then the release builds
+  fine but produces unsigned artifacts the in-app updater will decline.
 
 ## Seeing the UI without a WoW install
 

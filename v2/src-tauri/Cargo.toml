@@ -26,6 +26,7 @@ serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
+tauri-plugin-updater = "2.10.1"
 
 [dev-dependencies]
 tempfile.workspace = true

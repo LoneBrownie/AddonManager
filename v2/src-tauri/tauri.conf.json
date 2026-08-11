@@ -40,6 +40,18 @@
     ],
     "category": "Utility",
     "shortDescription": "Manage WoW addons across multiple servers",
-    "longDescription": "Install and update World of Warcraft addons from GitHub and GitLab across several game folders."
+    "longDescription": "Install and update World of Warcraft addons from GitHub and GitLab across several game folders.",
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/LoneBrownie/AddonManager/releases/latest/download/latest.json"
+      ],
+      "pubkey": "",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

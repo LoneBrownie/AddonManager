@@ -178,6 +178,37 @@ pub struct OutcomeDto {
     pub message: String,
 }
 
+/// An addon folder found on disk that this app does not manage.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FoundAddonDto {
+    pub folder: String,
+    pub title: Option<String>,
+    pub version: Option<String>,
+    pub author: Option<String>,
+    /// A repository URL the addon author recorded in its `.toc`, if any.
+    pub suggested_url: Option<String>,
+    /// Sibling folders that look like parts of the same addon. A suggestion
+    /// for the user to confirm, never applied automatically.
+    pub related: Vec<String>,
+    /// False when the addon targets a different game version than this server.
+    pub version_matches: bool,
+}
+
+impl From<bam_core::adopt::FoundAddon> for FoundAddonDto {
+    fn from(found: bam_core::adopt::FoundAddon) -> Self {
+        FoundAddonDto {
+            folder: found.folder,
+            title: found.toc.title,
+            version: found.toc.version,
+            author: found.toc.author,
+            suggested_url: found.suggested_url,
+            related: found.related,
+            version_matches: found.version_matches,
+        }
+    }
+}
+
 /// One entry from the curated catalogue.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

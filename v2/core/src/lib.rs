@@ -22,6 +22,7 @@
 //! * [`install`] — install, update and remove orchestration.
 //! * [`servers`] — registering and managing game folders.
 //! * [`bulk`] — install-to-many and copy-set-between-servers.
+//! * [`adopt`] — adopting addon folders already on disk.
 //! * [`http`] — the network trait the engine depends on (no client here).
 //! * [`testing`] — fakes, so nothing in the test suite touches the network.
 
@@ -35,6 +36,7 @@
     )
 )]
 
+pub mod adopt;
 pub mod archive;
 pub mod bulk;
 pub mod error;

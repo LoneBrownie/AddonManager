@@ -7,7 +7,7 @@ use bam_core::servers::{self, AddOptions};
 use tauri::State;
 
 use super::{CommandError, CommandResult};
-use crate::dto::{game_versions, FolderVerdictDto, GameVersionDto, ServerDto};
+use crate::dto::{game_versions, FolderVerdictDto, FoundAddonDto, GameVersionDto, ServerDto};
 use crate::state::AppState;
 
 #[tauri::command]
@@ -131,5 +131,53 @@ pub fn set_selected_server(state: State<'_, AppState>, id: Option<String>) -> Co
     let mut prefs = state.prefs()?;
     prefs.selected_server_id = id;
     state.set_prefs(prefs)?;
+    Ok(())
+}
+
+/// Addon folders already on disk that this app does not manage.
+///
+/// The "import existing addons" flow — and the reason dropping V1 migration
+/// (D10) costs users so little.
+#[tauri::command]
+pub fn scan_existing_addons(
+    state: State<'_, AppState>,
+    server_id: String,
+) -> CommandResult<Vec<FoundAddonDto>> {
+    let store = state.snapshot()?;
+    let server = store
+        .server(&server_id)
+        .cloned()
+        .ok_or_else(|| CommandError {
+            kind: "unknownServer".into(),
+            message: "that server is not registered".into(),
+            folder: None,
+        })?;
+
+    Ok(bam_core::adopt::scan(&store, &server)?
+        .into_iter()
+        .map(FoundAddonDto::from)
+        .collect())
+}
+
+/// Adopt folders on disk as a managed addon.
+#[tauri::command]
+pub fn adopt_addon(
+    state: State<'_, AppState>,
+    server_id: String,
+    folders: Vec<String>,
+    url: String,
+    name: Option<String>,
+) -> CommandResult<()> {
+    state.mutate_store(|store| {
+        bam_core::adopt::adopt(
+            store,
+            &server_id,
+            folders,
+            &url,
+            name,
+            bam_core::model::Channel::Release,
+        )
+        .map(|_| ())
+    })?;
     Ok(())
 }
