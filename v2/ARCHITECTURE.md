@@ -95,7 +95,12 @@ These are enforced by tests. Breaking one should turn the suite red.
    being unplugged must never remove installation records (V2-PLAN.md B8).
 6. **Folders written are recorded.** That is what makes removal exact and what
    removes the need for V1's folder-relatedness heuristics (V2-PLAN.md D-b).
-7. **No panics in the engine.** `unwrap`, `expect` and `panic!` are denied by
+7. **The source repository is never inferred.** Nothing reads a `.toc` to
+   decide where an addon came from. Private-server addons are mostly backports,
+   so a folder's metadata usually names the upstream project rather than the
+   fork installed — a guess there would point updates at the wrong repository.
+   The user supplies the URL; the addon-list export carries a whole collection.
+8. **No panics in the engine.** `unwrap`, `expect` and `panic!` are denied by
    lint. A panic mid-install takes the app down with a half-written game folder.
 
 ---
@@ -163,10 +168,8 @@ Phases 3 onward, tracked in V2-PLAN.md:
   exist; the manage-servers screen does not.
 - Copy-set and install-to-many are wired end to end, but only install-to-many
   has a UI entry point.
-- **UI** for importing existing addon folders. `scan_existing_addons` and
-  `adopt_addon` are built and tested; only the screen is missing.
-- Addon-list export/import screens. `export_addon_list` and `parse_addon_list`
-  exist and are tested.
+- The manage-servers screen (rename, recolour, forget) and a copy-set entry
+  point. Their commands exist and are tested.
 - Dependency resolution, parallel update checks with cancellation, and
   diagnostics export (phase 5). Version-mismatch data is already computed by
   `adopt::scan`; the install path does not warn on it yet.

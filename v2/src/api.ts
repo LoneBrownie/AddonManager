@@ -69,6 +69,18 @@ export interface CatalogEntry {
   installed: boolean;
 }
 
+/** An addon folder on disk that this app does not manage yet. */
+export interface FoundAddon {
+  folder: string;
+  title: string | null;
+  version: string | null;
+  author: string | null;
+  /** Sibling folders that look like parts of the same addon. A suggestion. */
+  related: string[];
+  /** False when the addon targets a different game version than this server. */
+  versionMatches: boolean;
+}
+
 export interface Outcome {
   serverId: string;
   serverName: string;
@@ -140,6 +152,14 @@ export const setServerAccent = (id: string, accent: string | null) =>
 export const forgetServer = (id: string) => call<void>("forget_server", { id });
 export const setSelectedServer = (id: string | null) =>
   call<void>("set_selected_server", { id });
+export const scanExistingAddons = (serverId: string) =>
+  call<FoundAddon[]>("scan_existing_addons", { serverId });
+export const adoptAddon = (
+  serverId: string,
+  folders: string[],
+  url: string,
+  name?: string,
+) => call<void>("adopt_addon", { serverId, folders, url, name });
 export const copyAddonSet = (
   fromServerId: string,
   toServerId: string,

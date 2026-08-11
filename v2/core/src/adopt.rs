@@ -5,10 +5,19 @@
 //! is the main reason dropping V1 migration (D10) costs users so little: point
 //! V2 at the same folder and adopt what is there.
 //!
-//! Unlike V1, this does **not** guess which folders belong together. V1 ran
-//! ~200 lines of name heuristics for that (V2-PLAN.md D-b); here, grouping is
-//! offered as a suggestion the user confirms, and once adopted the folder list
-//! is recorded so the guessing never has to happen again.
+//! **The source repository is never guessed.** A `.toc` frequently carries the
+//! upstream author's `X-Repository`, but private-server users run backports and
+//! forks, so that field routinely names a repo they are not using. Suggesting it
+//! would not merely be unhelpful — accepted, it would point updates at the wrong
+//! project and replace a working addon with an incompatible one. The user
+//! supplies the URL, exactly as V1 did.
+//!
+//! For moving a whole collection across, the addon-list export is the better
+//! path: it carries the URLs the user actually installed from, rather than
+//! anything inferred from files on disk.
+//!
+//! Folder *grouping* is still suggested, because that is a claim about which
+//! directories sit together, not about where they came from.
 
 use std::path::Path;
 
@@ -24,8 +33,6 @@ pub struct FoundAddon {
     pub folder: String,
     /// Parsed from the folder's `.toc`.
     pub toc: TocData,
-    /// A repository URL found in the `.toc` metadata, if the author left one.
-    pub suggested_url: Option<String>,
     /// Sibling folders that look like components of the same addon
     /// (`WeakAuras` and `WeakAuras_Options`). A suggestion, never applied
     /// automatically.
@@ -77,7 +84,6 @@ pub fn scan(store: &Store, server: &Server) -> Result<Vec<FoundAddon>> {
     let mut found: Vec<FoundAddon> = candidates
         .into_iter()
         .map(|(folder, toc)| FoundAddon {
-            suggested_url: suggest_url(&toc),
             related: siblings_of(&folder, &all_names),
             version_matches: toc.supports(server.version),
             folder,
@@ -107,19 +113,6 @@ fn read_toc(dir: &Path, folder: &str) -> Option<TocData> {
 
     let contents = std::fs::read_to_string(dir.join(chosen)).ok()?;
     Some(toc::parse(&contents))
-}
-
-/// Pull a repository URL out of `.toc` metadata.
-///
-/// Many addon authors record one in `X-Repository` or `X-Website`, which turns
-/// adoption into one click instead of a search.
-fn suggest_url(toc: &TocData) -> Option<String> {
-    [&toc.repository, &toc.website]
-        .into_iter()
-        .flatten()
-        .flat_map(|value| value.split_whitespace())
-        .find_map(|token| sources::parse_repo_url(token).ok())
-        .map(|source| source.web_url())
 }
 
 /// Folders that look like components of the same addon.
@@ -299,8 +292,13 @@ mod tests {
         assert!(scan(&store, &server).unwrap_or_default().is_empty());
     }
 
+    /// Deliberate: private-server users run backports and forks, so the
+    /// upstream `X-Repository` in a `.toc` routinely names a project they are
+    /// not using. Suggesting it would point updates at the wrong repo and
+    /// replace a working addon with an incompatible one. The user supplies the
+    /// URL, and the addon-list export carries a whole collection across.
     #[test]
-    fn suggests_a_repository_url_from_toc_metadata() {
+    fn never_infers_a_source_repository_from_toc_metadata() {
         let (_tmp, store, id) = server_with(&[(
             "Questie",
             "## Interface: 30300\n## X-Repository: https://github.com/Questie/Questie\n",
@@ -311,10 +309,15 @@ mod tests {
             .unwrap_or_else(|| panic!("server"));
 
         let found = scan(&store, &server).unwrap_or_default();
+        let questie = found.first().unwrap_or_else(|| panic!("Questie"));
+
+        // The metadata is parsed and available for display...
         assert_eq!(
-            found.first().and_then(|f| f.suggested_url.as_deref()),
+            questie.toc.repository.as_deref(),
             Some("https://github.com/Questie/Questie")
         );
+        // ...but nothing in the scan result proposes it as the source.
+        assert_eq!(questie.folder, "Questie");
     }
 
     #[test]

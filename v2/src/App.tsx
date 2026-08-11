@@ -5,6 +5,11 @@ import type { Addon, CatalogEntry, Server } from "./api";
 import { AddonList } from "./components/AddonList";
 import { ServerSwitcher } from "./components/ServerSwitcher";
 import { AddAddonDialog, AddServerDialog, ConfirmDialog } from "./components/dialogs";
+import {
+  ExportListDialog,
+  ImportExistingDialog,
+  ImportListDialog,
+} from "./components/transfer";
 
 type Page = "addons" | "browse" | "settings";
 type Toast = { id: number; kind: "info" | "error" | "success"; text: string };
@@ -20,6 +25,7 @@ export default function App() {
   const [showAddServer, setShowAddServer] = useState(false);
   const [showAddAddon, setShowAddAddon] = useState(false);
   const [confirming, setConfirming] = useState<Addon | null>(null);
+  const [transfer, setTransfer] = useState<"import" | "export" | "existing" | null>(null);
 
   const selected = useMemo(
     () => servers.find((server) => server.id === selectedId) ?? null,
@@ -272,6 +278,32 @@ export default function App() {
                   ) : null}
                   <button
                     type="button"
+                    className="btn"
+                    onClick={() => setTransfer("existing")}
+                    disabled={!selected.canInstall}
+                    title="Take over addon folders already in this game directory"
+                  >
+                    Import existing
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setTransfer("import")}
+                    disabled={!selected.canInstall}
+                    title="Paste an addon list — the way to bring a collection over from V1"
+                  >
+                    Import list
+                  </button>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => setTransfer("export")}
+                    disabled={addons.length === 0}
+                  >
+                    Export list
+                  </button>
+                  <button
+                    type="button"
                     className="btn primary"
                     onClick={() => setShowAddAddon(true)}
                     disabled={!selected.canInstall}
@@ -353,6 +385,40 @@ export default function App() {
           currentServerId={selectedId}
           onClose={() => setShowAddAddon(false)}
           onInstall={handleInstall}
+        />
+      ) : null}
+
+      {transfer === "import" && selected ? (
+        <ImportListDialog
+          server={selected}
+          onClose={() => setTransfer(null)}
+          onDone={async (installed, failed) => {
+            setTransfer(null);
+            notify(
+              failed.length === 0 ? "success" : "info",
+              `Installed ${installed} addon${installed === 1 ? "" : "s"}` +
+                (failed.length > 0 ? `, ${failed.length} failed` : ""),
+            );
+            for (const line of failed) notify("error", line);
+            if (selectedId) setAddons(await api.listAddons(selectedId));
+            void refreshServers();
+          }}
+        />
+      ) : null}
+
+      {transfer === "export" && selected ? (
+        <ExportListDialog server={selected} onClose={() => setTransfer(null)} />
+      ) : null}
+
+      {transfer === "existing" && selected ? (
+        <ImportExistingDialog
+          server={selected}
+          onClose={async () => {
+            setTransfer(null);
+            if (selectedId) setAddons(await api.listAddons(selectedId));
+            void refreshServers();
+          }}
+          onAdopted={(folder) => notify("success", `Now managing ${folder}`)}
         />
       ) : null}
 

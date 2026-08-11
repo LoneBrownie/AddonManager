@@ -186,8 +186,6 @@ pub struct FoundAddonDto {
     pub title: Option<String>,
     pub version: Option<String>,
     pub author: Option<String>,
-    /// A repository URL the addon author recorded in its `.toc`, if any.
-    pub suggested_url: Option<String>,
     /// Sibling folders that look like parts of the same addon. A suggestion
     /// for the user to confirm, never applied automatically.
     pub related: Vec<String>,
@@ -202,7 +200,6 @@ impl From<bam_core::adopt::FoundAddon> for FoundAddonDto {
             title: found.toc.title,
             version: found.toc.version,
             author: found.toc.author,
-            suggested_url: found.suggested_url,
             related: found.related,
             version_matches: found.version_matches,
         }

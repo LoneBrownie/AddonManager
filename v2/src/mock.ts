@@ -328,6 +328,37 @@ export async function mockInvoke<T>(
       return results as T;
     }
 
+    case "scan_existing_addons":
+      return [
+        {
+          folder: "Bartender4",
+          title: "Bartender4",
+          version: "4.5.9",
+          author: "Nevcairiel",
+          related: [],
+          versionMatches: true,
+        },
+        {
+          folder: "Recount",
+          title: "Recount",
+          version: "1.0",
+          author: "Cryect",
+          related: ["Recount_Config"],
+          versionMatches: true,
+        },
+        {
+          folder: "RetailOnly",
+          title: "Retail Only Addon",
+          version: "11.0",
+          author: "Someone",
+          related: [],
+          versionMatches: false,
+        },
+      ] as T;
+
+    case "adopt_addon":
+      return undefined as T;
+
     case "get_catalog":
       return catalog as T;
 

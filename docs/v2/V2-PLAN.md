@@ -382,12 +382,24 @@ This kills the entire family of false-positive update bugs, and it's straightfor
 
 **There is no V1 → V2 migration.** V2 is a new application: new `appId`, its own userData directory, no awareness of V1's files. An earlier draft specified an importer with real-profile fixtures and a summary-with-undo screen; that is all deleted.
 
-This costs existing users far less than it sounds, because **two shipping features already cover the gap**:
+**The addon-list export is the migration path.** V1 records the repository URL
+for every addon it manages, so its *Export Addon List* produces exactly the
+information V2 needs. The user exports from V1, pastes into V2's **Import
+list**, and the collection installs from the same repositories it came from.
 
-- **Import Existing Addons** (§6.1) scans an `Interface/AddOns` folder and adopts what it finds into management. A user adds their server, runs the import, and is back where they were — which is the same flow V1 users already know.
-- **Export/import addon list** (§6.1) means a V1 user can export their list as text from V1 and paste it into V2.
+**Importing existing folders is a separate, weaker tool**, for addons that were
+never managed by V1 at all. The user picks an unmanaged folder and supplies its
+repository URL themselves — the same flow V1 used.
 
-Setup is therefore re-done once, using paths that have to work correctly anyway. The V1 install is left entirely untouched, so anyone who dislikes V2 simply keeps using it.
+> **The source repository is never inferred from disk.** An earlier draft
+> proposed reading `X-Repository` out of each `.toc` and offering it. That is
+> wrong for this audience, not merely unhelpful: private-server addons are
+> overwhelmingly backports and forks, so a folder's `.toc` routinely names the
+> *upstream* project rather than the fork actually installed. Accepted, that
+> suggestion would point updates at the wrong repository and replace a working
+> 3.3.5a addon with an incompatible retail build. Folder *grouping* is still
+> suggested, because that is a claim about which directories sit together, not
+> about where they came from.
 
 What this removes from the build: the importer itself, the ambiguous-`currentVersion` resolution logic, the archive-and-undo flow, the migration test suite, and the need to collect real V1 profiles as fixtures.
 
