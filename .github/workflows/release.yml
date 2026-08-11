@@ -1,4 +1,4 @@
-name: V2 Release
+name: Release
 
 # Triggered by a tag, not by a package.json diff. V1 released on a version
 # change in a pushed file, which fired on unrelated commits and made
@@ -6,7 +6,7 @@ name: V2 Release
 
 on:
   push:
-    tags: ['v2.*']
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
@@ -50,8 +50,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            v2/target
-          key: ${{ runner.os }}-release-${{ hashFiles('v2/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-release-${{ hashFiles('Cargo.lock') }}
           restore-keys: ${{ runner.os }}-release-
 
       # Built on 22.04 rather than latest: the glibc a binary is linked against
@@ -66,13 +66,11 @@ jobs:
             libayatana-appindicator3-dev librsvg2-dev libsoup-3.0-dev
 
       - name: Install frontend dependencies
-        working-directory: v2
         run: npm ci || npm install
 
       # The engine's own tests gate the release. Shipping a build whose test
       # suite was never run defeats the point of having one.
       - name: Test the engine
-        working-directory: v2
         run: cargo test -p bam-core -p bam-net
 
       - name: Build and bundle
@@ -85,7 +83,6 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          projectPath: v2
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: "Brownie's Addon Manager __VERSION__"
           releaseBody: |

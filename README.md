@@ -18,9 +18,11 @@ across as many game folders as you run.**
 ---
 
 > [!WARNING]
-> **V2 is in development and has not been released yet.** The engine and
-> interface are built and tested, but there is no installer to download. V1
-> remains the version to use today — see [Using V1](#using-v1).
+> **V2 is in beta and has not been released yet.** The engine and interface are
+> built and tested, but nothing has been validated against a real game client,
+> and there is no installer to download. V1 remains the version to use today —
+> see [Using V1](#using-v1). What is left before release is tracked in
+> [`docs/v2/PROMOTION.md`](docs/v2/PROMOTION.md).
 
 ---
 
@@ -155,7 +157,6 @@ to run it as Administrator. V2 does not have this requirement.
 V2 is a Rust core with a React and TypeScript interface, packaged with Tauri.
 
 ```sh
-cd v2
 npm install
 npm run tauri dev        # run it
 cargo test               # the engine's test suite
@@ -173,10 +174,10 @@ You can also run the interface on its own in a browser, with an in-memory
 backend and no WoW installation needed:
 
 ```sh
-cd v2 && npm run dev
+npm run dev
 ```
 
-See [`v2/ARCHITECTURE.md`](v2/ARCHITECTURE.md) for how the pieces fit together,
+See [`ARCHITECTURE.md`](ARCHITECTURE.md) for how the pieces fit together,
 and [`docs/v2/V2-PLAN.md`](docs/v2/V2-PLAN.md) for why V2 exists and what was
 decided along the way.
 

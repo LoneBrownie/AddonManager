@@ -1,10 +1,10 @@
 # V2 Architecture
 
-**Read this at the start of any session that touches `v2/`.** It exists because
+**Read this at the start of any session that touches this repository.** It exists because
 no human reviews these diffs, so the rules that keep the codebase from drifting
 have to be written down rather than remembered.
 
-The full reasoning lives in [`../docs/v2/V2-PLAN.md`](../docs/v2/V2-PLAN.md).
+The full reasoning lives in [`docs/v2/V2-PLAN.md`](docs/v2/V2-PLAN.md).
 This is the short operational version.
 
 ---
@@ -37,7 +37,6 @@ command, not a new primitive.
 ## Layout
 
 ```
-v2/
   core/          Rust engine. No Tauri, no webview, no UI dependency.
     src/
       paths.rs      Canonicalisation and confinement — the security chokepoint
@@ -133,7 +132,7 @@ Raising a limit is not the fix when a gate trips. Splitting along a real seam is
 Run everything:
 
 ```sh
-cd v2 && cargo test
+cargo test
 ```
 
 **No test touches the network.** `testing::FakeHttp` serves canned responses and

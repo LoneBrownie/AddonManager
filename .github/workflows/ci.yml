@@ -1,24 +1,17 @@
-name: V2 CI
+name: CI
 
-# The V2 rewrite lives on `dev` and is never merged to `main` (D3).
-# Windows and Linux both run from the first commit, because a cross-platform
-# project whose CI only runs one OS quietly stops being cross-platform.
+# Windows and Linux both run on every change, because a cross-platform project
+# whose CI only runs one OS quietly stops being cross-platform.
 
 on:
   push:
-    branches: [dev]
-    paths: ['v2/**', '.github/workflows/v2-ci.yml']
+    branches: [main, dev]
   pull_request:
-    paths: ['v2/**', '.github/workflows/v2-ci.yml']
   workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
-
-defaults:
-  run:
-    working-directory: v2
 
 jobs:
   engine:
@@ -43,8 +36,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            v2/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('v2/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
       # Scoped to the headless crates on purpose. bam-app is in the same
@@ -83,8 +76,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            v2/target
-          key: ${{ runner.os }}-app-${{ hashFiles('v2/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-app-${{ hashFiles('Cargo.lock') }}
           restore-keys: ${{ runner.os }}-app-
 
       # Tauri needs WebKitGTK on Linux. Windows uses the bundled WebView2.
@@ -122,6 +115,6 @@ jobs:
 
       - name: Licence headers present
         run: |
-          test -f ../LICENSE || { echo "LICENSE missing"; exit 1; }
-          grep -q "GNU GENERAL PUBLIC LICENSE" ../LICENSE || {
+          test -f LICENSE || { echo "LICENSE missing"; exit 1; }
+          grep -q "GNU GENERAL PUBLIC LICENSE" LICENSE || {
             echo "LICENSE is not the GPL text"; exit 1; }
