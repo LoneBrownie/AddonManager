@@ -1,6 +1,6 @@
 # Brownie's Addon Manager — V2 Plan
 
-**Status:** All decisions settled (D1–D11). Phase 0 and Phase 1 in progress.
+**Status:** All decisions settled (D1–D11). Phases 0–2 engine complete and tested; UI outstanding.
 **Author:** Claude (via Claude Code)
 **Target:** V2.0.0
 **Scope:** Modernisation, multiple server support (CurseForge/WowUp-style switcher), Windows + Linux

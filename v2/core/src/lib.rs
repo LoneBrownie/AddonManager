@@ -20,6 +20,8 @@
 //! * [`store`] — atomic persistence.
 //! * [`sources`] — resolving GitHub and GitLab.
 //! * [`install`] — install, update and remove orchestration.
+//! * [`servers`] — registering and managing game folders.
+//! * [`bulk`] — install-to-many and copy-set-between-servers.
 //! * [`http`] — the network trait the engine depends on (no client here).
 //! * [`testing`] — fakes, so nothing in the test suite touches the network.
 
@@ -34,11 +36,13 @@
 )]
 
 pub mod archive;
+pub mod bulk;
 pub mod error;
 pub mod http;
 pub mod install;
 pub mod model;
 pub mod paths;
+pub mod servers;
 pub mod sources;
 pub mod store;
 pub mod testing;

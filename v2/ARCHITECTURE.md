@@ -48,10 +48,13 @@ v2/
       store.rs      Atomic persistence
       sources/      GitHub and GitLab resolution
       install.rs    Install, update, remove orchestration
+      servers.rs    Registering and managing game folders (manual add only)
+      bulk.rs       Install-to-many and copy-set-between-servers
       http.rs       The network trait (no client lives here)
       testing.rs    Fakes — nothing in the suite touches the network
     tests/
       install_flow.rs   End-to-end against a synthetic WoW directory
+      multi_server.rs   Several servers side by side (phase 2 exit criteria)
   scripts/       CI guardrails
 ```
 
@@ -130,4 +133,6 @@ Phases 2 onward, tracked in V2-PLAN.md:
   the concrete client belongs in the app layer so `core` stays dependency-light
   and network-free in tests.
 - The React/TypeScript frontend.
-- Server management UI, the switcher, and install-to-many.
+- The switcher and manage-servers **UI**. Everything it renders and every
+  action it dispatches is built and tested in `servers.rs` and `bulk.rs`;
+  only the visual layer is outstanding, and it lands with the frontend.
