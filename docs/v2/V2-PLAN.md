@@ -27,8 +27,8 @@ Read this section first — everything downstream depends on it.
 
 | # | Decision | Options | My recommendation |
 |---|---|---|---|
-| **D1** | **Stack** | (A) Tauri v2 + Rust + React/TS  (B) Electron + Vite + TS  (C) .NET + Avalonia | **A**, with **B** as the safe fallback. See §5.1. |
-| **D2** | **Auto-update continuity** | Break it (V1 users install V2 manually once) vs. stay on electron-updater | **Break it.** Ship a final V1.x that shows a "V2 is available" notice with a download link. Unavoidable under Track A anyway. |
+| **D1** | **Stack** | (A) Tauri v2 + Rust + React/TS  (B) Electron + Vite + TS  (C) .NET + Avalonia | **Either A or B.** Pick on appetite for Rust — see §5.1. Deferrable until the end of Phase 1. |
+| **D2** | ~~Auto-update continuity~~ | — | ✅ **DECIDED: break it.** Small user base. V1 users install V2 once by hand. **V2 still has its own auto-updater** — see §9.1. |
 | **D3** | **Repo strategy** | New repo vs. `v2` branch in this repo vs. rewrite on `main` | **`v2` branch here**, merged to `main` at release. Keeps issues, stars, release history, and the curated-list workflow in one place. |
 | **D4** | **macOS** | Support / ignore | **Build it, don't promise it.** Under Track A it's ~1 day of CI + a code-signing decision. Ship it unsigned as "community build" or skip. |
 | **D5** | **Curated list hosting** | Keep Azure Blob / move to GitHub raw / both | **Both** — GitHub raw as primary (free, versioned, no secret), Azure as fallback. Removes a secret from CI. |
@@ -152,11 +152,26 @@ Extensive `console.log` throughout, all of it in a renderer with DevTools closed
 
 The secondary wins are real for a utility people leave running: a ~10 MB installer instead of ~150 MB, and roughly a third of the memory.
 
-**The honest costs.** Rust is a genuine learning curve, though the core here is ~2,500 lines of mechanical HTTP/zip/filesystem/JSON code with mature crates — well-trodden ground. Linux rendering goes through WebKitGTK (`webkit2gtk-4.1`), which has quirks; for a UI this simple that means "test on Ubuntu and Fedora", not "rewrite the CSS". And auto-update uses a minisign keypair and a JSON manifest instead of `latest.yml` — different, well-documented, still hostable on GitHub Releases.
+**The honest costs of Rust.** These are real, and worth weighing properly rather than skimming:
 
-**Why B is a legitimate choice.** If you'd rather ship than learn Rust, Track B still delivers ~80% of the value: multi-install, cross-platform paths, engine in the main process, a real test suite, TypeScript, and Vite in place of dead CRA. What it *doesn't* give you is a security model you get for free rather than by remembering to be careful. Pick B if D1 makes you hesitate — it is not a bad answer.
+- **The learning curve is front-loaded, and async is the wall.** Ownership and borrowing click reasonably fast. Async Rust, `tokio`, and error handling across async boundaries are a genuine step up — and downloads-with-progress is async work, so you meet it early.
+- **AI assistance is meaningfully weaker for Rust than TypeScript.** More iterations to reach compiling code, particularly around lifetimes and crate API churn. Given how this project has been built so far, this is a bigger practical cost than it looks on paper.
+- **Compile times, asymmetrically.** Frontend work still hot-reloads instantly under Tauri dev. Backend edits cost 5–30 s incremental, and a clean release build is a couple of minutes.
+- **Worse debugging.** No DevTools for the backend — it's `tracing` plus a debugger you configure, versus a Node inspector you may already know.
+- **Two languages and a serialization boundary.** Track B is one language with shared types for free. `specta` / `ts-rs` generate TS types from Rust and mostly close the gap, but it's still two mental models.
+- **Fewer potential contributors.** WoW tooling is overwhelmingly JS/TS. A Rust core shrinks the pool of people who might send a PR.
+- **Prototyping is slower.** Rust makes you handle every error case up front — excellent for correctness, friction when you're still exploring a design.
+- **Linux rendering goes through WebKitGTK** (`webkit2gtk-4.1`), not Chromium. For a UI this simple that means "test on Ubuntu and Fedora", not "rewrite the CSS" — but it is a consistency you give up.
 
-**Critically: Phase 1 is the same design either way.** The schema, the update-resolution model, the path-safety rules, and their tests are stack-independent. Committing to Track A doesn't have to happen until Phase 1 is designed.
+**Prior art worth an evening:** *Ajour* was a Rust WoW addon manager and is no longer maintained. Worth understanding why before committing — though the likeliest reading is solo-maintainer bandwidth, which is a burnout story rather than a Rust story.
+
+**Why B is a legitimate choice — and why the gap is narrower than it first looks.** The security win Tauri gives you *by construction*, Electron gives you *by discipline*. V1 is unsafe not because it's Electron, but because its IPC surface is generic primitives (§4.1 S1). An Electron main process with a strict intent-level command surface — the §5.2 layering, which is stack-independent — closes most of that gap. On a solo project where you are the only person who could erode that discipline, discipline is cheaper than it sounds.
+
+Given the small user base, the installer-size and memory arguments also carry less weight than they would for a widely-distributed app. So:
+
+> **Take Tauri if learning Rust sounds like fun — the payoff is real and durable. Take Electron + Vite + TS if it sounds like a chore. Neither is the wrong answer.**
+
+**Critically: Phase 1 is the same design either way.** The schema, the update-resolution model, the path-safety rules, and their tests are stack-independent. **This decision can be deferred to the end of Phase 1**, by which point you'll have written enough of the core to know how the language feels in your hands.
 
 ### 5.2 Layering
 
@@ -242,7 +257,16 @@ Three things fall out of this for free:
 - *Linux:* `~/Games`, `~/.wine/drive_c`, Lutris (`~/.local/share/lutris`), Steam Proton prefixes (`~/.steam/steam/steamapps/compatdata/*/pfx/drive_c`), Bottles (`~/.local/share/bottles`).
 - *Flavor detection:* executable name, presence of `.build.info` (retail), the `## Interface` value in Blizzard's own `.toc` files under `Interface/AddOns/Blizzard_*`, and `WTF/Config.wtf`. **Always user-overridable** — private servers will fool any heuristic, and that's fine as long as the user gets the last word.
 
-**UI.** An installation switcher pinned at the top of the sidebar (name + accent colour + addon count), exactly like CurseForge's game-version selector. A "Manage installations" screen to add, rename, re-detect, recolour, and remove. In the addon list, an "Install to…" target picker with multi-select. Plus a **"Copy addon set from → to"** action, which is the feature people actually want when they run a live and a test install side by side.
+**UI and behaviour** — confirmed against how CurseForge and WowUp do it:
+
+- A **dropdown switcher** pinned at the top of the sidebar (name + accent colour + addon count), the same shape as CurseForge's game-version selector.
+- The addon list shows **only the addons installed to the selected install**. Switching the dropdown switches the whole view.
+- **Installing an addon adds it to the selected install only.** That is the default and the only implicit behaviour — nothing is ever silently installed into another install.
+- Update checks, pins, and channel settings are all **per install**. The same addon can sit in two installs at different versions, pinned in one and auto-updating in the other.
+- **Uninstalling from one install does not touch the others.** Because `folders` is recorded per row, we remove exactly what we wrote there.
+- A "Manage installations" screen to add, rename, re-detect, recolour, and remove.
+
+Two additions on top, both **explicit opt-in actions** rather than default behaviour: an "Install to…" multi-select for when you *do* want an addon in several installs at once, and a **"Copy addon set from → to"** action for standing up a new install from an existing one — the feature people actually want the moment they run a live and a test install side by side.
 
 ### 5.4 Update resolution — record the ref, don't guess it
 
@@ -372,6 +396,25 @@ Rule: **every bug in §4 ships with a failing test first.** That list is the ini
 ---
 
 ## 9. Build, packaging, release
+
+### 9.1 Auto-update in V2
+
+D2 ("break continuity") means *existing V1 users install V2 once by hand*. It does **not** mean V2 ships without an updater. V2 has a full auto-updater on both stacks:
+
+| | Track A (Tauri) | Track B (Electron) |
+|---|---|---|
+| Mechanism | `tauri-plugin-updater` | `electron-updater` (unchanged from V1) |
+| Signing | minisign keypair, private key in CI secrets | existing Cosign flow retained |
+| Manifest | `latest.json` on GitHub Releases | `latest.yml` on GitHub Releases |
+| Windows | ✅ NSIS / MSI self-update | ✅ NSIS self-update |
+| Linux | ✅ **AppImage only** | ✅ **AppImage only** |
+| macOS | ✅ (needs a signing decision — D4) | ✅ (same) |
+
+Behaviour matches V1: check on launch and on an interval, download in the background with progress, install and relaunch.
+
+**The one real caveat is a Linux constraint, not a framework one.** `.deb` and `.rpm` cannot self-update — that's the system package manager's job. Those users either re-download on release or you host an apt/dnf repo, which is meaningful ongoing work. **Recommendation: don't.** Ship AppImage as the self-updating Linux artifact, offer `.deb`/`.rpm` as convenience downloads, and have the app show a "new version available" notice with a link when it detects it can't self-update. Windows — where nearly all your users are — updates exactly as it does today.
+
+### 9.2 Pipeline
 
 - CI matrix: `windows-latest` + `ubuntu-latest` (+ `macos-latest` if D4 says yes) on every PR — build, lint, test.
 - Release on tag, not on a `package.json` diff. The current version-diff trigger (`release.yml`) is clever but fires on unrelated pushes and makes re-releasing awkward.
