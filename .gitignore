@@ -1,91 +1,33 @@
-# Dependencies
+# Rust
+target/
+**/*.rs.bk
+
+# Node
 node_modules/
 npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-yarn.lock
+.npm
 
-# Production builds
-build/
+# Build output
 dist/
-out/
+v2/screenshots/
 
-# Development
+# Environment
 .env
 .env.local
-.env.development.local
-.env.test.local
-.env.production.local
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-.nyc_output
-
-# Electron specific
-electron-builder-output/
-release/
-
-# Cache directories
-.cache/
-.parcel-cache/
-.eslintcache
-.npm
-.node_repl_history
-
-# Optional files
-.env.test
-.yarn-integrity
-*.tgz
-
-# IDE and Editor files
+# Editors
 .vscode/
 !.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
 !.vscode/extensions.json
 .idea/
 *.swp
-*.swo
 *~
 
-# OS generated files
+# OS
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
 Desktop.ini
 
-# Windows specific
-*.lnk
-*.tmp
-*.temp
-
-# Temporary directories
-temp/
-tmp/
+# Logs
 *.log
 logs/
-
-# Application specific
-settings.json
-user-data/
-electron-cache/
-
-# Build artifacts
-*.exe
-*.msi
-*.dmg
-*.pkg
-*.deb
-*.rpm
-*.snap
-eslint-fix-output.txt

@@ -1,150 +1,54 @@
-# GitHub Copilot Instructions - WoW Addon Manager
+# Working in this repository
 
-## Project Context
-You are helping to build a Windows desktop application using Electron + React that manages World of Warcraft addons by downloading from GitHub and GitLab repositories and keeping them updated.
+This is **V2**, a rewrite. The `dev` branch is the V2 line; `main` holds the
+shipping V1 (Electron + Create React App) and the two are never merged.
 
-## Core Functionality
-- Add addons by pasting GitHub/GitLab repository URLs
-- Download latest releases automatically
-- Check for and install updates when new releases are available
-- Parse WoW addon .toc files for metadata
-- Extract ZIP files to WoW addons directory
+**Read [`v2/ARCHITECTURE.md`](../v2/ARCHITECTURE.md) before changing anything
+under `v2/`.** It records the invariants that are not obvious from the code, and
+it exists because no human reviews these diffs. The reasoning behind the rewrite
+is in [`docs/v2/V2-PLAN.md`](../docs/v2/V2-PLAN.md).
 
-## Technology Stack
-- **Platform**: Windows only (Electron)
-- **Frontend**: React with functional components and hooks
-- **APIs**: GitHub REST API v3, GitLab REST API v4
-- **File Operations**: Node.js fs for file system operations
-- **Archive Handling**: Extract ZIP files from releases
+## The one rule
 
-## Project Structure
-```
-src/
-├── components/
-│   ├── AddAddon.jsx      # URL input and add functionality
-│   ├── AddonList.jsx     # Display addons with update buttons
-│   └── Settings.jsx      # WoW directory configuration
-├── services/
-│   ├── api-client.js     # GitHub/GitLab API calls
-│   └── addon-manager.js  # Install/update addon logic
-├── hooks/
-│   └── useAddons.js      # React hook for addon state
-└── App.jsx
-```
+**The UI never touches the filesystem or the network.** Commands are
+intent-level — `install_addon`, `remove_addon`, `check_updates` — never
+primitive-level. There is no `read_file` and no `write_file`, and adding one is
+not the fix for anything. V1's renderer had exactly those primitives, and that
+is what made it unsafe.
 
-## Key Data Structure
-```javascript
-const addon = {
-  name: "AddonName",
-  repoUrl: "https://github.com/user/repo",
-  currentVersion: "1.2.3",
-  latestVersion: "1.2.4", 
-  needsUpdate: true,
-  installPath: "C:/WoW/Interface/AddOns/AddonName"
-};
+## Stack
+
+| Layer | What |
+|---|---|
+| `v2/core` | The engine. Pure Rust, no Tauri, no UI dependency. Where behaviour lives. |
+| `v2/net` | The `reqwest` client. Separate so the engine's tests need no network. |
+| `v2/src-tauri` | The shell. Thin wrappers over the engine. |
+| `v2/src` | React + TypeScript, strict mode. |
+
+## Before you commit
+
+```sh
+cd v2
+cargo fmt --all
+cargo clippy --all-targets -- -D warnings
+cargo test
+npx tsc --noEmit
+python3 scripts/check_module_size.py
 ```
 
-## API Patterns to Follow
+CI runs all of these on Windows and Linux. `unwrap`, `expect` and `panic!` are
+denied by lint in the engine — a panic mid-install leaves a half-written game
+folder. No module may exceed 400 lines of non-test code; when that trips, split
+along a real seam rather than raising the limit.
 
-### GitHub API
-```javascript
-// Get latest release
-GET https://api.github.com/repos/{owner}/{repo}/releases/latest
+## Tests
 
-// Download asset
-GET {asset.browser_download_url}
-```
+No test touches the network. `testing::FakeHttp` serves canned responses and
+`testing::zip_from` builds archives in memory. Needing a live connection means
+the design is wrong.
 
-### GitLab API  
-```javascript
-// Get latest release
-GET https://gitlab.com/api/v4/projects/{id}/releases
+The malicious-archive fixtures are permanent. They encode zip slip, drive-
+qualified paths, Windows device names, symlinks and zip bombs, and must keep
+failing closed.
 
-// For gitlab.com, project ID can be URL encoded: {owner}%2F{repo}
-```
-
-## Code Style Preferences
-- Use modern React patterns (functional components, hooks)
-- Use async/await for API calls and file operations
-- Handle errors gracefully with try/catch blocks
-- Use descriptive variable names
-- Add JSDoc comments for service functions
-- Prefer const/let over var
-- Use template literals for string interpolation
-
-## File Operation Patterns
-- Use Node.js `fs.promises` for async file operations
-- Create directories with `fs.mkdir({ recursive: true })`
-- Use `path.join()` for cross-platform path handling
-- Validate file paths before operations
-- Handle file conflicts during addon updates
-
-## React Patterns to Use
-- Custom hooks for complex state logic (useAddons)
-- useState for component state
-- useEffect for side effects (checking updates)
-- Error boundaries for error handling
-- Loading states for async operations
-
-## WoW Addon Specific Logic
-- Parse `.toc` files to extract addon metadata
-- Look for `## Version:` and `## Title:` in .toc files
-- Handle addon folders that may contain multiple .toc files
-- Respect WoW addon directory structure: `Interface/AddOns/`
-
-## Error Handling Priorities
-- Invalid GitHub/GitLab URLs
-- API rate limiting
-- Network connectivity issues  
-- File permission errors
-- Corrupted or invalid ZIP files
-- Missing WoW installation directory
-
-## Security Considerations
-- Validate URLs before making API calls
-- Sanitize file paths to prevent directory traversal
-- Handle malformed ZIP files safely
-- Don't expose API tokens in client code
-
-## Performance Tips
-- Cache API responses when appropriate
-- Use AbortController for cancellable requests
-- Show progress indicators for long operations
-- Batch operations when possible
-
-## Common Functions You'll Need
-```javascript
-// URL validation
-function isValidRepoUrl(url) { /* validate github/gitlab URL */ }
-
-// Parse repository info from URL
-function parseRepoFromUrl(url) { /* extract owner/repo */ }
-
-// Extract ZIP files
-function extractAddon(zipPath, extractPath) { /* extract to directory */ }
-
-// Parse .toc files
-function parseAddonToc(tocContent) { /* extract name/version */ }
-
-// Check if addon needs update
-function compareVersions(current, latest) { /* semver comparison */ }
-```
-
-## Testing Considerations
-- Mock API responses for consistent testing
-- Test with various GitHub/GitLab URL formats
-- Test file operations with different WoW directory structures
-- Handle edge cases like empty releases or malformed .toc files
-
-## Development Workflow
-- Use Electron in development mode for hot reloading
-- Test with real GitHub/GitLab repositories
-- Handle both public and private repository scenarios
-- Test with different addon structures and naming conventions
-
-When writing code, prioritize:
-1. Functionality over perfect UI styling
-2. Error handling and user feedback
-3. Async operation management
-4. File system safety and validation
-5. Clear separation of concerns between components and services
+When fixing a bug, write the failing test first.
