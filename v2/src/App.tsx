@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import logo from "./img/Logo.png";
 import * as api from "./api";
 import type { Addon, CatalogEntry, Server } from "./api";
 import { AddonList } from "./components/AddonList";
@@ -191,8 +192,11 @@ export default function App() {
     <div className="app">
       <aside className="sidebar">
         <div className="brand">
-          <h1>Brownie's Addon Manager</h1>
-          <p>World of Warcraft addons</p>
+          <img src={logo} alt="" width={34} height={34} />
+          <div className="brand-text">
+            <h1>Brownie's Addon Manager</h1>
+            <p>World of Warcraft addons</p>
+          </div>
         </div>
 
         <ServerSwitcher

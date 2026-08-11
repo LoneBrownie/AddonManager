@@ -5,23 +5,28 @@
  */
 
 :root {
-  --ground: #11151a;
-  --surface: #171d24;
-  --surface-2: #1d242c;
-  --surface-3: #232c35;
-  --ink: #e3e8ee;
-  --ink-2: #c3ccd6;
-  --ink-3: #8a97a6;
-  --rule: #2b343d;
-  --rule-soft: #222a32;
-  --gold: #d9a83c;
-  --gold-dim: #8a6a24;
-  --on-gold: #17130a;
-  --ice: #5fb3c4;
-  --good: #6fbf73;
-  --warn: #e0b055;
-  --bad: #f2938a;
-  --shadow: 0 10px 30px rgb(0 0 0 / 45%);
+  /* Carried over from V1's palette: neutral dark greys with violet accents,
+     so V2 reads as the same application rather than a different product. */
+  --ground: #1a1a1a;
+  --surface: #242424;
+  --surface-2: #2d2d2d;
+  --surface-3: #3a3a3a;
+  --ink: #ffffff;
+  --ink-2: #d4d4d4;
+  --ink-3: #9a9a9a;
+  --rule: #3f3f3f;
+  --rule-soft: #333333;
+
+  --accent: #8b5cf6;
+  --accent-hover: #a78bfa;
+  --accent-soft: rgb(167 139 250 / 12%);
+  --on-accent: #ffffff;
+
+  --info: #c084fc;
+  --good: #10b981;
+  --warn: #f59e0b;
+  --bad: #ef4444;
+  --shadow: 0 12px 34px rgb(0 0 0 / 55%);
 
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -29,23 +34,26 @@
 }
 
 :root[data-theme="light"] {
-  --ground: #f4f6f8;
+  --ground: #f5f4f8;
   --surface: #ffffff;
-  --surface-2: #eef1f5;
-  --surface-3: #e4e9ef;
-  --ink: #151a21;
-  --ink-2: #3d4753;
-  --ink-3: #5c6672;
-  --rule: #d8dee6;
-  --rule-soft: #e7ecf1;
-  --gold: #8a6410;
-  --gold-dim: #b98a1f;
-  --on-gold: #ffffff;
-  --ice: #1f6b78;
-  --good: #2f7a35;
-  --warn: #8a5a06;
-  --bad: #a3231b;
-  --shadow: 0 10px 30px rgb(15 25 40 / 12%);
+  --surface-2: #eeecf3;
+  --surface-3: #e3e0ec;
+  --ink: #1c1a22;
+  --ink-2: #46424f;
+  --ink-3: #6b6577;
+  --rule: #dcd8e4;
+  --rule-soft: #e8e5ee;
+
+  --accent: #6d28d9;
+  --accent-hover: #5b21b6;
+  --accent-soft: rgb(109 40 217 / 9%);
+  --on-accent: #ffffff;
+
+  --info: #7e22ce;
+  --good: #047857;
+  --warn: #b45309;
+  --bad: #b91c1c;
+  --shadow: 0 12px 34px rgb(30 20 55 / 14%);
 }
 
 * { box-sizing: border-box; }
@@ -64,7 +72,7 @@ body {
 button { font: inherit; color: inherit; cursor: pointer; }
 input, select, textarea { font: inherit; color: inherit; }
 
-:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- shell ---- */
 .app { display: grid; grid-template-columns: 264px minmax(0, 1fr); height: 100vh; }
@@ -78,17 +86,31 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 
 .brand {
-  padding: 18px 18px 14px;
+  padding: 16px 18px 15px;
   border-bottom: 1px solid var(--rule);
+  /* V1 headed the app with a grey-to-violet wash; kept, but dialled back so
+     it sits under the content rather than competing with it. */
+  background: linear-gradient(135deg, var(--surface) 35%, var(--accent-soft));
+  display: flex;
+  align-items: center;
+  gap: 11px;
 }
+.brand img {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  image-rendering: -webkit-optimize-contrast;
+}
+.brand-text { min-width: 0; }
 .brand h1 {
   margin: 0;
   font-family: var(--serif);
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
   letter-spacing: -0.01em;
+  line-height: 1.2;
 }
-.brand p { margin: 2px 0 0; font-size: 12px; color: var(--ink-3); }
+.brand p { margin: 2px 0 0; font-size: 11.5px; color: var(--ink-3); }
 
 .nav { padding: 10px; display: flex; flex-direction: column; gap: 2px; }
 .nav button {
@@ -105,10 +127,10 @@ input, select, textarea { font: inherit; color: inherit; }
 }
 .nav button:hover { background: var(--surface-2); color: var(--ink); }
 .nav button[aria-current="page"] {
-  background: var(--surface-3);
+  background: var(--accent-soft);
   color: var(--ink);
   font-weight: 600;
-  box-shadow: inset 2px 0 0 var(--gold);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 .nav .count {
   font-family: var(--mono);
@@ -143,13 +165,13 @@ input, select, textarea { font: inherit; color: inherit; }
   gap: 10px;
   text-align: left;
 }
-.switcher-button:hover { border-color: var(--gold-dim); }
+.switcher-button:hover { border-color: var(--accent); }
 .swatch {
   width: 8px;
   align-self: stretch;
   min-height: 30px;
   border-radius: 3px;
-  background: var(--gold);
+  background: var(--accent);
   flex: none;
 }
 .switcher-text { min-width: 0; flex: 1; }
@@ -199,7 +221,7 @@ input, select, textarea { font: inherit; color: inherit; }
   border-top: 1px solid var(--rule);
   margin-top: 4px;
   padding-top: 8px;
-  color: var(--gold);
+  color: var(--accent);
   font-weight: 600;
 }
 
@@ -239,12 +261,12 @@ input, select, textarea { font: inherit; color: inherit; }
 .btn:hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn.primary {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: var(--on-gold);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
   font-weight: 600;
 }
-.btn.primary:hover:not(:disabled) { filter: brightness(1.08); }
+.btn.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
 .btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--rule)); }
 .btn.small { padding: 4px 9px; font-size: 12px; border-radius: 6px; }
 
@@ -255,7 +277,7 @@ input, select, textarea { font: inherit; color: inherit; }
   border-radius: 7px;
   padding: 8px 11px;
 }
-.input:focus, .select:focus { border-color: var(--gold-dim); }
+.input:focus, .select:focus { border-color: var(--accent); }
 textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); font-size: 12px; }
 
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; }
@@ -278,7 +300,10 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   gap: 12px;
   align-items: center;
 }
-.row.updatable { border-color: color-mix(in srgb, var(--gold) 45%, var(--rule)); }
+.row.updatable {
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--rule));
+  background: linear-gradient(90deg, var(--accent-soft), transparent 42%), var(--surface);
+}
 .row-main { min-width: 0; }
 .row-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .row-title strong { font-size: 14px; }
@@ -304,8 +329,8 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   color: var(--ink-3);
   white-space: nowrap;
 }
-.tag.update { color: var(--gold); border-color: var(--gold-dim); }
-.tag.pinned { color: var(--ice); border-color: color-mix(in srgb, var(--ice) 40%, var(--rule)); }
+.tag.update { color: var(--accent); border-color: var(--accent); }
+.tag.pinned { color: var(--info); border-color: color-mix(in srgb, var(--info) 40%, var(--rule)); }
 .tag.source { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, var(--rule)); }
 .tag.error { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--rule)); }
 
@@ -401,7 +426,7 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 .toast {
   background: var(--surface);
   border: 1px solid var(--rule);
-  border-left: 3px solid var(--ice);
+  border-left: 3px solid var(--info);
   border-radius: 8px;
   padding: 11px 13px;
   box-shadow: var(--shadow);
@@ -426,7 +451,7 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   width: 13px;
   height: 13px;
   border: 2px solid var(--rule);
-  border-top-color: var(--gold);
+  border-top-color: var(--accent);
   border-radius: 50%;
   display: inline-block;
   animation: spin 700ms linear infinite;

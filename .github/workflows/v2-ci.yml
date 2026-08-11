@@ -47,17 +47,18 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('v2/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      # The engine is a plain library with no Tauri or webview dependency, so
-      # it builds and tests on a bare runner. That is the point of keeping it
-      # headless (V2-PLAN.md phase 1).
+      # Scoped to the headless crates on purpose. bam-app is in the same
+      # workspace, so an unscoped `cargo clippy` would drag the Tauri shell in
+      # and fail here for want of WebKitGTK on Linux and an .ico on Windows.
+      # The app is built by its own job, which installs those.
       - name: Format
         run: cargo fmt --all --check
 
       - name: Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy -p bam-core -p bam-net --all-targets --all-features -- -D warnings
 
       - name: Test
-        run: cargo test --all-features
+        run: cargo test -p bam-core -p bam-net --all-features
 
   app:
     name: App (${{ matrix.os }})
