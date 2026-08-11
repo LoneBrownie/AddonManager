@@ -105,6 +105,11 @@ Nothing checks that an install target resolves inside the configured `Interface/
 **B5 — Temp path is always wrong.**
 `addon-manager.js:171` reads `process.env.TEMP` in the **renderer**, where CRA only shims `NODE_ENV`, `PUBLIC_URL`, and `REACT_APP_*`. It's always `undefined`, so the temp dir silently falls back to `C:\temp` — a path that typically doesn't exist and isn't user-writable by convention.
 
+**B8 — Missing folders permanently drop addons from management, and V2 would make this worse.**
+`useAddons.js:164` filters out any addon whose folders aren't found on disk and persists the result. Today this is partly masked by B1: disconnect the drive and *every* addon vanishes, the list hits zero, the empty-list guard skips the write, and they return on restart. Two bugs cancelling out.
+
+That accident stops working with multiple servers. One server on a disconnected drive goes missing while others remain, so the list isn't empty, so it saves — and that server's entire addon set is permanently gone from management. Given that these clients routinely live on secondary and external drives, this would be a common occurrence rather than an edge case. V2 needs the explicit `unavailable` state described in §5.3, and must never treat "path unreachable" as "user deleted these addons".
+
 **B6 — Existence-check loop churn.**
 `useAddons.js:156-197`: the effect depends on `addons`, calls `setAddons` inside itself, and creates a 30-second `setInterval`. Every addon-state change tears down and rebuilds the timer; the effect can also re-enter itself.
 
@@ -274,11 +279,25 @@ Three things fall out of this for free:
 - **The same addon can be installed to several installations at different versions**, tracked independently — which is precisely the CurseForge behaviour you asked for.
 - **Uninstall is exact.** We remove the folders we created, and nothing else.
 
-**Discovery.** On first run, and on demand, scan for game installations:
+**Adding a server: always manual. No auto-detection, no scan button.**
 
-- *Windows:* common roots (`C:\Program Files*`, `C:\Games`, all fixed drives at depth ≤3), looking for `Wow.exe` / `WowClassic.exe` / `World of Warcraft.exe` alongside a `Data/` directory.
-- *Linux:* `~/Games`, `~/.wine/drive_c`, Lutris (`~/.local/share/lutris`), Steam Proton prefixes (`~/.steam/steam/steamapps/compatdata/*/pfx/drive_c`), Bottles (`~/.local/share/bottles`).
-- *Flavor detection:* executable name, presence of `.build.info` (retail), the `## Interface` value in Blizzard's own `.toc` files under `Interface/AddOns/Blizzard_*`, and `WTF/Config.wtf`. **Always user-overridable** — private servers will fool any heuristic, and that's fine as long as the user gets the last word.
+> **Decided.** An earlier draft proposed drive scanning plus flavor detection from `.build.info`, MPQ contents, and executable build numbers. That was retail-shaped thinking, inherited from CurseForge and WowUp — both of which sit on top of Battle.net and get a product database and predictable install paths for free.
+>
+> Private-server clients have none of that. They're extracted from a zip to wherever the user felt like putting them, so scanning is slow, noisy (it surfaces every backup, every stale client, every half-extracted archive), and produces near-identical results the user then has to disambiguate anyway.
+
+The flow is one dialog:
+
+1. **Browse to the folder** — the WoW root, validated by the presence of `Wow.exe` and a `Data/` directory.
+2. **Pick the version** from a dropdown: *WotLK 3.3.5a · TBC 2.4.3 · Vanilla 1.12*. User-selected, not detected.
+3. **Name it** — defaults to the folder name, and users will typically enter the server ("Epoch", "Warmane Lordaeron").
+
+This deletes an entire subsystem: no drive walking, no MPQ inspection, no build-number parsing, no `.build.info`, no Wine/Proton prefix hunting, no heuristics that can be wrong. It also removes one of the larger cross-platform risks, since per-platform discovery was the code most likely to diverge between Windows and Linux.
+
+**Terminology:** the UI should say **"server"** rather than "installation" — for this audience an install effectively *is* a server, and that's the word users reach for. The underlying entity keeps a UUID identity so two folders for the same server, or a server with no addons, both remain expressible.
+
+**Multiple servers on the same version is the normal case here, not the exception.** Retail managers assume one install per flavor; this audience routinely runs three separate 3.3.5a folders for three different servers. Identity is therefore the UUID plus the user's name — never the version — and the switcher shows the **name** prominently with the **path** beneath it, because "WoW" and "WoW" are otherwise indistinguishable.
+
+**Unavailable paths.** These folders live on second drives, external drives, and removable media, so a server's path being temporarily unreachable is routine, not exceptional. A server whose path can't be resolved enters an explicit **`unavailable`** state: greyed in the switcher, its addon records left completely untouched. See finding B8 — V1's current behaviour would silently destroy them.
 
 **UI and behaviour** — confirmed against how CurseForge and WowUp do it:
 
@@ -373,9 +392,11 @@ Settle D1–D8. Scaffold the chosen stack, TypeScript strict, lint + format, CI 
 Schema v2 + store with atomic writes and migration. Source resolution (GitHub, GitLab, direct) with ETag caching. Streaming download with progress and caps. Traversal-safe extraction. `.toc` parsing (multi-flavor filenames, `## Interface` lists, dependency fields). Install / update / remove against a **fake WoW directory in a temp dir**. Full unit test coverage on version resolution, path safety, extraction, and migration.
 **Exit:** a CLI or test harness installs and updates a real addon into a temp tree on both OSes. No UI yet.
 
-### Phase 2 — Multi-installation · ~1.5 weekends
-Installation entity, discovery per platform, flavor detection, writability checks, switcher UI, manage-installations screen, install-to-many, copy-set-between-installs.
-**Exit:** two installations registered side by side, the same addon at different versions in each, switching works. **This is the feature you asked for — it lands here.**
+### Phase 2 — Multiple servers · ~1 weekend *(reduced)*
+Server entity, manual add flow (browse → pick version → name), writability check, `unavailable` state, switcher UI, manage-servers screen, install-to-many, copy-set-between-servers.
+**Exit:** two servers registered side by side, the same addon at different versions in each, switching works. **This is the feature you asked for — it lands here.**
+
+*Reduced from ~1.5 weekends: dropping auto-detection removes per-platform drive scanning and all flavor-detection heuristics.*
 
 ### Phase 3 — UI parity · ~2 weekends
 Port the React components onto the new command API. Addon list, add-by-URL, curated list, import-existing, export/import lists, settings. Search/filter/sort, toasts, focus-trapped modals, themes.
@@ -457,7 +478,8 @@ Behaviour matches V1: check on launch and on an interval, download in the backgr
 | Migration corrupts a user's V1 data | High | Archive V1 files rather than deleting. Tested against real profiles. Migration summary screen with an "undo" that just restores the archive. |
 | Linux WebKitGTK rendering quirks | Medium | Simple UI, no exotic CSS. Test Ubuntu LTS + Fedora in CI. AppImage bundles what it can; document the `webkit2gtk-4.1` dependency. |
 | Auto-update break strands V1 users | Medium | A final V1.x release that surfaces an in-app "V2 available" notice with a link. Announce in the README and release notes. |
-| Private-server layouts defeat detection | Medium | Detection is a convenience, never a requirement. Manual add always works, flavor is always overridable. |
+| ~~Private-server layouts defeat detection~~ | — | **Eliminated.** There is no detection: adding a server is always manual, and the version is chosen from a dropdown (§5.3). |
+| A server's drive is offline when the app checks | Medium | Explicit `unavailable` state. Never treat an unreachable path as "these addons were deleted" — see B8. |
 | Scope creep (the §6.3 list is tempting) | Medium | 2.0 ships parity + multi-install + Linux. Everything else is 2.1. Write it down and hold the line. |
 | Solo-maintainer bandwidth | Medium | Phases are independently shippable. Phase 2 alone is worth a release if you stop there. |
 
