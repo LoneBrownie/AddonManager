@@ -8,6 +8,7 @@
 
 use std::path::Path;
 
+use bam_core::cancel::CancelToken;
 use bam_core::error::Error;
 use bam_core::install::{self, InstallOptions};
 use bam_core::model::{Channel, GameVersion, Server, Source, Store};
@@ -637,7 +638,15 @@ async fn update_checks_run_in_parallel_and_skip_pinned_addons() {
     .expect("install");
 
     // Unpinned: it is checked.
-    let reports = updates::check_updates_for_server(&client, &store, &server_id, None, 6).await;
+    let reports = updates::check_updates_for_server(
+        &client,
+        &store,
+        &server_id,
+        None,
+        6,
+        &CancelToken::new(),
+    )
+    .await;
     assert_eq!(reports.len(), 1);
 
     // Pinned: no request is made for it at all.
@@ -648,9 +657,49 @@ async fn update_checks_run_in_parallel_and_skip_pinned_addons() {
     {
         row.pinned = true;
     }
-    let reports = updates::check_updates_for_server(&client, &store, &server_id, None, 6).await;
+    let reports = updates::check_updates_for_server(
+        &client,
+        &store,
+        &server_id,
+        None,
+        6,
+        &CancelToken::new(),
+    )
+    .await;
     assert!(
         reports.is_empty(),
         "a pinned addon must not be checked, let alone nag"
+    );
+}
+
+#[tokio::test]
+async fn a_cancelled_check_stops_issuing_requests() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let client = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+    install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("install");
+
+    let before = client.request_count();
+    let cancelled = CancelToken::cancelled();
+    let reports =
+        updates::check_updates_for_server(&client, &store, &server_id, None, 6, &cancelled).await;
+
+    assert!(reports.is_empty(), "nothing is checked once cancelled");
+    assert_eq!(
+        client.request_count(),
+        before,
+        "and no request is issued at all"
     );
 }

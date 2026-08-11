@@ -27,6 +27,8 @@ export default function App() {
   const [showAddAddon, setShowAddAddon] = useState(false);
   const [confirming, setConfirming] = useState<Addon | null>(null);
   const [transfer, setTransfer] = useState<"import" | "export" | "existing" | null>(null);
+  const [unmet, setUnmet] = useState<api.Unmet[]>([]);
+  const [dependents, setDependents] = useState<string[]>([]);
 
   const selected = useMemo(
     () => servers.find((server) => server.id === selectedId) ?? null,
@@ -65,6 +67,10 @@ export default function App() {
       .listAddons(selectedId)
       .then(setAddons)
       .catch((error) => notify("error", api.errorMessage(error)));
+    api
+      .unmetDependencies(selectedId)
+      .then(setUnmet)
+      .catch(() => setUnmet([]));
     void api.setSelectedServer(selectedId);
   }, [selectedId, notify]);
 
@@ -275,10 +281,16 @@ export default function App() {
                   <button
                     type="button"
                     className="btn"
-                    onClick={handleCheckUpdates}
-                    disabled={checking || addons.length === 0 || !selected.canInstall}
+                    onClick={
+                      checking
+                        ? () => void api.cancelUpdateCheck(selected.id)
+                        : handleCheckUpdates
+                    }
+                    disabled={
+                      !checking && (addons.length === 0 || !selected.canInstall)
+                    }
                   >
-                    {checking ? "Checking…" : "Check for updates"}
+                    {checking ? "Cancel check" : "Check for updates"}
                   </button>
                   {addons.some((addon) => addon.needsUpdate) ? (
                     <button type="button" className="btn" onClick={handleUpdateAll}>
@@ -323,13 +335,31 @@ export default function App() {
               ) : null}
             </div>
             <div className="page-body">
+              {selected && unmet.length > 0 ? (
+                <div className="banner">
+                  <strong>Missing dependencies.</strong>{" "}
+                  {unmet
+                    .map((item) => `${item.addonName} needs ${item.missing.join(", ")}`)
+                    .join("; ")}
+                  . These addons may not load until the folders they require are
+                  installed.
+                </div>
+              ) : null}
+
               {selected ? (
                 <AddonList
                   server={selected}
                   addons={addons}
                   busy={busy}
                   onUpdate={handleUpdate}
-                  onRemove={setConfirming}
+                  onRemove={(addon) => {
+                    setConfirming(addon);
+                    setDependents([]);
+                    void api
+                      .removalImpact(selected.id, addon.addonId)
+                      .then(setDependents)
+                      .catch(() => setDependents([]));
+                  }}
                   onTogglePin={handleTogglePin}
                   onToggleChannel={handleToggleChannel}
                   onOpen={(url) => void api.openUrl(url)}
@@ -361,8 +391,21 @@ export default function App() {
             onInstall={async (entry) => {
               if (!selectedId) return;
               try {
-                const installed = await api.installAddon(selectedId, entry.repoUrl);
-                notify("success", `Installed ${installed.name}`);
+                // Dependencies first, in order, including ones not asked for.
+                const plan = await api.resolveCatalogInstall(selectedId, entry.id);
+                const queue = plan.length > 0 ? plan : [entry];
+                if (queue.length > 1) {
+                  notify(
+                    "info",
+                    `${entry.name} needs ${queue.length - 1} other addon${
+                      queue.length === 2 ? "" : "s"
+                    }; installing those first.`,
+                  );
+                }
+                for (const step of queue) {
+                  await api.installAddon(selectedId, step.repoUrl);
+                }
+                notify("success", `Installed ${entry.name}`);
                 setAddons(await api.listAddons(selectedId));
                 void refreshServers();
               } catch (error) {
@@ -443,9 +486,16 @@ export default function App() {
       {confirming ? (
         <ConfirmDialog
           title={`Remove ${confirming.name}?`}
-          message={`This deletes ${confirming.folders.join(", ")} from ${
-            selected?.name ?? "this server"
-          }. Other servers are not affected.`}
+          message={
+            `This deletes ${confirming.folders.join(", ")} from ${
+              selected?.name ?? "this server"
+            }. Other servers are not affected.` +
+            (dependents.length > 0
+              ? `\n\nWarning: ${dependents.join(" and ")} declare${
+                  dependents.length === 1 ? "s" : ""
+                } a dependency on it and may stop working.`
+              : "")
+          }
           confirmLabel="Remove"
           onCancel={() => setConfirming(null)}
           onConfirm={() => void handleRemove(confirming)}

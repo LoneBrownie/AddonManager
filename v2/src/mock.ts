@@ -360,6 +360,33 @@ export async function mockInvoke<T>(
     case "adopt_addon":
       return undefined as T;
 
+    case "cancel_update_check":
+      return undefined as T;
+
+    case "removal_impact":
+      // Classic API is a dependency of two other mocked addons.
+      return (args?.["addonId"] === "gitlab:Tsoukie/classicapi"
+        ? ["Compact Raid Frames", "Clique"]
+        : []) as T;
+
+    case "unmet_dependencies":
+      return [
+        {
+          addonId: "github:WeakAuras/WeakAuras2",
+          addonName: "WeakAuras",
+          missing: ["Ace3"],
+        },
+      ] as T;
+
+    case "resolve_catalog_install": {
+      const id = String(args?.["entryId"]);
+      const entry = catalog.find((e) => e.id === id);
+      const deps = (entry?.dependencies ?? [])
+        .map((depId) => catalog.find((e) => e.id === depId))
+        .filter((e): e is CatalogEntry => Boolean(e));
+      return [...deps, ...(entry ? [entry] : [])] as T;
+    }
+
     case "get_catalog":
       return catalog as T;
 

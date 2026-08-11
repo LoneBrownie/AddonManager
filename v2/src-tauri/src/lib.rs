@@ -99,8 +99,12 @@ pub fn run() {
             commands::addons::update_addon,
             commands::addons::set_addon_pinned,
             commands::addons::set_addon_channel,
+            commands::addons::cancel_update_check,
+            commands::addons::removal_impact,
+            commands::addons::unmet_dependencies,
             // catalogue, sharing, settings
             commands::catalog::get_catalog,
+            commands::catalog::resolve_catalog_install,
             commands::catalog::export_addon_list,
             commands::catalog::parse_addon_list,
             commands::catalog::get_preferences,

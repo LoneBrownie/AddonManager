@@ -209,6 +209,15 @@ impl From<bam_core::adopt::FoundAddon> for FoundAddonDto {
     }
 }
 
+/// An addon whose declared dependencies are not all present.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnmetDto {
+    pub addon_id: String,
+    pub addon_name: String,
+    pub missing: Vec<String>,
+}
+
 /// One entry from the curated catalogue.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

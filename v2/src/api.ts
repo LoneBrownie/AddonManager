@@ -83,6 +83,13 @@ export interface FoundAddon {
   versionMatches: boolean;
 }
 
+/** An addon whose declared dependencies are not all present. */
+export interface Unmet {
+  addonId: string;
+  addonName: string;
+  missing: string[];
+}
+
 export interface Outcome {
   serverId: string;
   serverName: string;
@@ -187,6 +194,14 @@ export const removeAddon = (serverId: string, addonId: string) =>
   call<string[]>("remove_addon", { serverId, addonId });
 export const checkUpdates = (serverId: string) =>
   call<Addon[]>("check_updates", { serverId });
+export const cancelUpdateCheck = (serverId: string) =>
+  call<void>("cancel_update_check", { serverId });
+export const removalImpact = (serverId: string, addonId: string) =>
+  call<string[]>("removal_impact", { serverId, addonId });
+export const unmetDependencies = (serverId: string) =>
+  call<Unmet[]>("unmet_dependencies", { serverId });
+export const resolveCatalogInstall = (serverId: string, entryId: string) =>
+  call<CatalogEntry[]>("resolve_catalog_install", { serverId, entryId });
 export const updateAddon = (serverId: string, addonId: string) =>
   call<Addon>("update_addon", { serverId, addonId });
 export const setAddonPinned = (serverId: string, addonId: string, pinned: boolean) =>

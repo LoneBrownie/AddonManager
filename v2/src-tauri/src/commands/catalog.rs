@@ -108,6 +108,34 @@ pub fn parse_addon_list(text: String) -> Vec<String> {
     found
 }
 
+/// Work out what installing a catalogue entry actually entails.
+///
+/// The curated list carries a `dependencies` array that V1 never enforced.
+/// Returns repository URLs in install order — dependencies first — including
+/// any the user did not explicitly ask for. Anything already installed on this
+/// server is left out.
+#[tauri::command]
+pub async fn resolve_catalog_install(
+    state: State<'_, AppState>,
+    server_id: String,
+    entry_id: String,
+) -> CommandResult<Vec<CatalogEntryDto>> {
+    let entries = get_catalog(state.clone(), Some(server_id.clone())).await?;
+
+    let edges: std::collections::BTreeMap<String, Vec<String>> = entries
+        .iter()
+        .map(|entry| (entry.id.clone(), entry.dependencies.clone()))
+        .collect();
+
+    let order = bam_core::deps::install_order(&[entry_id], &edges);
+
+    Ok(order
+        .into_iter()
+        .filter_map(|id| entries.iter().find(|entry| entry.id == id).cloned())
+        .filter(|entry| !entry.installed)
+        .collect())
+}
+
 #[tauri::command]
 pub fn get_preferences(state: State<'_, AppState>) -> CommandResult<Preferences> {
     Ok(state.prefs()?)

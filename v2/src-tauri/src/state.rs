@@ -1,7 +1,10 @@
 //! Application state: the store, the HTTP client, and where scratch files go.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Mutex;
+
+use bam_core::cancel::CancelToken;
 
 use bam_core::error::{Error, Result};
 use bam_core::http::HttpClient;
@@ -30,6 +33,9 @@ pub struct AppState {
     prefs: Mutex<Preferences>,
     pub client: Box<dyn HttpClient>,
     pub work_dir: PathBuf,
+    /// Cancellation handles for update checks currently running, keyed by
+    /// server. One per server, since that is the granularity the UI cancels at.
+    running: Mutex<HashMap<String, CancelToken>>,
 }
 
 impl AppState {
@@ -61,6 +67,7 @@ impl AppState {
             prefs: Mutex::new(prefs),
             client,
             work_dir,
+            running: Mutex::new(HashMap::new()),
         })
     }
 
@@ -120,6 +127,33 @@ impl AppState {
         std::fs::write(&temp, &json).map_err(|e| Error::io(&temp, e))?;
         std::fs::rename(&temp, &self.prefs_path).map_err(|e| Error::io(&self.prefs_path, e))?;
         Ok(())
+    }
+
+    /// Register a cancellable check for `server_id`, replacing any previous
+    /// one — starting a second check supersedes the first.
+    pub fn begin_check(&self, server_id: &str) -> CancelToken {
+        let token = CancelToken::new();
+        if let Ok(mut running) = self.running.lock() {
+            if let Some(previous) = running.insert(server_id.to_string(), token.clone()) {
+                previous.cancel();
+            }
+        }
+        token
+    }
+
+    /// Stop the check running for `server_id`, if there is one.
+    pub fn cancel_check(&self, server_id: &str) {
+        if let Ok(running) = self.running.lock() {
+            if let Some(token) = running.get(server_id) {
+                token.cancel();
+            }
+        }
+    }
+
+    pub fn finish_check(&self, server_id: &str) {
+        if let Ok(mut running) = self.running.lock() {
+            running.remove(server_id);
+        }
     }
 
     /// The configured token, if any.

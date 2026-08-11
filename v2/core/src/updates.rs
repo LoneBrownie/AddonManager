@@ -3,6 +3,7 @@
 //! Separate from [`crate::install`] because it is a different job: that module
 //! places files, this one only asks questions of the forges.
 
+use crate::cancel::CancelToken;
 use crate::error::{Error, Result};
 use crate::http::HttpClient;
 use crate::model::Store;
@@ -51,12 +52,17 @@ pub async fn check_update(
 /// turn a slow check into a failed one.
 ///
 /// Pinned addons are skipped entirely — no request is made for them at all.
+///
+/// `cancel` stops *new* requests being issued; anything already in flight is
+/// allowed to finish, so no addon is left half-checked. Results gathered before
+/// the cancellation are returned rather than discarded.
 pub async fn check_updates_for_server(
     client: &dyn HttpClient,
     store: &Store,
     server_id: &str,
     token: Option<&str>,
     concurrency: usize,
+    cancel: &CancelToken,
 ) -> Vec<(String, Result<UpdateReport>)> {
     use futures_util::stream::{self, StreamExt};
 
@@ -69,10 +75,14 @@ pub async fn check_updates_for_server(
 
     stream::iter(to_check)
         .map(|addon_id| async move {
+            if cancel.is_cancelled() {
+                return None;
+            }
             let report = check_update(client, store, server_id, &addon_id, token).await;
-            (addon_id, report)
+            Some((addon_id, report))
         })
         .buffer_unordered(concurrency.max(1))
+        .filter_map(|outcome| async move { outcome })
         .collect()
         .await
 }

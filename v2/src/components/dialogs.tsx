@@ -286,7 +286,7 @@ export function ConfirmDialog({
         </>
       }
     >
-      <p style={{ margin: 0 }}>{message}</p>
+      <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{message}</p>
     </Dialog>
   );
 }

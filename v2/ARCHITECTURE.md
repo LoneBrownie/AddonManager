@@ -49,6 +49,8 @@ v2/
       sources/      GitHub and GitLab resolution
       install.rs    Install and remove orchestration
       updates.rs    Asking the forges whether something newer exists
+      deps.rs       Dependency checks and catalogue install ordering
+      cancel.rs     Stopping long-running work
       servers.rs    Registering and managing game folders (manual add only)
       bulk.rs       Install-to-many and copy-set-between-servers
       adopt.rs      Adopting addon folders already on disk
@@ -175,10 +177,8 @@ Phases 3 onward, tracked in V2-PLAN.md:
   exist; the manage-servers screen does not.
 - Copy-set and install-to-many are wired end to end, but only install-to-many
   has a UI entry point.
-- Dependency resolution. The curated list carries a `dependencies` array that
-  nothing enforces yet.
-- Cancelling an update check in progress. Checks are parallel and bounded, but
-  run to completion once started.
+Phase 5 is complete. What is left before a release is the updater signing
+keypair (below) and real-world testing against an actual game folder.
 - The updater's `pubkey` in `tauri.conf.json` is empty. Generate a keypair with
   `npm run tauri signer generate`, put the public half there and the private
   half in the `TAURI_SIGNING_PRIVATE_KEY` secret. Until then the release builds

@@ -21,6 +21,8 @@
 //! * [`sources`] — resolving GitHub and GitLab.
 //! * [`install`] — install and remove orchestration.
 //! * [`updates`] — asking the forges whether something newer exists.
+//! * [`deps`] — dependency checks and catalogue install ordering.
+//! * [`cancel`] — stopping long-running work.
 //! * [`servers`] — registering and managing game folders.
 //! * [`bulk`] — install-to-many and copy-set-between-servers.
 //! * [`adopt`] — adopting addon folders already on disk.
@@ -40,6 +42,8 @@
 pub mod adopt;
 pub mod archive;
 pub mod bulk;
+pub mod cancel;
+pub mod deps;
 pub mod error;
 pub mod http;
 pub mod install;

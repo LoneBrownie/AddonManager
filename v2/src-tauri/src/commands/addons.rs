@@ -7,7 +7,7 @@ use bam_core::updates;
 use tauri::State;
 
 use super::{CommandError, CommandResult};
-use crate::dto::{AddonDto, OutcomeDto};
+use crate::dto::{AddonDto, OutcomeDto, UnmetDto};
 use crate::state::AppState;
 
 /// Everything installed to one server — what the list renders when that server
@@ -151,14 +151,17 @@ pub async fn check_updates(
 
     // Six at a time: the forges rate-limit, so unlimited concurrency turns a
     // slow check into a failed one. Pinned addons are not requested at all.
+    let cancel = state.begin_check(&server_id);
     let reports = updates::check_updates_for_server(
         state.client.as_ref(),
         &store,
         &server_id,
         token.as_deref(),
         6,
+        &cancel,
     )
     .await;
+    state.finish_check(&server_id);
 
     for (addon_id, outcome) in reports {
         let Some(row) = rows.iter_mut().find(|row| row.addon_id == addon_id) else {
@@ -179,6 +182,53 @@ pub async fn check_updates(
 
     rows.sort_by_key(|row| row.name.to_lowercase());
     Ok(rows)
+}
+
+/// Stop an update check that is running.
+///
+/// Requests already in flight finish rather than being torn down, so nothing
+/// is left half-checked — cancelling means "stop starting new work".
+#[tauri::command]
+pub fn cancel_update_check(state: State<'_, AppState>, server_id: String) -> CommandResult<()> {
+    state.cancel_check(&server_id);
+    Ok(())
+}
+
+/// What else would break if this addon were removed.
+///
+/// Called before showing the confirmation, so the warning names the addons
+/// that declare a dependency on it rather than leaving the user to find out.
+#[tauri::command]
+pub fn removal_impact(
+    state: State<'_, AppState>,
+    server_id: String,
+    addon_id: String,
+) -> CommandResult<Vec<String>> {
+    let store = state.snapshot()?;
+    let Some(server) = store.server(&server_id).cloned() else {
+        return Ok(Vec::new());
+    };
+    Ok(bam_core::deps::dependents_of(&store, &server, &addon_id))
+}
+
+/// Addons whose declared dependencies are not present on this server.
+#[tauri::command]
+pub fn unmet_dependencies(
+    state: State<'_, AppState>,
+    server_id: String,
+) -> CommandResult<Vec<UnmetDto>> {
+    let store = state.snapshot()?;
+    let Some(server) = store.server(&server_id).cloned() else {
+        return Ok(Vec::new());
+    };
+    Ok(bam_core::deps::unmet(&store, &server)
+        .into_iter()
+        .map(|item| UnmetDto {
+            addon_id: item.addon_id,
+            addon_name: item.addon_name,
+            missing: item.missing,
+        })
+        .collect())
 }
 
 /// Reinstall an addon at whatever its channel currently resolves to.
