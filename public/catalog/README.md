@@ -9,9 +9,14 @@ repositories rather than the same entry tagged twice.
 
 ## Serving
 
-The app reads these over `raw.githubusercontent.com` **pinned to `main`**, so
-edits only reach users once they are on `main`. V2 development happens on `dev`
-and is never merged, so changes to these files go to `main` directly.
+The app reads these over `raw.githubusercontent.com` at
+**`.../AddonManager/HEAD/public/catalog/`**. `HEAD` is GitHub's alias for the
+default branch, so an edit reaches users as soon as it lands on the default
+branch, and renaming that branch does not break copies already installed.
+
+That last part is not hypothetical — this used to name `main` explicitly, and
+renaming `main` to `v1-archive` would have taken Browse down for every shipped
+build.
 
 ## Entry shape
 

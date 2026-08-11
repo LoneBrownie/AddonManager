@@ -7,7 +7,7 @@
 **Install and update World of Warcraft addons from GitHub and GitLab —
 across as many game folders as you run.**
 
-[![Version](https://img.shields.io/badge/version-2.0.0--dev-8b5cf6?style=flat-square)](https://github.com/LoneBrownie/AddonManager/releases)
+[![Version](https://img.shields.io/badge/version-2.0.0--beta-8b5cf6?style=flat-square)](https://github.com/LoneBrownie/AddonManager/releases)
 [![Windows](https://img.shields.io/badge/Windows-supported-8b5cf6?style=flat-square&logo=windows&logoColor=white)](#installing)
 [![Linux](https://img.shields.io/badge/Linux-supported-8b5cf6?style=flat-square&logo=linux&logoColor=white)](#installing)
 [![Licence](https://img.shields.io/badge/licence-GPL--3.0-a78bfa?style=flat-square)](LICENSE)
@@ -18,11 +18,12 @@ across as many game folders as you run.**
 ---
 
 > [!WARNING]
-> **V2 is in beta and has not been released yet.** The engine and interface are
-> built and tested, but nothing has been validated against a real game client,
-> and there is no installer to download. V1 remains the version to use today —
-> see [Using V1](#using-v1). What is left before release is tracked in
-> [`docs/v2/PROMOTION.md`](docs/v2/PROMOTION.md).
+> **V2 is in beta.** There are installers to download — see
+> [Installing](#installing) — but this is a rewrite with far less real-world use
+> behind it than V1. Back up your `Interface/AddOns` folder before pointing it
+> at a game directory you care about, and expect to install new betas by hand.
+> If you would rather wait, [V1 is still there](#using-v1). What is left before
+> 2.0.0 proper is tracked in [`docs/v2/PROMOTION.md`](docs/v2/PROMOTION.md).
 
 ---
 
@@ -118,17 +119,27 @@ with the path shown underneath.
 
 ## Installing
 
-> [!NOTE]
-> Nothing to download yet — the first V2 release is not out. This is what it
-> will look like when it is.
+Take the newest **`v2.0.0-beta`** build from the
+[releases page](https://github.com/LoneBrownie/AddonManager/releases).
+
+> [!IMPORTANT]
+> Betas are published as pre-releases, so they are **not** what *Latest release*
+> points at — that is still V1. Scroll to the top of the releases page rather
+> than following a `/latest` link.
 
 **Windows** — download and run the `.exe` installer.
 
-**Linux** — the **AppImage** is the one that updates itself. `.deb` and `.rpm`
-are also published, but your package manager owns updates for those, so
-upgrading means re-downloading.
+**Linux** — take the **AppImage** unless you have a reason not to. A `.deb` is
+also published; your package manager owns updates for it. There is **no `.rpm`
+during the beta** — RPM refuses a version like `2.0.0-beta.1` — so on Fedora or
+openSUSE, take the AppImage.
 
 macOS is not supported.
+
+**Updating during the beta is manual.** The app does not yet check for its own
+new versions, and pre-releases would be invisible to that check anyway. Watch
+the repository to hear about new betas. Self-updating switches on for 2.0.0 —
+and on Linux only the AppImage can self-update at all.
 
 ### Where your addons go
 
@@ -144,8 +155,14 @@ Administrator.
 
 ## Using V1
 
-V1 is still the released version. Download the Windows installer from the
-[releases page](https://github.com/LoneBrownie/AddonManager/releases/latest).
+V1 is still the stable release, and it is what
+[*Latest release*](https://github.com/LoneBrownie/AddonManager/releases/latest)
+points at — download the Windows installer from there.
+
+Its source is on the
+[`v1-archive`](https://github.com/LoneBrownie/AddonManager/tree/v1-archive)
+branch. It is finished rather than maintained: it will keep working, but fixes
+go into V2.
 
 Its known issue stands: if your WoW directory is under Program Files, you need
 to run it as Administrator. V2 does not have this requirement.
