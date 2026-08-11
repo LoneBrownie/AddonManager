@@ -59,39 +59,68 @@ Until then a shim in `src-tauri/src/commands/catalog.rs` falls back to the old
 
 ## Promoting
 
-`main` currently holds V1 and shares no history with this branch's layout, so a
-normal merge would produce conflicts across every file. Replace the tree
-instead:
+**Rename both branches. Do not force-push `main`.**
 
-```sh
-# Tag V1 first so it stays reachable and installable.
-git checkout main
-git tag v1-final
-git push origin v1-final
+`main` holds V1 and shares no layout history with this branch, so a normal merge
+would conflict across every file. The obvious alternative — force-pushing this
+tree over `main` — works, but it rewrites the default branch of a public
+repository: anyone who has cloned gets a divergence git cannot reconcile, and
+undoing it means recovering a SHA from the reflog.
 
-# Point main at this branch's tree.
-git checkout dev
-git push origin dev:main --force-with-lease
-```
+Renaming avoids all of that. Neither history is rewritten, GitHub retargets open
+issues and pull requests automatically, and anyone with a clone is shown the
+commands to update.
 
-`--force-with-lease` rather than `--force`: it refuses if someone else has
-pushed to `main` since you last fetched.
+**Release assets are unaffected either way** — they hang off tags, not branches
+— so V1's installers stay downloadable regardless. That is the part existing
+users care about.
 
-**V1 remains available** at the `v1-final` tag and in every existing V1 release,
-so nothing is destroyed — but this does rewrite `main`, so do it deliberately.
+### Steps
+
+1. **Tag V1's tip.** The `v1.4.0` tag is one commit behind `main`, so tag the
+   exact archived state. A tag is harder to delete by accident than a branch.
+
+   ```sh
+   git fetch origin
+   git tag v1-final origin/main
+   git push origin v1-final
+   ```
+
+2. **Rename `main` → `v1-archive`** in GitHub's branch settings
+   (*Settings → Branches*, or the pencil icon on the branches page). GitHub
+   retargets open PRs and shows a rename notice to anyone with a clone.
+
+3. **Rename `dev` → `main`.**
+
+4. **Set `main` as the default branch.** Renaming step 2 leaves `v1-archive`
+   as default, so this must be done explicitly.
+
+5. **Check CI ran** on the new `main`. The workflow triggers on `[main, dev]`,
+   so it should fire on the first push after promotion.
+
+### Afterwards
+
+There is no `dev` branch any more, because it became `main`. Either work
+directly on `main` or create a fresh `dev` — decide rather than drift into it.
+
+> If you would rather keep `main` as a continuous branch and accept the
+> rewrite, the equivalent is `git push origin dev:main --force-with-lease`
+> after tagging V1. `--force-with-lease` at least refuses if someone else has
+> pushed since you fetched. The rename is still the better option.
 
 ---
 
 ## After promoting
 
 - [ ] Update the README: swap the "not released yet" warning for real download
-      links, and drop the *Using V1* section once V2 has an actual release.
+      links, and repoint the *Using V1* section at the `v1-archive` branch once
+      V2 has an actual release.
 - [ ] Tag a release: `git tag v2.0.0-beta.1 && git push origin v2.0.0-beta.1`.
       The release workflow builds Windows and Linux artifacts and opens a draft.
 - [ ] Revoke the `BlobKey` repository secret. The workflow that used it is gone,
       and a live storage key with nothing pointing at it is worth removing.
-- [ ] Delete the `dev` branch, or keep it as the working branch — either is
-      fine, but decide rather than drift.
+- [ ] Decide whether to create a fresh `dev` branch or work on `main`
+      directly. The old `dev` no longer exists — it became `main`.
 - [ ] Check that `.claude/settings.json` is present on `main`, so the
       session-start hook runs for future work.
 
