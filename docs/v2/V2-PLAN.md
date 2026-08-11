@@ -1,6 +1,6 @@
 # Brownie's Addon Manager — V2 Plan
 
-**Status:** Under review — D1, D2 and D9 decided; D3–D8 open
+**Status:** Decided — D1–D3, D5–D10 settled. Only D4 (macOS) remains open.
 **Author:** Claude (via Claude Code)
 **Target:** V2.0.0
 **Scope:** Modernisation, multiple server support (CurseForge/WowUp-style switcher), Windows + Linux
@@ -31,12 +31,13 @@ Read this section first — everything downstream depends on it. Struck-through 
 |---|---|---|---|
 | **D1** | ~~Stack~~ | — | ✅ **DECIDED: Tauri v2 + Rust + React/TypeScript.** Author's call, against the recommendation in §5.1. Accepted trade-offs recorded in §5.1.4. |
 | **D2** | ~~Auto-update continuity~~ | — | ✅ **DECIDED: break it.** Small user base. V1 users install V2 once by hand. **V2 still has its own auto-updater** — see §9.1. |
-| **D3** | **Repo strategy** | New repo vs. `v2` branch in this repo vs. rewrite on `main` | **`v2` branch here**, merged to `main` at release. Keeps issues, stars, release history, and the curated-list workflow in one place. |
-| **D4** | **macOS** | Support / ignore | **Build it, don't promise it.** Under Tauri it's ~1 day of CI + a code-signing decision. Ship it unsigned as "community build" or skip. |
-| **D5** | **Curated list hosting** | Keep Azure Blob / move to GitHub raw / both | **Both** — GitHub raw as primary (free, versioned, no secret), Azure as fallback. Removes a secret from CI. |
-| **D6** | **GitHub token** | Ask users for an optional PAT / stay anonymous | **Optional PAT.** Anonymous GitHub API is 60 req/hr per IP — that's why V1 has HTML-scraping fallbacks. A PAT gives 5,000/hr and lets us delete ~200 lines of scraping. |
-| **D7** | **Product identity** | Keep name/appId / rename | Keep the name. **Change `appId`** — now required, since the framework change means V1 and V2 must coexist during migration. |
-| **D8** | **Retail WoW** | Support modern retail / stay focused on 3.3.5a + private servers | **Design for it, don't test it.** Retail is just another entry in the version dropdown; CASC-era support is a later PR. |
+| **D3** | ~~Repo strategy~~ | — | ✅ **DECIDED: build on the existing `dev` branch. Do not merge to `main`.** `main` continues to hold shipping V1. |
+| **D4** | **macOS** | Support / ignore | ⚠️ **Still open — the only one left.** Recommendation: **skip for 2.0.** Proceeding on that basis unless told otherwise; adding it later is ~1 day of CI plus a signing decision. |
+| **D5** | ~~Curated list hosting~~ | — | ✅ **DECIDED: GitHub raw only.** Azure Blob dropped — see §9.3. |
+| **D6** | ~~GitHub token~~ | — | ✅ **DECIDED: optional PAT.** Anonymous is 60 req/hr per IP; a token gives 5,000 and retires ~200 lines of HTML scraping. Never required. |
+| **D7** | ~~Product identity~~ | — | ✅ **DECIDED by implication of D10.** Keep the name, new `appId`, separate userData directory. V1 and V2 are independent apps that can coexist. |
+| **D8** | ~~Retail WoW~~ | — | ✅ **DECIDED: no retail.** Version dropdown is WotLK 3.3.5a · TBC 2.4.3 · Vanilla 1.12. No CASC handling, no `.build.info`, no Battle.net awareness. |
+| **D10** | ~~V1 data migration~~ | — | ✅ **DECIDED: none. V2 is a new app.** No importer, no V1 fixtures, no migration tests — see §5.6. |
 | **D9** | ~~Licence~~ | — | ✅ **DECIDED: GPL-3.0-or-later.** `LICENSE` added; `package.json` updated. See §5.1.3. |
 
 ---
@@ -249,11 +250,11 @@ The single most important structural change: **the frontend never touches the fi
 ┌───────────────────────┴─────────────────────────────────┐
 │  Core (Rust)                                            │
 │  ┌────────────┬────────────┬────────────┬────────────┐  │
-│  │ sources    │ installer  │ store      │ discovery  │  │
-│  │ gh/gl/     │ download,  │ schema v2, │ find WoW   │  │
-│  │ direct     │ verify,    │ atomic     │ installs,  │  │
-│  │ resolution │ extract,   │ writes,    │ detect     │  │
-│  │            │ place,     │ migration  │ flavor     │  │
+│  │ sources    │ installer  │ store      │ servers    │  │
+│  │ gh/gl/     │ download,  │ schema v2, │ register,  │  │
+│  │ direct     │ verify,    │ atomic     │ validate,  │  │
+│  │ resolution │ extract,   │ writes,    │ availabil- │  │
+│  │            │ place,     │ backups    │ ity        │  │
 │  │            │ backup     │            │            │  │
 │  └────────────┴────────────┴────────────┴────────────┘  │
 │  All paths validated. All writes confined. All logged.  │
@@ -276,8 +277,8 @@ This is the headline feature, and it's a schema change more than a UI change.
   "id": "inst_01H...",
   "name": "Project Epoch",              // user-editable label
   "path": "C:\\Games\\Epoch",           // WoW root, not the AddOns dir
-  "flavor": "wotlk",                    // vanilla|tbc|wotlk|cata|mop|retail|custom
-  "interfaceVersion": 30300,            // for .toc ## Interface matching
+  "version": "wotlk",                   // vanilla | tbc | wotlk  (user-picked)
+  "interfaceVersion": 30300,            // looked up from version, not detected
   "addonsPath": "Interface/AddOns",     // resolved, case-corrected per platform
   "accent": "#c8a15a",                  // visual identity in the switcher
   "detected": true,                     // auto-found vs. manually added
@@ -328,7 +329,7 @@ This deletes an entire subsystem: no drive walking, no MPQ inspection, no build-
 
 **Terminology:** the UI should say **"server"** rather than "installation" — for this audience an install effectively *is* a server, and that's the word users reach for. The underlying entity keeps a UUID identity so two folders for the same server, or a server with no addons, both remain expressible.
 
-**Multiple servers on the same version is the normal case here, not the exception.** Retail managers assume one install per flavor; this audience routinely runs three separate 3.3.5a folders for three different servers. Identity is therefore the UUID plus the user's name — never the version — and the switcher shows the **name** prominently with the **path** beneath it, because "WoW" and "WoW" are otherwise indistinguishable.
+**Multiple servers on the same version is the normal case here, not the exception.** Retail managers assume one install per game version; this audience routinely runs three separate 3.3.5a folders for three different servers. Identity is therefore the UUID plus the user's name — never the version — and the switcher shows the **name** prominently with the **path** beneath it, because "WoW" and "WoW" are otherwise indistinguishable.
 
 **Unavailable paths.** These folders live on second drives, external drives, and removable media, so a server's path being temporarily unreachable is routine, not exceptional. A server whose path can't be resolved enters an explicit **`unavailable`** state: greyed in the switcher, its addon records left completely untouched. See finding B8 — V1's current behaviour would silently destroy them.
 
@@ -374,20 +375,21 @@ This kills the entire family of false-positive update bugs, and it's straightfor
 | Elevation blast radius (S4) | **Drop app-wide elevation.** Check writability when an installation is registered and tell the user exactly what to fix (move the install out of Program Files, or grant your user write access to `Interface\AddOns`). Never run downloads and archive parsing as Administrator. |
 | Token leakage (D6) | PAT stored in the OS keychain (Windows Credential Manager / libsecret), never in the JSON store, never sent anywhere but the API host, redacted from all logs. |
 
-### 5.6 Storage and migration
+### 5.6 Storage — no migration ✅
 
 - One versioned store file (`schemaVersion: 2`), written **atomically**: temp file → `fsync` → rename. V1 writes in place and can be truncated by a crash or a power cut.
 - Keep the last N states as rolling backups, so a corrupt store is recoverable rather than a fresh start.
-- **V1 → V2 migration**, run once on first launch:
-  1. Read V1 `settings.json` and `addons.json` from the old userData path.
-  2. Create one `Installation` from `settings.wowPath` (name it from the folder, detect flavor, let the user confirm).
-  3. Map each V1 addon → `Addon` + one `InstalledAddon` row.
-  4. Translate `allowUpdates: false` → `pinned: true`; `downloadPriority` → `channel`.
-  5. `currentVersion` → best-effort `Ref`. Where it's ambiguous (`"Imported"`, a bare branch name), mark the row `refUnknown` and resolve on the next update check rather than guessing.
-  6. Archive the V1 files rather than deleting them, and show a migration summary.
-- **Migration is a tested unit** with fixtures captured from real V1 data. It's the single thing most likely to annoy existing users, so it gets the same rigour as the installer.
 
----
+**There is no V1 → V2 migration.** V2 is a new application: new `appId`, its own userData directory, no awareness of V1's files. An earlier draft specified an importer with real-profile fixtures and a summary-with-undo screen; that is all deleted.
+
+This costs existing users far less than it sounds, because **two shipping features already cover the gap**:
+
+- **Import Existing Addons** (§6.1) scans an `Interface/AddOns` folder and adopts what it finds into management. A user adds their server, runs the import, and is back where they were — which is the same flow V1 users already know.
+- **Export/import addon list** (§6.1) means a V1 user can export their list as text from V1 and paste it into V2.
+
+Setup is therefore re-done once, using paths that have to work correctly anyway. The V1 install is left entirely untouched, so anyone who dislikes V2 simply keeps using it.
+
+What this removes from the build: the importer itself, the ambiguous-`currentVersion` resolution logic, the archive-and-undo flow, the migration test suite, and the need to collect real V1 profiles as fixtures.
 
 ## 6. Feature plan
 
@@ -398,9 +400,9 @@ Everything V1 does today, on the new engine: GitHub + GitLab sources, release-vs
 ### 6.2 New in 2.0
 
 - **Multiple installations** (§5.3) — switcher, per-install addon sets, install-to-many, copy set between installs.
-- **Linux support** — proper paths, Wine/Proton prefix discovery, case-insensitive `Interface/AddOns` resolution (Wine prefixes vary), AppImage + .deb + .rpm.
+- **Linux support** — proper paths, case-insensitive `Interface/AddOns` resolution (Wine prefixes vary in casing), AppImage + .deb + .rpm.
 - **Backup and rollback.** Before overwriting, move the existing folders to a timestamped backup under app data; keep the last 3 per addon; expose "Restore previous version". This directly retires bug B2.
-- **Flavor mismatch warnings.** Compare the `## Interface` value in an addon's `.toc` against the installation's interface version and warn *before* installing "this addon targets 5.4.8, this install is 3.3.5a". Cheap once multi-install exists, and prevents the most common private-server support question.
+- **Version mismatch warnings.** Compare the `## Interface` value in an addon's `.toc` against the server's interface version and warn *before* installing — "this addon targets 2.4.3, this server is 3.3.5a". The interface number is a fixed lookup from the chosen version (`wotlk` → 30300, `tbc` → 20400, `vanilla` → 11200), not something detected. Prevents the most common private-server support question.
 - **Real dependency handling.** The curated list already carries a `dependencies` array that nothing enforces. Resolve it on install; warn on removal when something still depends on it.
 - **Bounded parallelism + progress.** Update checks 6-at-a-time; per-addon download progress; a cancel button that actually cancels.
 - **Optional GitHub PAT** with ETag-conditional requests — retires the HTML scraper (§4.3 D-d).
@@ -422,29 +424,29 @@ Settle D1–D8. Scaffold the chosen stack, TypeScript strict, lint + format, CI 
 **Exit:** an empty app builds and packages on both OSes in CI.
 
 ### Phase 1 — Core engine, headless · ~2 weekends
-Schema v2 + store with atomic writes and migration. Source resolution (GitHub, GitLab, direct) with ETag caching. Streaming download with progress and caps. Traversal-safe extraction. `.toc` parsing (multi-flavor filenames, `## Interface` lists, dependency fields). Install / update / remove against a **fake WoW directory in a temp dir**. Full unit test coverage on version resolution, path safety, extraction, and migration.
+Schema v2 + store with atomic writes. Source resolution (GitHub, GitLab, direct) with ETag caching and optional PAT. Streaming download with progress and caps. Traversal-safe extraction. `.toc` parsing (multi-flavor filenames, `## Interface` lists, dependency fields). Install / update / remove against a **fake WoW directory in a temp dir**. Full unit test coverage on version resolution, path safety, and extraction.
 **Exit:** a CLI or test harness installs and updates a real addon into a temp tree on both OSes. No UI yet.
 
 ### Phase 2 — Multiple servers · ~1 weekend *(reduced)*
 Server entity, manual add flow (browse → pick version → name), writability check, `unavailable` state, switcher UI, manage-servers screen, install-to-many, copy-set-between-servers.
 **Exit:** two servers registered side by side, the same addon at different versions in each, switching works. **This is the feature you asked for — it lands here.**
 
-*Reduced from ~1.5 weekends: dropping auto-detection removes per-platform drive scanning and all flavor-detection heuristics.*
+*Reduced from ~1.5 weekends: dropping auto-detection removes per-platform drive scanning and all version-detection heuristics (D8, §5.3).*
 
 ### Phase 3 — UI parity · ~2 weekends
 Port the React components onto the new command API. Addon list, add-by-URL, curated list, import-existing, export/import lists, settings. Search/filter/sort, toasts, focus-trapped modals, themes.
 **Exit:** feature-complete against V1, driven entirely by intent-level commands.
 
 ### Phase 4 — Cross-platform hardening · ~1 weekend
-Linux path resolution and case handling, Wine/Proton discovery, permission errors with actionable messages, packaging (NSIS + portable zip on Windows; AppImage + .deb + .rpm on Linux), auto-update on both, keep Cosign signing.
+Linux path resolution and case handling, permission errors with actionable messages, packaging (NSIS + portable zip on Windows; AppImage + .deb + .rpm on Linux), auto-update on both, keep Cosign signing.
 **Exit:** installable artifacts for both OSes from a tagged CI run, auto-update verified end to end.
 
 ### Phase 5 — New capabilities · ~1.5 weekends
-Backup/rollback, dependency resolution, flavor-mismatch warnings, PAT + keychain, parallel checks with cancellation, diagnostics and log export.
+Backup/rollback, dependency resolution, version-mismatch warnings, PAT + keychain, parallel checks with cancellation, diagnostics and log export.
 **Exit:** the §6.2 list is done.
 
 ### Phase 6 — Beta and release · ~1 weekend
-Migration testing against real V1 profiles (yours and a couple of guildies'). Docs and screenshots. A final V1.x release that points users at V2. Tag 2.0.0.
+Real-world testing against your own servers and a couple of guildies'. Docs and screenshots. A final V1.x release that points users at V2 and explains that it installs alongside rather than over the top. Tag 2.0.0.
 
 **Total: ~10 weekends of solo work**, with the headline feature demonstrable after ~4.
 
@@ -461,11 +463,10 @@ Currently: zero tests. The single biggest quality lever in this plan.
 
 | Layer | What | How |
 |---|---|---|
-| Unit | Version/ref comparison, `.toc` parsing, path safety, folder-name derivation, migration | Pure functions, table-driven cases. Every §4 bug gets a regression test. |
+| Unit | Version/ref comparison, `.toc` parsing, path safety, folder-name derivation | Pure functions, table-driven cases. Every §4 bug gets a regression test. |
 | Security | Zip slip, zip bomb, symlink entries, absolute paths, device names, redirect escapes | Committed **malicious archive fixtures**. These must fail closed, permanently. |
 | Integration | install / update / remove / scan against a synthetic WoW tree | Temp dir fixtures, run on Windows **and** Linux in CI. |
 | Contract | GitHub/GitLab response handling incl. 403, 404, empty releases, no-zip-asset | Recorded HTTP fixtures — no live network in CI. |
-| Migration | V1 store → V2 store | Real captured V1 profiles as fixtures. |
 | Smoke | App launches, switcher renders, install flow completes | One headed run per OS per release. |
 
 Rule: **every bug in §4 ships with a failing test first.** That list is the initial backlog.
@@ -498,7 +499,19 @@ Behaviour matches V1: check on launch and on an interval, download in the backgr
 - Artifacts: Windows NSIS installer + portable zip; Linux AppImage + .deb + .rpm.
 - Keep Cosign keyless signing for all artifacts.
 - Auto-update: minisign-signed manifest on GitHub Releases via `tauri-plugin-updater`. Manifest generation goes in CI — the current hand-rolled PowerShell that builds `latest.yml` by string concatenation is a maintenance hazard.
-- Curated list: publish to GitHub raw as primary and Azure Blob as fallback (D5), with a schema version and CI validation of the JSON shape before upload.
+
+### 9.3 Curated list — GitHub raw ✅
+
+Served directly from this repository over `raw.githubusercontent.com`, **pinned to `main`** so that in-progress edits on `dev` never reach users. Azure Blob is dropped.
+
+- Deletes `.github/workflows/curatedAddonsUpdated.yml` and the Azure CLI install step.
+- Removes the `BlobKey` secret from CI — **worth revoking the storage key** once V2 ships, since nothing else uses it.
+- The list becomes versioned alongside the code, with normal PR review, history, and blame.
+- CI validates the JSON shape and schema version on every change to the file; a malformed list fails the build rather than reaching users.
+- `raw.githubusercontent.com` applies a short CDN cache (~5 minutes), which is irrelevant for a hand-curated list.
+- The app caches the response with an ETag and falls back to the last good copy on any network failure, so a GitHub outage degrades to stale rather than empty.
+
+Schema gains a `gameVersions` tag per entry (`["wotlk"]`, `["tbc","wotlk"]`) so the catalogue filters to the selected server's version.
 
 ---
 
@@ -508,7 +521,7 @@ Behaviour matches V1: check on launch and on an interval, download in the backgr
 |---|---|---|
 | **Codebase drift across many AI sessions** — the failure mode that produced V1's 1,662-line file, triplicated special-cases, and 200 lines of unverifiable heuristics | **High** | This is now the top risk, since no human reviews the diffs. CI-enforced file-size and module limits, a coverage floor on the core, every behaviour change shipping a test, and a maintained architecture doc re-read at the start of each session. TypeScript strict with no `any`. |
 | No human can debug the code when a session isn't running | Medium | Chose the stack the author can at least read and inspect in DevTools (§5.1). Structured logs plus a one-click diagnostics export (§6.2) so failures are reportable without reading source. |
-| Migration corrupts a user's V1 data | High | Archive V1 files rather than deleting. Tested against real profiles. Migration summary screen with an "undo" that just restores the archive. |
+| ~~Migration corrupts a user's V1 data~~ | — | **Eliminated.** There is no migration (D10). V1 is left untouched on disk and keeps working. |
 | Linux WebKitGTK rendering quirks | Medium | Simple UI, no exotic CSS. Test Ubuntu LTS + Fedora in CI. AppImage bundles what it can; document the `webkit2gtk-4.1` dependency. |
 | Auto-update break strands V1 users | Medium | A final V1.x release that surfaces an in-app "V2 available" notice with a link. Announce in the README and release notes. |
 | ~~Private-server layouts defeat detection~~ | — | **Eliminated.** There is no detection: adding a server is always manual, and the version is chosen from a dropdown (§5.3). |
@@ -528,18 +541,17 @@ src-tauri/
     core/
       sources/       # github.rs, gitlab.rs, direct.rs, mod.rs
       installer/     # download.rs, extract.rs, place.rs, backup.rs
-      store/         # schema.rs, migrate.rs, atomic.rs
-      discovery/     # windows.rs, linux.rs, flavor.rs
+      store/         # schema.rs, atomic.rs
+      servers/       # register, validate, availability (no detection)
       toc.rs
       paths.rs       # canonicalisation + confinement — the security chokepoint
     error.rs
   tests/
     fixtures/
       archives/      # incl. malicious zips — these must stay failing-closed
-      v1-profiles/   # real captured V1 stores for migration tests
 src/                 # React + TypeScript frontend
   features/
-    installations/
+    servers/
     addons/
     catalog/
     settings/
@@ -560,8 +572,9 @@ docs/
 | `src/services/api-client.js` | **Rewritten** as `core/sources`. Scraping fallbacks retired in favour of PAT + ETag. |
 | `src/hooks/useAddons.js` | **Rewritten.** Persistence and existence-polling move to the core; the hook becomes thin state binding. |
 | `src/components/*` | **Ported.** Structure and CSS carry over; data access swaps to typed commands. Modals gain focus traps. |
-| `public/handy-addons.json` | **Kept**, extended with a schema version and flavor tags. |
-| `.github/workflows/*` | **Rewritten** for a build matrix and tag-triggered releases; Cosign retained. |
+| `public/handy-addons.json` | **Kept**, extended with a schema version and `gameVersions` tags; served from GitHub raw (§9.3). |
+| `.github/workflows/release.yml` | **Rewritten** for a Windows + Linux matrix and tag-triggered releases; Cosign retained. |
+| `.github/workflows/curatedAddonsUpdated.yml` | **Deleted** — the curated list is served from GitHub raw (§9.3). Revoke the `BlobKey` secret. |
 | `.github/copilot-instructions.md` | **Rewritten** — it currently states "Platform: Windows only". |
 | `installer.nsh` | **Reviewed and carried** if the Windows installer stays NSIS. |
 
