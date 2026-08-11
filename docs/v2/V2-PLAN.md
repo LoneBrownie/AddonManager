@@ -423,7 +423,28 @@ Everything V1 does today, on the new engine: GitHub + GitLab sources, release-vs
 
 ### 6.3 Deliberately out of scope for 2.0
 
-Backlogged to 2.1+: CurseForge API integration (needs an API key and a ToS review), WoWInterface / Wago catalogs, cloud sync of addon profiles, WTF/SavedVariables backup, in-app addon browsing with screenshots, a plugin system.
+**Suggesting an addon's source repository during import — revisit after 2.0.**
+Parked, not rejected. The naive version is unsafe (§5.6): a backport's `.toc`
+names the upstream project, so reading `X-Repository` and offering it would
+point updates at the wrong fork. A *safe* version is possible, and is roughly
+how CurseForge and WowUp do it. What would have to be true:
+
+- **Match on file content, not metadata.** Hash the files in a folder and look
+  that fingerprint up against a set of known builds. A fingerprint identifies
+  the exact artifact installed, which is precisely what `.toc` metadata cannot.
+- **Or match against the curated catalogue.** If an unmanaged folder's name
+  matches an entry in `handy-addons.json`, that is a real signal about a
+  *3.3.5a* repository — unlike anything inferred from the addon's own files.
+  Cheap, and it covers the addons most users have.
+- **Present it as a candidate, never a default.** Never pre-filled, always
+  labelled with why it is being suggested, always requiring confirmation. The
+  failure mode being avoided is a wrong answer that looks right.
+
+A fingerprint database means hosting and maintaining one, which is why it is
+not a 2.0 item. The catalogue-matching half is much smaller and could land on
+its own in 2.1.
+
+Also backlogged to 2.1+: CurseForge API integration (needs an API key and a ToS review), WoWInterface / Wago catalogs, cloud sync of addon profiles, WTF/SavedVariables backup, in-app addon browsing with screenshots, a plugin system.
 
 ---
 
