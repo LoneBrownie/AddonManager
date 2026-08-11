@@ -3,6 +3,7 @@
   "version": "1.4.0",
   "description": "A Windows desktop application for managing WoW addons from GitHub and GitLab",
   "author": "LoneBrownie",
+  "license": "GPL-3.0-or-later",
   "main": "public/electron.js",
   "homepage": "./",
   "private": true,

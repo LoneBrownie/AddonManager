@@ -1,9 +1,9 @@
 # Brownie's Addon Manager — V2 Plan
 
-**Status:** Draft for review
+**Status:** Under review — D1, D2 and D9 decided; D3–D8 open
 **Author:** Claude (via Claude Code)
 **Target:** V2.0.0
-**Scope:** Modernisation, multiple game-install support (CurseForge-style), Windows + Linux
+**Scope:** Modernisation, multiple server support (CurseForge/WowUp-style switcher), Windows + Linux
 
 ---
 
@@ -15,26 +15,29 @@ V1 works, but it has three structural problems that block everything you want fr
 2. **It is Windows-only by construction, not by configuration.** Paths are joined with hard-coded `\\` (`addon-manager.js:31`). This isn't a build flag — it's threaded through the entire codebase.
 3. **There is exactly one WoW directory in the data model.** `settings.wowPath` is a single string, and every addon record assumes it. Multi-install isn't a feature you can bolt on; it's a schema change that touches every read and write.
 
-So V2 is a **rewrite of the engine and data model**, with the UI carried across. My recommendation is **Tauri v2 (Rust core + React/TypeScript frontend)** — it fixes the security model by design, gives real cross-platform packaging, and drops the installer from ~150 MB to ~10 MB. Track B (Electron + Vite + TypeScript, engine moved to the main process) is a documented fallback if you'd rather not take on Rust; the Phase 1 design work is identical either way.
+So V2 is a **rewrite of the engine and data model**, with the UI carried across. **Decided: Tauri v2 — a Rust core with the React frontend ported to TypeScript** (§5.1). It fixes the security model by construction, gives real cross-platform packaging, and drops the installer from ~150 MB to ~10 MB.
 
-Rough sizing: **6–9 weekends of focused work** to a Windows+Linux beta, with the multi-install feature landing at the end of Phase 2 (~40% in).
+Multiple servers land at the end of Phase 2, roughly 40% in.
+
+> **Sizing caveat.** The per-phase estimates below are stated in "weekends" and were calibrated for a human writing the code. Since the code is AI-written, elapsed time is driven by session count plus the author's review and testing time, not typing speed — and Rust generates less reliably than TypeScript, so Phase 1 in particular will run longer than the figure suggests. Treat the numbers as *relative weights between phases*, not as a schedule.
 
 ---
 
-## 2. Decisions I need from you
+## 2. Decisions
 
-Read this section first — everything downstream depends on it.
+Read this section first — everything downstream depends on it. Struck-through rows are settled; the rest are open but none of them block Phase 0.
 
-| # | Decision | Options | My recommendation |
+| # | Decision | Options | Status / recommendation |
 |---|---|---|---|
-| **D1** | **Stack** | (A) Tauri v2 + Rust + React/TS  (B) Electron + Vite + TS  (C) .NET + Avalonia | **B — Electron + Vite + TypeScript.** Revised from an earlier Tauri recommendation; see §5.1 for the evidence that changed it. |
+| **D1** | ~~Stack~~ | — | ✅ **DECIDED: Tauri v2 + Rust + React/TypeScript.** Author's call, against the recommendation in §5.1. Accepted trade-offs recorded in §5.1.4. |
 | **D2** | ~~Auto-update continuity~~ | — | ✅ **DECIDED: break it.** Small user base. V1 users install V2 once by hand. **V2 still has its own auto-updater** — see §9.1. |
 | **D3** | **Repo strategy** | New repo vs. `v2` branch in this repo vs. rewrite on `main` | **`v2` branch here**, merged to `main` at release. Keeps issues, stars, release history, and the curated-list workflow in one place. |
-| **D4** | **macOS** | Support / ignore | **Build it, don't promise it.** Under Track A it's ~1 day of CI + a code-signing decision. Ship it unsigned as "community build" or skip. |
+| **D4** | **macOS** | Support / ignore | **Build it, don't promise it.** Under Tauri it's ~1 day of CI + a code-signing decision. Ship it unsigned as "community build" or skip. |
 | **D5** | **Curated list hosting** | Keep Azure Blob / move to GitHub raw / both | **Both** — GitHub raw as primary (free, versioned, no secret), Azure as fallback. Removes a secret from CI. |
 | **D6** | **GitHub token** | Ask users for an optional PAT / stay anonymous | **Optional PAT.** Anonymous GitHub API is 60 req/hr per IP — that's why V1 has HTML-scraping fallbacks. A PAT gives 5,000/hr and lets us delete ~200 lines of scraping. |
-| **D7** | **Product identity** | Keep name/appId / rename | Keep the name. **Change `appId`** if you switch frameworks so V1 and V2 can coexist during migration. |
-| **D8** | **Retail WoW** | Support modern retail / stay focused on 3.3.5a + private servers | **Design for it, don't test it.** The flavor model costs nothing extra; retail detection is a later PR. |
+| **D7** | **Product identity** | Keep name/appId / rename | Keep the name. **Change `appId`** — now required, since the framework change means V1 and V2 must coexist during migration. |
+| **D8** | **Retail WoW** | Support modern retail / stay focused on 3.3.5a + private servers | **Design for it, don't test it.** Retail is just another entry in the version dropdown; CASC-era support is a later PR. |
+| **D9** | ~~Licence~~ | — | ✅ **DECIDED: GPL-3.0-or-later.** `LICENSE` added; `package.json` updated. See §5.1.3. |
 
 ---
 
@@ -142,9 +145,15 @@ Extensive `console.log` throughout, all of it in a renderer with DevTools closed
 
 ### 5.1 Stack recommendation
 
-> **Revision note.** This section originally recommended Tauri. Two things changed it: (i) you confirmed you won't be writing any of the code yourself, which removes the costs Rust imposes on a *learner* but makes weak AI-assistance for Rust the dominant cost and leaves you unable to debug anything when a session isn't running; and (ii) checking the comparables (§5.1.1) showed the maintained apps in this exact niche are all Electron, and the one Rust attempt is archived. The recommendation is now **B**. The original Tauri case is preserved below because it isn't wrong — it's outweighed.
+> ## ✅ DECIDED: Track A — Tauri v2 + Rust + React/TypeScript
+>
+> **This overrides the recommendation in this section.** The analysis below is preserved unedited as a decision record, not because it still stands.
+>
+> The recommendation had moved to **B (Electron)** on two grounds: with the code AI-written rather than hand-written, weak AI assistance for Rust becomes the dominant cost and leaves nobody able to debug the app between sessions; and the maintained comparables in this niche are all Electron (§5.1.1). The author weighed those and chose Rust anyway. That is a legitimate call — capability was never in question (§5.1.4), and the durable upsides are real.
+>
+> **Future sessions: do not relitigate this.** Build it in Rust, and honour the mitigations in §5.1.5.
 
-| | **A. Tauri v2** | **B. Electron + Vite + TS** *(recommended)* | **C. .NET 9 + Avalonia** |
+| | **A. Tauri v2** ✅ *(chosen)* | **B. Electron + Vite + TS** *(was recommended)* | **C. .NET 9 + Avalonia** |
 |---|---|---|---|
 | Backend language | Rust | TypeScript (Node) | C# |
 | Installer size | ~8–12 MB | ~120–180 MB | ~35–70 MB |
@@ -165,7 +174,7 @@ The secondary wins are real for a utility people leave running: a ~10 MB install
 - **AI assistance is meaningfully weaker for Rust than TypeScript.** More iterations to reach compiling code, particularly around lifetimes and crate API churn. Given how this project has been built so far, this is a bigger practical cost than it looks on paper.
 - **Compile times, asymmetrically.** Frontend work still hot-reloads instantly under Tauri dev. Backend edits cost 5–30 s incremental, and a clean release build is a couple of minutes.
 - **Worse debugging.** No DevTools for the backend — it's `tracing` plus a debugger you configure, versus a Node inspector you may already know.
-- **Two languages and a serialization boundary.** Track B is one language with shared types for free. `specta` / `ts-rs` generate TS types from Rust and mostly close the gap, but it's still two mental models.
+- **Two languages and a serialization boundary.** Electron would be one language with shared types for free. `specta` / `ts-rs` generate TS types from Rust and mostly close the gap, but it's still two mental models.
 - **Fewer potential contributors.** WoW tooling is overwhelmingly JS/TS. A Rust core shrinks the pool of people who might send a PR.
 - **Prototyping is slower.** Rust makes you handle every error case up front — excellent for correctness, friction when you're still exploring a design.
 - **Linux rendering goes through WebKitGTK** (`webkit2gtk-4.1`), not Chromium. For a UI this simple that means "test on Ubuntu and Fedora", not "rewrite the CSS" — but it is a consistency you give up.
@@ -186,20 +195,44 @@ Two out of two maintained apps in this niche chose Electron. That isn't fashion 
 
 Ajour deserves a fair reading rather than an opportunistic one: it used `iced`, a *native Rust GUI*, so its authors were writing the interface in Rust too — a considerably harder path than Tauri, where the UI stays React. Plenty of Electron addon managers have also died. It is nonetheless the closest comparable, and it stopped.
 
-### 5.1.2 What choosing B gives up, and how it gets paid for
+### 5.1.2 Guardrails — required under either stack
 
-The compiler-as-substitute-for-review argument in favour of Rust is *correct*; it is simply outweighed. That safety therefore has to be bought explicitly rather than inherited:
+These were drafted as the price of *not* having Rust's compiler. With Rust chosen, the compiler now covers part of it — exhaustive matching, no `undefined`, no unhandled error paths — but the rest are orthogonal to language and remain mandatory, because **no human reviews these diffs**:
 
-- **TypeScript strict**, `noUncheckedIndexedAccess`, no `any` — CI-enforced, not aspirational.
-- **The intent-level IPC surface of §5.2.** This was always the real fix for S1, and it is stack-independent. Electron is not why V1 is unsafe — generic primitives in the preload bridge are.
-- **Tests as the actual merge gate** (§8), since they are the only code review this project gets. Coverage floor on the core; every behaviour change ships a test.
-- **CI-enforced file-size and module limits**, so no future session recreates a 1,662-line `addon-manager.js`.
+- **The intent-level command surface of §5.2.** Always the real fix for S1. Electron was never why V1 is unsafe; generic primitives in the preload bridge are. Tauri makes this easier to hold, not automatic.
+- **Tests as the actual merge gate** (§8) — the only code review this project gets. Coverage floor on the core; every behaviour change ships a test.
+- **CI-enforced file-size and module limits**, so no future session recreates a 1,662-line `addon-manager.js`. This is a discipline problem, and Rust does nothing to prevent it.
+- **TypeScript strict on the frontend**, `noUncheckedIndexedAccess`, no `any`. The React half is still TypeScript and still needs its own rigour.
+- **`#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]` in the core.** A panic in the engine takes the app down mid-install; every fallible path returns a typed error instead.
 
-### 5.1.3 Licensing note
+### 5.1.3 Licence — GPL-3.0-or-later ✅
 
-WowUp is **GPL-3**. Reading it to understand an approach is fine; lifting code is not, unless V2 is also GPL-3. This repo currently has **no LICENSE file at all** — worth choosing one for V2 either way.
+`LICENSE` (canonical FSF text) is committed and `package.json` carries `"license": "GPL-3.0-or-later"`. Previously the repo had no licence at all, which meant *all rights reserved* by default — nobody had the right to use, modify, or redistribute it.
 
-**Phase 1 remains stack-independent.** The schema, update-resolution model, path-safety rules and their tests carry over unchanged if this decision is ever revisited.
+Consequences worth knowing:
+
+- Anyone may use and modify the app, but **anyone distributing a modified version must also release their source under GPL-3**. Closed-source forks are ruled out — including any future closed version by the author.
+- **Dependency compatibility is fine.** Tauri is MIT / Apache-2.0, and the Rust crates in §11 are overwhelmingly MIT / Apache-2.0 dual-licensed. Apache-2.0 is compatible with GPL**v3** specifically (it is *not* with GPLv2), so the chosen version matters here. Any new dependency should still be licence-checked in CI.
+- **The WowUp angle largely evaporated anyway.** GPL-3 would have permitted lifting their code, but WowUp is TypeScript — porting it to Rust is a rewrite regardless, so only the *approach* transfers, and approaches were never licence-restricted. GPL-3 therefore stands on its own merits (keeping the project and its forks open), not as a means of borrowing.
+
+### 5.1.4 Capability is not a concern
+
+Nothing in V1 or in this plan is beyond Rust. For the record: `reqwest` for both APIs and downloads (with streaming progress, which V1 lacks entirely), the `zip` crate for extraction, `std::fs` and `walkdir` for filesystem work, `serde_json` for typed persistence, `tauri-plugin-dialog` for the folder picker, the Tauri menu API for native context menus, `tauri-plugin-opener` for external links, `tauri-plugin-clipboard-manager` for list export, `tauri-plugin-updater` for auto-update, and `keyring` for the OS keychain. The React UI is unchanged — it is still a webview.
+
+Several V2 items are *better* in Rust: bounded parallel update checks via `tokio`, streaming download progress, and native `.deb` / `.rpm` / AppImage output.
+
+The only genuine difference is rendering. Electron bundles Chromium everywhere; Tauri uses the OS webview — WebView2 on Windows, which is Chromium anyway, and WebKitGTK on Linux, where CSS or JS may occasionally differ. Minor for a UI this plain, but it is why Linux gets its own smoke test (§8).
+
+### 5.1.5 Accepted trade-offs, and the mitigations they require
+
+Choosing Rust means accepting two costs. Both need active mitigation rather than optimism:
+
+| Accepted cost | Mitigation |
+|---|---|
+| **Slower progress per session**, concentrated in Phase 1, since Rust is generated less reliably than TypeScript | Keep Phase 1 headless and test-first so progress is measurable without a UI. Prefer boring, mechanical Rust over clever abstractions — this codebase does not need advanced type-level work. |
+| **The author cannot read or debug the code** between sessions | Structured logging plus one-click diagnostics export (§6.2) is now *load-bearing*, not a nicety — it is the only way a failure becomes reportable. The test suite is the sole verification path (§8): it must be runnable with one command and its output legible to a non-Rust reader. |
+
+**Phase 1 remains stack-independent in design.** The schema, update-resolution model, path-safety rules and their tests carry over unchanged should this ever be revisited.
 
 ### 5.2 Layering
 
@@ -445,7 +478,7 @@ Rule: **every bug in §4 ships with a failing test first.** That list is the ini
 
 D2 ("break continuity") means *existing V1 users install V2 once by hand*. It does **not** mean V2 ships without an updater. V2 has a full auto-updater on both stacks:
 
-| | Track A (Tauri) | Track B (Electron) |
+| | **Tauri (chosen)** | *Electron, for comparison* |
 |---|---|---|
 | Mechanism | `tauri-plugin-updater` | `electron-updater` (unchanged from V1) |
 | Signing | minisign keypair, private key in CI secrets | existing Cosign flow retained |
@@ -464,7 +497,7 @@ Behaviour matches V1: check on launch and on an interval, download in the backgr
 - Release on tag, not on a `package.json` diff. The current version-diff trigger (`release.yml`) is clever but fires on unrelated pushes and makes re-releasing awkward.
 - Artifacts: Windows NSIS installer + portable zip; Linux AppImage + .deb + .rpm.
 - Keep Cosign keyless signing for all artifacts.
-- Auto-update: signed manifest on GitHub Releases (Track A) or `latest.yml` unchanged (Track B). Manifest generation goes in CI — the current hand-rolled PowerShell that builds `latest.yml` by string concatenation is a maintenance hazard.
+- Auto-update: minisign-signed manifest on GitHub Releases via `tauri-plugin-updater`. Manifest generation goes in CI — the current hand-rolled PowerShell that builds `latest.yml` by string concatenation is a maintenance hazard.
 - Curated list: publish to GitHub raw as primary and Azure Blob as fallback (D5), with a schema version and CI validation of the JSON shape before upload.
 
 ---
@@ -485,7 +518,7 @@ Behaviour matches V1: check on launch and on an interval, download in the backgr
 
 ---
 
-## 11. Appendix A — proposed repo layout (Track A)
+## 11. Appendix A — proposed repo layout
 
 ```
 src-tauri/
