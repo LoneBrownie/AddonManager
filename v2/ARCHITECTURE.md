@@ -95,11 +95,17 @@ These are enforced by tests. Breaking one should turn the suite red.
    being unplugged must never remove installation records (V2-PLAN.md B8).
 6. **Folders written are recorded.** That is what makes removal exact and what
    removes the need for V1's folder-relatedness heuristics (V2-PLAN.md D-b).
-7. **The source repository is never inferred.** Nothing reads a `.toc` to
-   decide where an addon came from. Private-server addons are mostly backports,
-   so a folder's metadata usually names the upstream project rather than the
-   fork installed — a guess there would point updates at the wrong repository.
-   The user supplies the URL; the addon-list export carries a whole collection.
+7. **The source repository is never inferred — for 2.0.** Nothing reads a
+   `.toc` to decide where an addon came from. Private-server addons are mostly
+   backports, so a folder's metadata usually names the upstream project rather
+   than the fork installed, and a guess there would point updates at the wrong
+   repository. The user supplies the URL; the addon-list export carries a whole
+   collection.
+
+   This is a **2.0 constraint, not a permanent law.** Suggestion is on the
+   backlog, but only via file fingerprinting or catalogue matching — never from
+   `.toc` metadata, and never pre-filled. See "out of scope" in V2-PLAN.md
+   section 6 before attempting it.
 8. **No panics in the engine.** `unwrap`, `expect` and `panic!` are denied by
    lint. A panic mid-install takes the app down with a half-written game folder.
 
