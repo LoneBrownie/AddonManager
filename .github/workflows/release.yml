@@ -189,16 +189,21 @@ jobs:
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern '*.exe' --pattern '*.AppImage' --pattern '*.deb' --pattern '*.rpm'
 
+          # `.cosign.sig`, not `.sig`. Tauri names its own minisign updater
+          # signature `<installer>.sig` — exactly what cosign would write here —
+          # so the previous naming uploaded cosign's signature over Tauri's with
+          # --clobber and silently destroyed it. The release still looked
+          # complete; only the updater would have failed, on a user's machine.
           for file in *; do
             [ -f "$file" ] || continue
             echo "Signing $file"
             cosign sign-blob --yes "$file" \
-              --output-signature "$file.sig" \
-              --output-certificate "$file.crt"
+              --output-signature "$file.cosign.sig" \
+              --output-certificate "$file.cosign.crt"
           done
 
           shopt -s nullglob
-          uploads=(*.sig *.crt)
+          uploads=(*.cosign.sig *.cosign.crt)
           if [ ${#uploads[@]} -gt 0 ]; then
             gh release upload "$TAG" "${uploads[@]}" --repo "$GITHUB_REPOSITORY" --clobber
           fi
@@ -213,9 +218,15 @@ jobs:
       # `releases/download/<tag>/` URLs serve pre-release assets happily, and
       # this release never becomes anyone's "latest".
       #
-      # tauri-action writes latest.json onto the release being built, merging
-      # both platforms into it. This runs after both, so it copies the merged
-      # one.
+      # The manifest is composed here rather than taken from tauri-action, which
+      # declines to build one — "Signature not found for the updater JSON" —
+      # because the matrix splits the platforms across two jobs and neither sees
+      # a complete set. The inputs are simple and already on the release, so
+      # assembling it here is both shorter and predictable.
+      #
+      # Asset *names* are read back from the release rather than reused from the
+      # build, because GitHub rewrites them on upload: apostrophes and spaces
+      # become dots, so the local filename is not the download filename.
       - name: Publish the updater manifest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -224,7 +235,32 @@ jobs:
           set -euo pipefail
           mkdir -p manifest && cd manifest
 
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'latest.json'
+          # Tauri's minisign signatures, which survive now that cosign writes
+          # `.cosign.sig` instead of clobbering these.
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern '*-setup.exe.sig' --pattern '*.AppImage.sig'
+
+          names=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
+                    --json assets --jq '.assets[].name')
+          win_name=$(printf '%s\n' "$names" | grep -- '-setup\.exe$')
+          lin_name=$(printf '%s\n' "$names" | grep -- '\.AppImage$')
+
+          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG"
+          jq -n \
+            --arg version "${TAG#v}" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg notes "See the release notes for $TAG." \
+            --arg win_sig "$(cat -- *-setup.exe.sig)" \
+            --arg win_url "$base/$win_name" \
+            --arg lin_sig "$(cat -- *.AppImage.sig)" \
+            --arg lin_url "$base/$lin_name" \
+            '{version: $version, notes: $notes, pub_date: $pub_date,
+              platforms: {
+                "windows-x86_64": {signature: $win_sig, url: $win_url},
+                "linux-x86_64":   {signature: $lin_sig, url: $lin_url}
+              }}' > latest.json
+
+          cat latest.json
 
           # Created once, reused forever. Marked as a pre-release so it stays
           # out of `releases/latest` like everything else here.
