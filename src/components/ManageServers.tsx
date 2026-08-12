@@ -151,12 +151,9 @@ export function ManageServers({
                     // did on its own. Elevating instead is what V1 did, and is
                     // the thing this app exists partly to avoid.
                     <div className="row-note">
-                      Addons cannot be written here. Move the game folder
-                      somewhere you own — most 3.3.5a clients are portable, so
-                      copying it to <code>C:\Games\</code> is enough — or have an
-                      administrator grant you write access to this folder’s{" "}
-                      <code>Interface\AddOns</code> once. Running this app as
-                      Administrator is not required.
+                      Addons can’t be written here, due to admin restrictions.
+                      Move your game folder to a location that isn’t
+                      write-protected.
                     </div>
                   ) : null}
                   <div style={{ display: "flex", gap: 5, marginTop: 8 }}>

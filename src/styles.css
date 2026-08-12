@@ -327,11 +327,6 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   margin-top: 6px;
   max-width: 60ch;
 }
-.row-note code {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--ink-2);
-}
 
 .tag {
   font-family: var(--mono);
