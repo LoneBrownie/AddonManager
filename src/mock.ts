@@ -108,6 +108,7 @@ function row(
     updateStatus: "unknown",
     needsUpdate: false,
     folders: [name.replace(/\s+/g, "")],
+    missingFolders: [],
     installedAt: "2026-08-01",
     versionMatches: true,
     ...overrides,

@@ -36,7 +36,10 @@ export function installBlockedBecause(server: Server | null): string | null {
 
 export function actionable(addon: Addon): boolean {
   if (addon.pinned) return false;
-  return addon.needsUpdate || addon.channelPending;
+  // A missing addon is offered a reinstall. Not for a pinned one: reinstalling
+  // fetches whatever the channel resolves to now, which would quietly move it
+  // off the version the pin exists to hold.
+  return addon.needsUpdate || addon.channelPending || addon.missingFolders.length > 0;
 }
 
 export function AddonList({
@@ -205,6 +208,14 @@ function AddonRow({
           {addon.needsUpdate ? (
             <span className="tag update">{addon.latestVersion} available</span>
           ) : null}
+          {addon.missingFolders.length > 0 ? (
+            <span
+              className="tag error"
+              title={`Not on disk: ${addon.missingFolders.join(", ")}. Removed or renamed outside this app.`}
+            >
+              missing
+            </span>
+          ) : null}
           {!addon.pinned && addon.channelPending ? (
             <span className="tag update">
               switch to {addon.channel === "source" ? "source" : "releases"}
@@ -242,12 +253,18 @@ function AddonRow({
             disabled={busy || blocked !== null}
             title={
               blocked ??
-              (addon.needsUpdate
-                ? "Install the newer version"
-                : `Fetch this addon from its ${addon.channel === "source" ? "default branch" : "latest release"}`)
+              (addon.missingFolders.length > 0
+                ? "Put this addon back — its folders are no longer on disk"
+                : addon.needsUpdate
+                  ? "Install the newer version"
+                  : `Fetch this addon from its ${addon.channel === "source" ? "default branch" : "latest release"}`)
             }
           >
-            {addon.needsUpdate ? "Update" : "Switch"}
+            {addon.missingFolders.length > 0
+              ? "Reinstall"
+              : addon.needsUpdate
+                ? "Update"
+                : "Switch"}
           </button>
         ) : null}
         <button

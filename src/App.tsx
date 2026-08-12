@@ -550,9 +550,23 @@ export default function App() {
         <ConfirmDialog
           title={`Remove ${confirming.name}?`}
           message={
-            `This deletes ${confirming.folders.join(", ")} from ${
-              selected?.name ?? "this server"
-            }. Other servers are not affected.` +
+            // A missing addon has nothing left to delete, so promising to
+            // delete its folders would be a lie — and this is the way to clear
+            // one off the list.
+            (confirming.folders.length > 0 &&
+            confirming.missingFolders.length === confirming.folders.length
+              ? `Its folders are already gone from ${
+                  selected?.name ?? "this server"
+                }, so this only forgets it. Other servers are not affected.`
+              : confirming.missingFolders.length > 0
+                ? `This deletes ${confirming.folders
+                    .filter((f) => !confirming.missingFolders.includes(f))
+                    .join(", ")} from ${
+                    selected?.name ?? "this server"
+                  } — the rest is already gone. Other servers are not affected.`
+                : `This deletes ${confirming.folders.join(", ")} from ${
+                    selected?.name ?? "this server"
+                  }. Other servers are not affected.`) +
             (dependents.length > 0
               ? `\n\nWarning: ${dependents.join(" and ")} declare${
                   dependents.length === 1 ? "s" : ""

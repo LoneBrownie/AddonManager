@@ -112,6 +112,11 @@ pub struct AddonDto {
     pub update_status: String,
     pub needs_update: bool,
     pub folders: Vec<String>,
+    /// Recorded folders that are no longer on disk.
+    ///
+    /// Empty is the normal case. Anything here means the addon was removed or
+    /// renamed outside this app, so the row is flagged rather than dropped.
+    pub missing_folders: Vec<String>,
     pub installed_at: String,
     /// False when the addon targets a different game version than this server.
     pub version_matches: bool,
@@ -138,6 +143,7 @@ impl AddonDto {
             update_status: "unknown".to_string(),
             needs_update: false,
             folders: installation.folders.clone(),
+            missing_folders: missing_folders(store, installation),
             installed_at: installation.installed_at.clone(),
             version_matches: installation.version_matches,
         })
@@ -151,6 +157,29 @@ impl AddonDto {
         // for it to stay where it is.
         self.needs_update = !self.pinned && report.status == UpdateStatus::UpdateAvailable;
     }
+}
+
+/// Recorded folders that are not on disk any more.
+///
+/// Returns nothing when the server is unreachable. A missing drive is "cannot
+/// check right now", never "the user deleted their addons" (V2-PLAN.md B8) —
+/// treating the two alike is exactly how V1 lost people's addon lists. The
+/// record is never dropped on this account either; the row is flagged and the
+/// user decides.
+fn missing_folders(store: &Store, installation: &InstalledAddon) -> Vec<String> {
+    let Some(server) = store.server(&installation.server_id) else {
+        return Vec::new();
+    };
+    if !server.is_available() {
+        return Vec::new();
+    }
+    let addons_dir = server.addons_dir();
+    installation
+        .folders
+        .iter()
+        .filter(|folder| !addons_dir.join(folder).is_dir())
+        .cloned()
+        .collect()
 }
 
 /// Does the tracked channel disagree with the installed ref?
@@ -281,6 +310,49 @@ mod tests {
     use super::*;
     use bam_core::version::Ref;
 
+    /// Deleting a folder by hand must show up, and an unplugged drive must
+    /// not — the two look identical from the store and V1 conflated them,
+    /// which is how it deleted people's records.
+    #[test]
+    fn folders_deleted_outside_the_app_are_reported_missing() {
+        use bam_core::model::{Server, Store};
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let addons = tmp.path().join("Interface").join("AddOns");
+        std::fs::create_dir_all(addons.join("StillHere")).expect("create");
+
+        let server = Server::new("S", tmp.path(), GameVersion::Wotlk);
+        let server_id = server.id.clone();
+        let mut store = Store::default();
+        store.servers.push(server);
+
+        let installation = InstalledAddon {
+            server_id: server_id.clone(),
+            addon_id: "a".into(),
+            channel: Channel::Release,
+            pinned: false,
+            installed_ref: Ref::release("v1"),
+            archive_sha256: None,
+            installed_at: String::new(),
+            folders: vec!["StillHere".into(), "DeletedByHand".into()],
+            version_matches: true,
+        };
+        assert_eq!(
+            missing_folders(&store, &installation),
+            vec!["DeletedByHand".to_string()]
+        );
+
+        // The same store, with the drive gone: nothing is reported missing.
+        let mut offline = store.clone();
+        if let Some(server) = offline.servers.first_mut() {
+            server.path = tmp.path().join("unplugged");
+        }
+        assert!(
+            missing_folders(&offline, &installation).is_empty(),
+            "an unreachable server means cannot-check, not deleted"
+        );
+    }
+
     /// The switch has to be offered the moment the channel changes, before any
     /// update check has run — otherwise the user is told to switch and given
     /// nothing to press until they check for updates by hand.
@@ -358,6 +430,7 @@ mod tests {
             channel: Channel::Release,
             channel_pending: false,
             pinned: false,
+            missing_folders: Vec::new(),
             installed_version: "v1.0.0".into(),
             latest_version: None,
             update_status: "unknown".into(),

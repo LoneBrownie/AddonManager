@@ -44,6 +44,8 @@ export interface Addon {
     | "unknown";
   needsUpdate: boolean;
   folders: string[];
+  /** Recorded folders no longer on disk — removed outside this app. */
+  missingFolders: string[];
   installedAt: string;
   /** False when the addon targets a different game version than this server. */
   versionMatches: boolean;
