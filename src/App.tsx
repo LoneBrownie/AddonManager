@@ -533,14 +533,25 @@ function BrowsePage({
   const [result, setResult] = useState<api.CatalogResult | null>(null);
   const [category, setCategory] = useState("All");
   const [query, setQuery] = useState("");
+  const [installing, setInstalling] = useState<string | null>(null);
+
+  // Whether an entry is installed is decided by the engine, by comparing the
+  // list against what this server has. So it has to be re-read after an
+  // install rather than guessed at here — an install can also bring in
+  // dependencies the user did not pick, and those turn "Installed" too.
+  const load = useCallback(
+    () =>
+      api
+        .getCatalog(server?.id ?? null)
+        .then(setResult)
+        .catch(() => setResult({ status: "unavailable", entries: [] })),
+    [server?.id],
+  );
 
   useEffect(() => {
     setResult(null);
-    api
-      .getCatalog(server?.id ?? null)
-      .then(setResult)
-      .catch(() => setResult({ status: "unavailable", entries: [] }));
-  }, [server?.id]);
+    void load();
+  }, [load]);
 
   const entries = result?.entries ?? [];
   const categories = ["All", ...new Set(entries.map((entry) => entry.category))];
@@ -616,10 +627,27 @@ function BrowsePage({
                       <button
                         type="button"
                         className="btn small primary"
-                        disabled={!server?.canInstall || entry.installed}
-                        onClick={() => void onInstall(entry)}
+                        disabled={
+                          !server?.canInstall || entry.installed || installing !== null
+                        }
+                        onClick={async () => {
+                          // Held across the whole thing: an install is several
+                          // seconds of network, and the button otherwise stays
+                          // live and clickable throughout.
+                          setInstalling(entry.id);
+                          try {
+                            await onInstall(entry);
+                            await load();
+                          } finally {
+                            setInstalling(null);
+                          }
+                        }}
                       >
-                        {entry.installed ? "Installed" : "Install"}
+                        {entry.installed
+                          ? "Installed"
+                          : installing === entry.id
+                            ? "Installing…"
+                            : "Install"}
                       </button>
                     </div>
                   </div>

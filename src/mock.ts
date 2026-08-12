@@ -376,8 +376,18 @@ export async function mockInvoke<T>(
       return [...deps, ...(entry ? [entry] : [])] as T;
     }
 
-    case "get_catalog":
-      return { status: "ok", entries: catalog } as T;
+    case "get_catalog": {
+      // Recomputed per request, as the engine does, rather than served from
+      // the fixture. A static `installed` would make the interface look
+      // broken here after an install even when it is not — the real backend
+      // derives this by comparing the list against the server's addons.
+      const here = (serverId && addons[serverId]) || [];
+      const entries = catalog.map((entry) => ({
+        ...entry,
+        installed: here.some((a) => pathOf(a.sourceUrl) === pathOf(entry.repoUrl)),
+      }));
+      return { status: "ok", entries } as T;
+    }
 
     case "export_addon_list": {
       const rows = (serverId && addons[serverId]) || [];
