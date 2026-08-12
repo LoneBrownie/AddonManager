@@ -88,7 +88,8 @@ alone.
 
 ### 2. Generate the updater signing key
 
-Needs a repository secret, so it cannot be done from a coding session.
+**Done.** Kept for the next key rotation. Recorded here because the release
+workflow depends on the secret and cannot create it.
 
 ```sh
 npm install                                    # `tauri` is node_modules/.bin/tauri

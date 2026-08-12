@@ -16,6 +16,26 @@ const ACCENTS = [
 ];
 
 /**
+ * Why "Copy addons to…" is unavailable, or null when it is available.
+ *
+ * Returned as a sentence rather than a boolean so the button can say what to do
+ * about it. Copying needs somewhere to copy to, something to copy, and a
+ * readable source — three different problems with three different fixes.
+ */
+function copyBlockedBecause(server: Server, serverCount: number): string | null {
+  if (serverCount < 2) {
+    return "Add a second server first — there is nowhere to copy to";
+  }
+  if (server.addonCount === 0) {
+    return "This server has no addons to copy";
+  }
+  if (server.availability === "unavailable") {
+    return "Reconnect this server's drive to copy from it";
+  }
+  return null;
+}
+
+/**
  * Rename, recolour, forget, and copy an addon set between servers.
  *
  * Forgetting deliberately leaves files on disk: deregistering is not
@@ -165,15 +185,14 @@ export function ManageServers({
                     type="button"
                     className="btn small"
                     onClick={() => setCopying(server)}
-                    disabled={
-                      server.addonCount === 0 ||
-                      servers.length < 2 ||
-                      server.availability === "unavailable"
-                    }
+                    disabled={Boolean(copyBlockedBecause(server, servers.length))}
+                    // A disabled button that does not say why is just a dead
+                    // control. Every reason it can be disabled gets its own
+                    // sentence, because "add a second server first" and
+                    // "reconnect the drive" are entirely different problems.
                     title={
-                      server.availability === "unavailable"
-                        ? "Reconnect this server's drive to copy from it"
-                        : "Copy this server's addons to another server"
+                      copyBlockedBecause(server, servers.length) ??
+                      "Copy this server's addons to another server"
                     }
                   >
                     Copy addons to…
