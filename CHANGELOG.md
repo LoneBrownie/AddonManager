@@ -7,13 +7,41 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
-## 2.0.0-beta.8 — unreleased
+## 2.0.0 — 2026-08-12
 
-### Changed
+**V2 is out of beta.** A rewrite — a Rust engine with a React interface,
+packaged with Tauri — installing alongside V1 rather than over it, so V1 keeps
+working and nothing is migrated without being asked.
+
+Seven betas of real use went into this. If you have been running one, this is
+the same application with the beta label removed.
+
+### What it does
+- **Several game folders at once**, each with its own addons and its own
+  versions of them. Installing touches only the server you have selected.
+- **GitHub and GitLab**, with a per-addon choice between tagged releases and the
+  latest source build, and pinning to hold a version where it is.
+- **Multi-folder addons** tracked as one thing and removed as exactly the
+  folders that were installed — never as a guess about which folders looked
+  related.
+- **A curated list** per game version, with dependencies installed first.
+- **Moving in from V1** by pasting its exported addon list. Addons already in
+  the game folder are recognised and taken over where they stand rather than
+  downloaded again.
+- **Warnings before the mistake**, not after: the wrong game version, a folder
+  collision that would overwrite something this app did not create, removing an
+  addon others depend on, a read-only game folder.
+- **Update checks in parallel**, cancellable, and never a phantom one — what was
+  installed is recorded at install time instead of being inferred from a version
+  string later.
+
+### Changed since the last beta
 - **The release notes are no longer printed beside the update button.** They
   were shown there as raw text, which meant a wall of Markdown punctuation the
   moment the notes became real ones. What changed belongs in the window that
   appears after the restart, which renders it properly, and nowhere else.
+- **The `.rpm` is back.** It was dropped throughout the beta because RPM refuses
+  a version like `2.0.0-beta.1`; a plain `2.0.0` has no such problem.
 
 ## 2.0.0-beta.7 — 2026-08-12
 

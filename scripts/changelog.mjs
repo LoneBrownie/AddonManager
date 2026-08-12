@@ -70,11 +70,11 @@ List**), add your game folder here as a server, then **Import list**.
 
 ### Downloads
 **Windows** — the \`.exe\` installer.
-**Linux** — the **AppImage** unless you have a reason not to. A \`.deb\` is also
-published; your package manager owns updates for it.${
+**Linux** — the **AppImage** unless you have a reason not to: it is the only
+Linux build that can update itself.${
   beta
-    ? "\nThere is no `.rpm` during the beta — RPM refuses a version like\n`2.0.0-beta.1` — so on Fedora or openSUSE, take the AppImage."
-    : ""
+    ? " A \`.deb\` is also published; your package\nmanager owns updates for it. There is no \`.rpm\` during the beta — RPM refuses\na version like `2.0.0-beta.1` — so on Fedora or openSUSE, take the AppImage."
+    : " A \`.deb\` and an \`.rpm\` are also published;\nyour package manager owns updates for those."
 }
 
 ### Updating

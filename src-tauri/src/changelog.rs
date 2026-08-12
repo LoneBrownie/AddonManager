@@ -97,7 +97,8 @@ mod tests {
         assert!(section_for("").is_none());
     }
 
-    /// A prefix must not match: `2.0.0-beta.1` is not `2.0.0-beta.10`.
+    /// A prefix must not match: `2.0.0-beta.1` is not `2.0.0-beta.10`, and
+    /// `2.0.0` is not `2.0.0-beta.7`.
     #[test]
     fn versions_match_whole_words_only() {
         let first = section_for("2.0.0-beta.1").unwrap_or_default();
@@ -105,6 +106,8 @@ mod tests {
             !first.contains("Change folder"),
             "matched a later beta's section"
         );
-        assert!(section_for("2.0.0").is_none(), "a prefix is not a version");
+        // Strict prefixes of real headings, which are not themselves headings.
+        assert!(section_for("2.0").is_none());
+        assert!(section_for("2.0.0-beta").is_none());
     }
 }
