@@ -4,10 +4,12 @@ import { ago, asText, isProblem, type Entry } from "../activity";
 /**
  * The session's messages, in a section that slides out of the right edge.
  *
- * A toast answers "what just happened". This answers "what happened while I
- * was doing something else", which is the question an import of thirty addons
- * actually raises — and the one the old corner-of-the-screen stack could not
- * answer at all, because reading a message meant reading it before it went.
+ * This is now where most messages live and the only place most of them appear:
+ * a success has already shown itself in the list it changed, so it flashes the
+ * tab and counts up rather than putting a card over that same list. Only
+ * failures interrupt. Either way it is all here afterwards, which is what the
+ * old corner stack could never offer — reading a message meant reading it
+ * before it went.
  *
  * It floats over the work rather than displacing it. Pushing the addon list
  * aside sounds kinder, but the window is 900px at its narrowest and the list
@@ -23,6 +25,7 @@ export function ActivityDock({
   open,
   unread,
   problems: unreadProblems,
+  pulse,
   onOpen,
   onClose,
   onClear,
@@ -31,6 +34,8 @@ export function ActivityDock({
   open: boolean;
   unread: number;
   problems: "none" | "warn" | "error";
+  /** Changes on every message; the tab flashes when it does. */
+  pulse: number;
   onOpen: () => void;
   onClose: () => void;
   onClear: () => void;
@@ -38,6 +43,17 @@ export function ActivityDock({
   const [problemsOnly, setProblemsOnly] = useState(false);
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [flash, setFlash] = useState(false);
+
+  // Most messages no longer raise a toast, so this is how they announce
+  // themselves: the tab lights up for a moment and the count goes up. Enough
+  // to notice out of the corner of an eye, and nothing to dismiss.
+  useEffect(() => {
+    if (pulse === 0) return;
+    setFlash(true);
+    const timer = setTimeout(() => setFlash(false), 800);
+    return () => clearTimeout(timer);
+  }, [pulse]);
 
   // "just now" stops being true after a minute, so the timestamps tick while
   // the panel is open and nowhere else.
@@ -80,7 +96,7 @@ export function ActivityDock({
           rather than leaving it stranded at the window's edge. */}
       <button
         type="button"
-        className="tab"
+        className={`tab${flash ? " flash" : ""}`}
         aria-expanded={open}
         aria-label={unread > 0 ? `Activity, ${unread} unread` : "Activity"}
         title="Activity"
@@ -231,12 +247,17 @@ function Card({ entry, now }: { entry: Entry; now: number }) {
 }
 
 /**
- * The corner stack: the first sighting of a message, and only that.
+ * Failures, and nothing else.
  *
- * Bounded, and everything expires — errors included. They used to stay until
- * dismissed, which was the right call when a dismissed message was gone
- * forever and the wrong one now that it is not: an import with a dozen
- * failures covered the window with cards that each had to be clicked away.
+ * Everything used to arrive here, which meant a stack of cards over the work
+ * saying things the work itself already said — "Questie updated to v11.3.0",
+ * over a row now reading v11.3.0. What is left is the case where there is
+ * genuinely nothing else to see: something did not happen, and no amount of
+ * looking at the list will say why.
+ *
+ * Bounded, and expiring, errors included. They used to stay until dismissed,
+ * which was right when a dismissed message was gone forever and wrong now that
+ * the panel has it.
  */
 export function ToastStack({
   showing,

@@ -9,10 +9,11 @@ import { useCallback, useEffect, useMemo, useReducer } from "react";
  * dozen error cards on screen, each needing its own dismissal, and reading
  * them meant reading them *then*, because there was no second chance.
  *
- * So the toast stops being where a message lives and becomes only where it
- * first appears. Everything lands here too, and stays until the app closes.
- * That is what lets the toasts be brief — including the errors, which used to
- * sit on screen indefinitely for want of anywhere else to be.
+ * So the log became the place a message lives, and the toast became an
+ * interruption — which most messages do not deserve. A success is already
+ * legible in the thing it changed. Only failures raise a card now; the rest
+ * flash the activity tab and put the count up. Everything lands here
+ * regardless and stays until the app closes.
  */
 export type Kind = "info" | "success" | "warn" | "error";
 
@@ -48,6 +49,19 @@ const LINGER: Record<Kind, number> = {
 /** Toasts on screen at once. The rest are counted, not stacked. */
 export const VISIBLE = 3;
 
+/**
+ * Which messages are worth interrupting for.
+ *
+ * Only the ones that went wrong. A success has already shown itself — the
+ * addon is in the list, the row says the new version — so a card floating over
+ * that same list to say so again is noise on top of the evidence. Those still
+ * reach the log, and the tab flashes and counts up, which is enough to notice
+ * without being enough to read.
+ */
+function toastworthy(kind: Kind): boolean {
+  return kind === "warn" || kind === "error";
+}
+
 /** Identical messages inside this window collapse rather than repeat. */
 const REPEAT_WINDOW = 20_000;
 
@@ -57,6 +71,8 @@ type State = {
   /** Newest first, which is both the drawer's order and the merge check. */
   entries: Entry[];
   toasts: Toast[];
+  /** Bumped by every message, so the tab can flash for the quiet ones. */
+  pulse: number;
 };
 
 type Action =
@@ -72,6 +88,7 @@ function reducer(state: State, action: Action): State {
     case "notify": {
       const newest = state.entries[0];
       const toast = { id: 0, until: action.now + LINGER[action.kind] };
+      const pulse = state.pulse + 1;
 
       // "Check for updates" pressed four times running should read as one
       // line with a count, not four identical ones — but only while they are
@@ -92,10 +109,13 @@ function reducer(state: State, action: Action): State {
         };
         return {
           entries: [merged, ...state.entries.slice(1)],
-          toasts: [
-            { ...toast, id: merged.id },
-            ...state.toasts.filter((item) => item.id !== merged.id),
-          ],
+          toasts: toastworthy(action.kind)
+            ? [
+                { ...toast, id: merged.id },
+                ...state.toasts.filter((item) => item.id !== merged.id),
+              ]
+            : state.toasts,
+          pulse,
         };
       }
 
@@ -110,7 +130,10 @@ function reducer(state: State, action: Action): State {
       };
       return {
         entries: [entry, ...state.entries].slice(0, LIMIT),
-        toasts: [{ ...toast, id: entry.id }, ...state.toasts],
+        toasts: toastworthy(action.kind)
+          ? [{ ...toast, id: entry.id }, ...state.toasts]
+          : state.toasts,
+        pulse,
       };
     }
 
@@ -136,7 +159,7 @@ function reducer(state: State, action: Action): State {
           };
 
     case "clear":
-      return { entries: [], toasts: [] };
+      return { entries: [], toasts: [], pulse: state.pulse };
   }
 }
 
@@ -149,7 +172,7 @@ let nextId = 0;
  * half the callbacks in the app and a changing one would re-run them.
  */
 export function useActivity() {
-  const [state, dispatch] = useReducer(reducer, { entries: [], toasts: [] });
+  const [state, dispatch] = useReducer(reducer, { entries: [], toasts: [], pulse: 0 });
 
   const notify = useCallback<Notify>((kind, text, detail) => {
     nextId += 1;
@@ -201,6 +224,8 @@ export function useActivity() {
     notify,
     unread,
     unreadProblems,
+    /** Changes on every message. The tab watches it and flashes. */
+    pulse: state.pulse,
     showing,
     /** Messages beyond the visible few, counted so nothing is silently lost. */
     overflow: Math.max(0, state.toasts.length - VISIBLE),
@@ -219,7 +244,7 @@ export function useActivity() {
  * to find, so the filter and the badge treat the two together.
  */
 export function isProblem(entry: Entry): boolean {
-  return entry.kind === "error" || entry.kind === "warn";
+  return toastworthy(entry.kind);
 }
 
 /** "just now", "4 min ago", "2 hr ago" — then the clock time. */

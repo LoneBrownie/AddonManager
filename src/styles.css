@@ -686,6 +686,28 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   stroke-width: 1;
 }
 .tab:hover { color: var(--ink); }
+
+/* A message arrived. Most of them never raise a toast now, so this and the
+   count are the whole of the announcement — brief, and on the control that
+   answers it rather than over the work. Kept as a colour change with the
+   easing optional, so it still reads with reduced motion on. */
+.tab.flash .tab-shape path {
+  /* Snaps on and fades out: the transition below is on the resting state, so
+     it governs the return and not the arrival. A flash that eases *in* is not
+     a flash — by the time it peaks the thing it is announcing is old news. */
+  transition: none;
+  fill: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.tab.flash { color: var(--ink); }
+.tab.flash .tab-count:not(.warn):not(.error) {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tab-shape path { transition: fill 550ms ease, stroke 550ms ease, stroke-width 550ms ease; }
+}
 .tab:hover .tab-shape path { fill: var(--surface-2); stroke: var(--btn-line-hover); }
 .dock[data-open] .tab { color: var(--ink); }
 .dock[data-open] .tab-shape path { fill: var(--surface-2); stroke: var(--accent); }

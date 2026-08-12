@@ -23,10 +23,15 @@ people are actually running.
   of installing to several servers. Each of those is now a single line — "6
   imported, 4 failed" — with the individual failures folded underneath it in
   the activity stream.
+- **Only failures pop up now.** An install that worked is already visible in
+  the list it changed, so saying so again over the top of that list was noise
+  on top of the evidence. Successes light up the *Activity* tab for a moment
+  and put its count up instead; the message is in the panel if you want it.
+  Failures still appear as before — that is the case where nothing else on
+  screen tells you what happened.
 - **Notifications no longer stay on screen until dismissed.** Errors used to,
   because a dismissed message was gone for good. Now that everything is kept,
-  they clear themselves like the rest, and no more than three are ever stacked
-  at once.
+  they clear themselves too, and no more than three are ever stacked at once.
 
 ### Fixed
 - **Updating an addon no longer overwrites folders it does not own.** It could,

@@ -48,12 +48,13 @@ export default function App() {
     [servers, selectedId],
   );
 
-  // Every message in the app goes through this. The toast is the first
-  // sighting; the drawer is where it stays.
+  // Every message in the app goes through this. Failures announce themselves
+  // with a toast; everything else only makes the activity tab flash and its
+  // count go up. All of it is readable in the panel afterwards either way.
   const activity = useActivity();
   const { notify, markRead } = activity;
 
-  // Opening the drawer *is* reading them, so the toasts go with it — leaving
+  // Opening the panel *is* reading them, so any toasts go with it — leaving
   // them up would show the same messages twice, one stack over the other.
   const { dismissAll } = activity;
   const openActivity = useCallback(() => {
@@ -704,6 +705,7 @@ export default function App() {
         open={activityOpen}
         unread={activity.unread}
         problems={activity.unreadProblems}
+        pulse={activity.pulse}
         onOpen={openActivity}
         onClose={() => setActivityOpen(false)}
         onClear={activity.clear}
@@ -942,6 +944,11 @@ function SettingsPage({
   const [token, setToken] = useState("");
   const [hasToken, setHasToken] = useState(false);
   const [version, setVersion] = useState<string | null>(null);
+  // These two used to be told by a toast, and successes no longer raise one.
+  // A button that says what it just did is a better answer anyway: it is where
+  // you are already looking, and it cannot be missed by looking elsewhere.
+  const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     api.hasGithubToken().then(setHasToken).catch(() => setHasToken(false));
@@ -1002,9 +1009,11 @@ function SettingsPage({
                 setHasToken(Boolean(token));
                 setToken("");
                 notify("success", token ? "Token saved" : "Token cleared");
+                setSaved(true);
+                setTimeout(() => setSaved(false), 2000);
               }}
             >
-              Save token
+              {saved ? "Saved" : "Save token"}
             </button>
             {hasToken ? (
               <button
@@ -1040,12 +1049,14 @@ function SettingsPage({
                   const text = await api.diagnostics();
                   await navigator.clipboard.writeText(text);
                   notify("success", "Diagnostics copied to the clipboard");
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
                 } catch (error) {
                   notify("error", api.errorMessage(error));
                 }
               }}
             >
-              Copy diagnostics
+              {copied ? "Copied" : "Copy diagnostics"}
             </button>
             <button
               type="button"
