@@ -97,7 +97,16 @@ input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- shell ---- */
-.app { display: grid; grid-template-columns: 264px minmax(0, 1fr); height: 100vh; }
+/* Sidebar, work, and the activity dock down the right. The dock sizes itself:
+   a handle when closed, the handle plus the panel when open. */
+.app {
+  display: grid;
+  grid-template-columns: 264px minmax(0, 1fr) auto;
+  height: 100vh;
+  /* The activity panel anchors to this when the window is too narrow for it
+     to sit beside the work. */
+  position: relative;
+}
 
 .sidebar {
   background: var(--surface);
@@ -362,16 +371,22 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 
 /* ---- addon rows ---- */
 .rows { display: flex; flex-direction: column; gap: 8px; }
+/* Flex rather than two fixed grid columns, so that when the row runs out of
+   width — the activity panel open on a small window is the case that forced
+   this — the buttons drop to a line of their own instead of squeezing the
+   name into a three-line column beside them. */
 .row {
   background: var(--surface);
   border: 1px solid var(--rule);
   border-radius: 9px;
   padding: 12px 14px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
   align-items: center;
 }
+.row > .row-main { flex: 1 1 240px; }
+.row > .row-actions { margin-left: auto; }
 .row.updatable {
   border-color: color-mix(in srgb, var(--accent) 50%, var(--rule));
   background: linear-gradient(90deg, var(--accent-soft), transparent 42%), var(--surface);
@@ -572,7 +587,8 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 /* ---- toasts ---- */
 .toasts {
   position: fixed;
-  right: 18px;
+  /* Clear of the activity handle, which owns the right edge. */
+  right: 52px;
   bottom: 18px;
   z-index: 200;
   display: flex;
@@ -629,43 +645,51 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   }
 }
 
-/* ---- activity drawer ---- */
+/* ---- activity dock ---- */
 
-/* Anchored right rather than centred: the addon list stays visible beside it,
-   which is what you are usually comparing a failure against. */
-/* Flex rather than the backdrop's grid: a grid column sizes itself to the
-   panel's max-content, which is wider than the panel, so the panel ends up
-   left-aligned inside a right-aligned column — i.e. floating in the middle. */
-.drawer-backdrop {
-  display: flex;
-  justify-content: flex-end;
-  align-items: stretch;
-  padding: 0;
-}
-.drawer {
+/* A section of the layout rather than something over it: opening it moves the
+   addon list aside instead of covering it, which is what you want when the
+   reason to open it is to read a failure against that list. */
+.dock { display: flex; align-items: stretch; min-height: 0; }
+
+/* Width, not a grid track: `grid-template-columns` interpolation is not
+   dependable across the two webviews this app ships on, and a transitioned
+   width with the content held at its full size inside gets the same result
+   everywhere. */
+.panel {
+  width: 0;
+  overflow: hidden;
   background: var(--surface);
   border-left: 1px solid var(--rule);
-  box-shadow: var(--shadow);
-  width: min(460px, 100%);
+}
+.dock[data-open] .panel { width: 360px; border-right: 1px solid var(--rule); }
+@media (prefers-reduced-motion: no-preference) {
+  .panel { transition: width 200ms ease; }
+}
+
+/* Fixed, so the content does not reflow line by line as the panel opens. */
+.panel-inner {
+  width: 360px;
   height: 100%;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
-.drawer header {
-  padding: 16px 18px;
+.panel-inner header {
+  padding: 16px 16px 14px;
   border-bottom: 1px solid var(--rule);
   display: flex;
   align-items: flex-start;
   gap: 10px;
 }
-.drawer header div { flex: 1; min-width: 0; }
-.drawer header h3 {
+.panel-inner header div { flex: 1; min-width: 0; }
+.panel-inner header h3 {
   margin: 0;
   font-family: var(--serif);
   font-size: 17px;
   font-weight: 700;
 }
-.drawer header p { margin: 3px 0 0; font-size: 12.5px; color: var(--ink-3); }
+.panel-inner header p { margin: 3px 0 0; font-size: 12.5px; color: var(--ink-3); }
 .icon-btn {
   background: none;
   border: 0;
@@ -677,29 +701,94 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 }
 .icon-btn:hover { background: var(--surface-2); color: var(--ink); }
 
-.drawer-tools {
-  padding: 11px 18px;
+.panel-tools {
+  padding: 10px 16px;
   border-bottom: 1px solid var(--rule);
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.drawer-tools-end { margin-left: auto; display: flex; gap: 6px; }
-.drawer-tools .segmented button { padding: 5px 12px; font-size: 12.5px; }
+.panel-tools-end { margin-left: auto; display: flex; gap: 6px; }
+.panel-tools .segmented button { padding: 5px 11px; font-size: 12.5px; }
 
-.drawer-body { flex: 1; overflow-y: auto; padding: 8px 0; min-height: 0; }
-.drawer footer {
-  padding: 10px 18px;
-  border-top: 1px solid var(--rule);
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
-.drawer footer .hint { font-size: 11.5px; color: var(--ink-3); }
+.panel-inner footer { padding: 10px 16px; border-top: 1px solid var(--rule); }
+.panel-inner footer .hint { font-size: 11.5px; color: var(--ink-3); }
 
+/* The handle. Always visible, so the panel is discoverable without taking a
+   place in the navigation — it is a tool, not a destination. */
+.rail {
+  flex: none;
+  width: 34px;
+  background: var(--surface);
+  border: 0;
+  border-left: 1px solid var(--rule);
+  color: var(--ink-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  padding: 13px 0;
+}
+.rail:hover { background: var(--surface-2); color: var(--ink); }
+.dock[data-open] .rail { background: var(--accent-soft); color: var(--ink); }
+.rail-label {
+  writing-mode: vertical-rl;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+.rail-count {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 1px 5px;
+}
+.rail-count.error {
+  color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 45%, var(--rule));
+}
+.rail-count.warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--rule));
+}
+
+/* Under about 1120px there is not enough width left to sit beside the work
+   without crushing it — the buttons on an addon row start stacking one per
+   line — so below that the panel goes over the top instead of pushing. The
+   handle stays in the layout either way, so nothing jumps as the window is
+   resized across the threshold. */
+@media (max-width: 1119px) {
+  .dock[data-open] .panel {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 34px;
+    z-index: 60;
+    box-shadow: var(--shadow);
+    border-right: 0;
+  }
+}
+
+/* Cards, like everything else in the app that is a list of things. */
 .activity {
-  padding: 10px 18px 10px 15px;
-  border-left: 3px solid transparent;
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--rule);
+  border-radius: 8px;
+  padding: 10px 12px;
   font-size: 13px;
 }
-.activity + .activity { border-top: 1px solid var(--rule-soft); }
 .activity.error { border-left-color: var(--bad); }
 .activity.warn { border-left-color: var(--warn); }
 .activity.success { border-left-color: var(--good); }
@@ -713,43 +802,21 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   font-size: 11px;
   color: var(--ink-3);
 }
-.activity details { margin-top: 6px; }
-.activity summary {
-  font-size: 12px;
-  color: var(--ink-3);
-  cursor: pointer;
-}
+.activity details { margin-top: 7px; }
+.activity summary { font-size: 12px; color: var(--ink-3); cursor: pointer; }
 .activity summary:hover { color: var(--ink-2); }
 .activity details ul {
-  margin: 6px 0 0;
-  padding-left: 16px;
+  margin: 7px 0 0;
+  padding-left: 15px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 .activity details li {
   font-size: 12px;
   color: var(--ink-2);
   overflow-wrap: anywhere;
 }
-
-@media (prefers-reduced-motion: no-preference) {
-  .drawer { animation: slide-in 180ms ease-out; }
-  @keyframes slide-in {
-    from { transform: translateX(24px); opacity: 0; }
-    to { transform: none; opacity: 1; }
-  }
-}
-
-/* Unread problems are worth a colour; unread anything-else is not. A batch
-   that half worked is amber, an outright failure is red. */
-.nav .count.error {
-  color: var(--bad);
-  border-color: color-mix(in srgb, var(--bad) 45%, var(--rule));
-}
-.nav .count.warn {
-  color: var(--warn);
-  border-color: color-mix(in srgb, var(--warn) 45%, var(--rule));
 }
 
 .spinner {

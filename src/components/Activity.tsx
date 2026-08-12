@@ -1,39 +1,60 @@
 import { useEffect, useState } from "react";
 import { ago, asText, isProblem, type Entry } from "../activity";
-import { useModalChrome } from "./Dialog";
 
 /**
- * The session's messages, in a panel that slides in from the right.
+ * The session's messages, in a section that slides out of the right edge.
  *
  * A toast answers "what just happened". This answers "what happened while I
  * was doing something else", which is the question an import of thirty addons
  * actually raises — and the one the old corner-of-the-screen stack could not
  * answer at all, because reading a message meant reading it before it went.
  *
- * Deliberately a drawer rather than a page: the reason to open it is usually
- * to compare a failure against the addon list, and a page swap takes that
- * list away at exactly the wrong moment.
+ * Part of the layout rather than a modal over it: the reason to open it is
+ * almost always to compare a failure against the addon list, so the list moves
+ * aside instead of being covered, and stays usable while the panel is open.
+ * That is also why there is no backdrop and no focus trap — nothing here is
+ * blocking, and treating it as though it were would make the app inert for a
+ * panel you are meant to read *alongside* your work.
  */
-export function ActivityDrawer({
+export function ActivityDock({
   entries,
+  open,
+  unread,
+  problems: unreadProblems,
+  onOpen,
   onClose,
   onClear,
 }: {
   entries: Entry[];
+  open: boolean;
+  unread: number;
+  problems: "none" | "warn" | "error";
+  onOpen: () => void;
   onClose: () => void;
   onClear: () => void;
 }) {
-  const panel = useModalChrome(onClose);
   const [problemsOnly, setProblemsOnly] = useState(false);
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(() => Date.now());
 
   // "just now" stops being true after a minute, so the timestamps tick while
-  // the drawer is open and nowhere else.
+  // the panel is open and nowhere else.
   useEffect(() => {
+    if (!open) return;
     const timer = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(timer);
-  }, []);
+  }, [open]);
+
+  // Escape closes it, as it would a dialog. It is not modal, so this is a
+  // convenience rather than the only way out.
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, onClose]);
 
   const problems = entries.filter(isProblem).length;
   const shown = problemsOnly ? entries.filter(isProblem) : entries;
@@ -49,81 +70,99 @@ export function ActivityDrawer({
   }
 
   return (
-    <div
-      className="backdrop drawer-backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="drawer"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Activity"
-        ref={panel}
-      >
-        <header>
-          <div>
-            <h3>Activity</h3>
-            <p>{summarise(entries.length, problems)}</p>
-          </div>
-          <button type="button" className="icon-btn" aria-label="Close" onClick={onClose}>
-            ×
-          </button>
-        </header>
+    <aside className="dock" data-open={open || undefined}>
+      <div className="panel" aria-hidden={!open}>
+        <div className="panel-inner" role="region" aria-label="Activity">
+          <header>
+            <div>
+              <h3>Activity</h3>
+              <p>{summarise(entries.length, problems)}</p>
+            </div>
+            <button
+              type="button"
+              className="icon-btn"
+              aria-label="Close activity"
+              onClick={onClose}
+            >
+              ×
+            </button>
+          </header>
 
-        {entries.length > 0 ? (
-          <div className="drawer-tools">
-            <div className="segmented" role="group" aria-label="Filter">
-              <button
-                type="button"
-                aria-pressed={!problemsOnly}
-                onClick={() => setProblemsOnly(false)}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                aria-pressed={problemsOnly}
-                onClick={() => setProblemsOnly(true)}
-                disabled={problems === 0}
-              >
-                Problems{problems > 0 ? ` (${problems})` : ""}
-              </button>
+          {entries.length > 0 ? (
+            <div className="panel-tools">
+              <div className="segmented" role="group" aria-label="Filter">
+                <button
+                  type="button"
+                  aria-pressed={!problemsOnly}
+                  onClick={() => setProblemsOnly(false)}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={problemsOnly}
+                  onClick={() => setProblemsOnly(true)}
+                  disabled={problems === 0}
+                >
+                  Problems{problems > 0 ? ` (${problems})` : ""}
+                </button>
+              </div>
+              <div className="panel-tools-end">
+                <button type="button" className="btn small" onClick={copy}>
+                  {copied ? "Copied" : "Copy"}
+                </button>
+                <button type="button" className="btn small" onClick={onClear}>
+                  Clear
+                </button>
+              </div>
             </div>
-            <div className="drawer-tools-end">
-              <button type="button" className="btn small" onClick={copy}>
-                {copied ? "Copied" : "Copy"}
-              </button>
-              <button type="button" className="btn small" onClick={onClear}>
-                Clear
-              </button>
-            </div>
-          </div>
-        ) : null}
+          ) : null}
 
-        <div className="drawer-body">
-          {shown.length === 0 ? (
-            <div className="empty">
-              <h3>{entries.length === 0 ? "No activity yet" : "No problems"}</h3>
-              <p>
-                {entries.length === 0
-                  ? "Installs, updates and anything that goes wrong will be listed here."
-                  : "Nothing has failed this session."}
-              </p>
-            </div>
-          ) : (
-            shown.map((entry) => <Row key={entry.id} entry={entry} now={now} />)
-          )}
+          <div className="panel-body">
+            {shown.length === 0 ? (
+              <div className="empty">
+                <h3>{entries.length === 0 ? "No activity yet" : "No problems"}</h3>
+                <p>
+                  {entries.length === 0
+                    ? "Installs, updates and anything that goes wrong will be listed here."
+                    : "Nothing has failed this session."}
+                </p>
+              </div>
+            ) : (
+              shown.map((entry) => <Card key={entry.id} entry={entry} now={now} />)
+            )}
+          </div>
+
+          <footer>
+            <span className="hint">
+              Kept until the app closes. Nothing here is written to disk.
+            </span>
+          </footer>
         </div>
-
-        <footer>
-          <span className="hint">
-            Kept until the app closes. Nothing here is written to disk.
-          </span>
-        </footer>
       </div>
-    </div>
+
+      {/* The handle. Always there, so the panel is discoverable without
+          occupying a place in the navigation — it is not a destination. */}
+      <button
+        type="button"
+        className="rail"
+        aria-expanded={open}
+        aria-label={
+          unread > 0 ? `Activity, ${unread} unread` : "Activity"
+        }
+        title="Activity"
+        onClick={open ? onClose : onOpen}
+      >
+        {unread > 0 ? (
+          <span
+            className={`rail-count${unreadProblems === "none" ? "" : ` ${unreadProblems}`}`}
+          >
+            {unread > 99 ? "99+" : unread}
+          </span>
+        ) : null}
+        <span className="rail-label">Activity</span>
+      </button>
+    </aside>
   );
 }
 
@@ -138,8 +177,8 @@ function summarise(total: number, problems: number): string {
   return `${messages}, ${problems} of them ${problems === 1 ? "a problem" : "problems"}.`;
 }
 
-/** One message, with its failures folded away underneath it. */
-function Row({ entry, now }: { entry: Entry; now: number }) {
+/** One message, as a card, with its failures folded away underneath it. */
+function Card({ entry, now }: { entry: Entry; now: number }) {
   return (
     <div className={`activity ${entry.kind}`}>
       <div className="activity-head">
@@ -147,10 +186,7 @@ function Row({ entry, now }: { entry: Entry; now: number }) {
           {entry.text}
           {entry.repeats > 1 ? <span className="tag">×{entry.repeats}</span> : null}
         </span>
-        <span
-          className="activity-time"
-          title={new Date(entry.at).toLocaleString()}
-        >
+        <span className="activity-time" title={new Date(entry.at).toLocaleString()}>
           {ago(entry.at, now)}
         </span>
       </div>

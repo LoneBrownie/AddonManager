@@ -10,11 +10,11 @@ people are actually running.
 ## Unreleased
 
 ### Added
-- **An activity stream**, under *Activity* in the sidebar. Every message the app
-  raises goes there and stays for the session, so a notification that has been
-  and gone can still be read. It opens over whatever you are looking at rather
-  than replacing it, filters down to just the problems, and copies out as text
-  for a bug report.
+- **An activity stream**, behind the *Activity* handle down the right-hand edge.
+  Every message the app raises goes there and stays for the session, so a
+  notification that has been and gone can still be read. It slides out beside
+  what you are working on rather than replacing it, filters down to just the
+  problems, and copies out as text for a bug report.
 
 ### Changed
 - **Anything that acts on many addons at once now says so once.** Importing a

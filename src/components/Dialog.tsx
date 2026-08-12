@@ -20,41 +20,6 @@ export function Dialog({
   footer?: ReactNode;
   children: ReactNode;
 }) {
-  const panel = useModalChrome(onClose);
-
-  return (
-    <div
-      className="backdrop"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        ref={panel}
-      >
-        <header>
-          <h3>{title}</h3>
-          {description ? <p>{description}</p> : null}
-        </header>
-        <div className="body">{children}</div>
-        {footer ? <footer>{footer}</footer> : null}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Escape to close, Tab kept inside, focus returned on the way out.
- *
- * Shared with the activity drawer, which is the same contract in a different
- * shape — it slides in from the side rather than sitting in the middle, and
- * that is the whole of the difference.
- */
-export function useModalChrome(onClose: () => void) {
   const panel = useRef<HTMLDivElement>(null);
   const returnFocusTo = useRef<HTMLElement | null>(null);
 
@@ -99,5 +64,27 @@ export function useModalChrome(onClose: () => void) {
     };
   }, [onClose]);
 
-  return panel;
+  return (
+    <div
+      className="backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        ref={panel}
+      >
+        <header>
+          <h3>{title}</h3>
+          {description ? <p>{description}</p> : null}
+        </header>
+        <div className="body">{children}</div>
+        {footer ? <footer>{footer}</footer> : null}
+      </div>
+    </div>
+  );
 }

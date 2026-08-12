@@ -18,7 +18,7 @@ import {
   ImportListDialog,
 } from "./components/transfer";
 import { WhatsNewDialog } from "./components/WhatsNew";
-import { ActivityDrawer, ToastStack } from "./components/Activity";
+import { ActivityDock, ToastStack } from "./components/Activity";
 import { useActivity, type Notify } from "./activity";
 import * as theme from "./theme";
 
@@ -390,25 +390,6 @@ export default function App() {
           >
             Settings
           </button>
-          {/* Not a page — it opens over whatever you are looking at, because
-              the reason to read it is usually to compare it against that. */}
-          <button
-            type="button"
-            aria-haspopup="dialog"
-            aria-expanded={activityOpen}
-            onClick={openActivity}
-          >
-            Activity
-            {activity.unread > 0 ? (
-              <span
-                className={`count${
-                  activity.unreadProblems === "none" ? "" : ` ${activity.unreadProblems}`
-                }`}
-              >
-                {activity.unread}
-              </span>
-            ) : null}
-          </button>
         </nav>
 
         <div className="sidebar-foot">
@@ -718,13 +699,15 @@ export default function App() {
         />
       ) : null}
 
-      {activityOpen ? (
-        <ActivityDrawer
-          entries={activity.entries}
-          onClose={() => setActivityOpen(false)}
-          onClear={activity.clear}
-        />
-      ) : null}
+      <ActivityDock
+        entries={activity.entries}
+        open={activityOpen}
+        unread={activity.unread}
+        problems={activity.unreadProblems}
+        onOpen={openActivity}
+        onClose={() => setActivityOpen(false)}
+        onClear={activity.clear}
+      />
 
       {activityOpen ? null : (
         <ToastStack
