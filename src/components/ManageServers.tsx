@@ -197,6 +197,21 @@ export function ManageServers({
                   <button
                     type="button"
                     className="btn small"
+                    onClick={async () => {
+                      try {
+                        await api.openServerFolder(server.id);
+                      } catch (error) {
+                        notify("error", api.errorMessage(error));
+                      }
+                    }}
+                    disabled={server.availability === "unavailable"}
+                    title="Open this server's Interface/AddOns folder"
+                  >
+                    Open folder
+                  </button>
+                  <button
+                    type="button"
+                    className="btn small"
                     onClick={() => setCopying(server)}
                     disabled={Boolean(copyBlockedBecause(server, servers.length))}
                     // A disabled button that does not say why is just a dead

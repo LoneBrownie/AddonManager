@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import logo from "./img/Logo.png";
 import * as api from "./api";
 import type { Addon, CatalogEntry, Server } from "./api";
-import { AddonList } from "./components/AddonList";
+import { AddonList, actionable } from "./components/AddonList";
 import { AppUpdate } from "./components/AppUpdate";
 import { ServerSwitcher } from "./components/ServerSwitcher";
 import { AddAddonDialog, AddServerDialog, ConfirmDialog } from "./components/dialogs";
@@ -59,21 +59,39 @@ export default function App() {
     void refreshServers();
   }, [refreshServers]);
 
-  useEffect(() => {
+  // Both halves of a server's state, always together. Which dependencies are
+  // unmet is derived from what is installed, so refreshing one without the
+  // other leaves the warning describing a server that no longer exists —
+  // installing the missing addon left the banner up until the page changed.
+  const refreshUnmet = useCallback(async () => {
     if (!selectedId) {
-      setAddons([]);
+      setUnmet([]);
       return;
     }
-    api
-      .listAddons(selectedId)
-      .then(setAddons)
-      .catch((error) => notify("error", api.errorMessage(error)));
-    api
+    await api
       .unmetDependencies(selectedId)
       .then(setUnmet)
       .catch(() => setUnmet([]));
-    void api.setSelectedServer(selectedId);
-  }, [selectedId, notify]);
+  }, [selectedId]);
+
+  const refreshAddons = useCallback(async () => {
+    if (!selectedId) {
+      setAddons([]);
+      setUnmet([]);
+      return;
+    }
+    try {
+      setAddons(await api.listAddons(selectedId));
+    } catch (error) {
+      notify("error", api.errorMessage(error));
+    }
+    await refreshUnmet();
+  }, [selectedId, notify, refreshUnmet]);
+
+  useEffect(() => {
+    void refreshAddons();
+    if (selectedId) void api.setSelectedServer(selectedId);
+  }, [refreshAddons, selectedId]);
 
   const markBusy = (addonId: string, working: boolean) =>
     setBusy((current) => {
@@ -90,11 +108,20 @@ export default function App() {
       const rows = await api.checkUpdates(selectedId);
       setAddons(rows);
       const count = rows.filter((row) => row.needsUpdate).length;
+      // A pending channel switch is not an update, but saying "up to date"
+      // while a Switch button is sitting there is just confusing.
+      const switches = rows.filter(
+        (row) => actionable(row) && !row.needsUpdate,
+      ).length;
+      const parts = [
+        count > 0 ? `${count} update${count === 1 ? "" : "s"} available` : null,
+        switches > 0
+          ? `${switches} waiting to switch channel`
+          : null,
+      ].filter(Boolean);
       notify(
-        count > 0 ? "info" : "success",
-        count > 0
-          ? `${count} update${count === 1 ? "" : "s"} available`
-          : "Everything is up to date",
+        parts.length > 0 ? "info" : "success",
+        parts.length > 0 ? parts.join(", ") : "Everything is up to date",
       );
     } catch (error) {
       notify("error", api.errorMessage(error));
@@ -111,6 +138,7 @@ export default function App() {
       setAddons((current) =>
         current.map((row) => (row.addonId === addonId ? updated : row)),
       );
+      void refreshUnmet();
       notify("success", `${updated.name} updated to ${updated.installedVersion}`);
     } catch (error) {
       notify("error", api.errorMessage(error));
@@ -120,7 +148,7 @@ export default function App() {
   }
 
   async function handleUpdateAll() {
-    const updatable = addons.filter((addon) => addon.needsUpdate);
+    const updatable = addons.filter(actionable);
     for (const addon of updatable) {
       await handleUpdate(addon.addonId);
     }
@@ -134,6 +162,7 @@ export default function App() {
       const folders = await api.removeAddon(selectedId, addon.addonId);
       setAddons((current) => current.filter((row) => row.addonId !== addon.addonId));
       void refreshServers();
+      void refreshUnmet();
       notify("success", `Removed ${addon.name} (${folders.length} folder${folders.length === 1 ? "" : "s"})`);
     } catch (error) {
       notify("error", api.errorMessage(error));
@@ -171,7 +200,7 @@ export default function App() {
       );
       notify(
         "info",
-        `${addon.name} now tracks ${channel === "source" ? "source builds" : "tagged releases"}. Update it to switch over.`,
+        `${addon.name} now tracks ${channel === "source" ? "source builds" : "tagged releases"}. Press Switch on its row to fetch it.`,
       );
     } catch (error) {
       notify("error", api.errorMessage(error));
@@ -198,7 +227,7 @@ export default function App() {
       }
     }
     setShowAddAddon(false);
-    if (selectedId) setAddons(await api.listAddons(selectedId));
+    await refreshAddons();
     void refreshServers();
   }
 
@@ -293,11 +322,26 @@ export default function App() {
                   >
                     {checking ? "Cancel check" : "Check for updates"}
                   </button>
-                  {addons.some((addon) => addon.needsUpdate) ? (
+                  {addons.some(actionable) ? (
                     <button type="button" className="btn" onClick={handleUpdateAll}>
-                      Update all ({addons.filter((a) => a.needsUpdate).length})
+                      Update all ({addons.filter(actionable).length})
                     </button>
                   ) : null}
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={async () => {
+                      try {
+                        await api.openServerFolder(selected.id);
+                      } catch (error) {
+                        notify("error", api.errorMessage(error));
+                      }
+                    }}
+                    disabled={selected.availability === "unavailable"}
+                    title={`Open ${selected.name}'s Interface/AddOns folder`}
+                  >
+                    Open folder
+                  </button>
                   <button
                     type="button"
                     className="btn"
@@ -409,7 +453,7 @@ export default function App() {
                   await api.installAddon(selectedId, step.repoUrl, step.channel);
                 }
                 notify("success", `Installed ${entry.name}`);
-                setAddons(await api.listAddons(selectedId));
+                await refreshAddons();
                 void refreshServers();
               } catch (error) {
                 notify("error", api.errorMessage(error));
@@ -464,7 +508,7 @@ export default function App() {
                 (failed.length > 0 ? `, ${failed.length} failed` : ""),
             );
             for (const line of failed) notify("error", line);
-            if (selectedId) setAddons(await api.listAddons(selectedId));
+            await refreshAddons();
             void refreshServers();
           }}
         />
@@ -479,7 +523,7 @@ export default function App() {
           server={selected}
           onClose={async () => {
             setTransfer(null);
-            if (selectedId) setAddons(await api.listAddons(selectedId));
+            await refreshAddons();
             void refreshServers();
           }}
           onAdopted={(folder) => notify("success", `Now managing ${folder}`)}

@@ -358,14 +358,22 @@ export async function mockInvoke<T>(
         ? ["Compact Raid Frames", "Clique"]
         : []) as T;
 
-    case "unmet_dependencies":
-      return [
-        {
-          addonId: "github:WeakAuras/WeakAuras2",
-          addonName: "WeakAuras",
-          missing: ["Ace3"],
-        },
-      ] as T;
+    case "unmet_dependencies": {
+      // Derived, as the engine derives it, so installing the missing addon
+      // clears the warning here too. A fixed answer made the interface look
+      // broken after an install whether or not it was.
+      const here = (serverId && addons[serverId]) || [];
+      const present = (folder: string) =>
+        here.some((a) => a.folders.some((f) => f.toLowerCase() === folder.toLowerCase()));
+      return here
+        .filter((a) => a.name === "WeakAuras")
+        .map((a) => ({
+          addonId: a.addonId,
+          addonName: a.name,
+          missing: ["Ace3"].filter((dep) => !present(dep)),
+        }))
+        .filter((row) => row.missing.length > 0) as T;
+    }
 
     case "resolve_catalog_install": {
       const id = String(args?.["entryId"]);

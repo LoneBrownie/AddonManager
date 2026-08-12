@@ -7,6 +7,19 @@ type Filter = "all" | "updatable" | "pinned";
 /**
  * The addon list for the selected server, and only that server.
  */
+/**
+ * Is there something to do to this row?
+ *
+ * An update, or a channel the user switched but has not applied yet. A channel
+ * change is deliberately not counted as an *update* — it does not mean upstream
+ * moved — but it still needs a button, and without one the app said "update it
+ * to switch over" while offering nothing to press.
+ */
+export function actionable(addon: Addon): boolean {
+  if (addon.pinned) return false;
+  return addon.needsUpdate || addon.updateStatus === "channelChanged";
+}
+
 export function AddonList({
   server,
   addons,
@@ -35,7 +48,7 @@ export function AddonList({
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const matches = addons.filter((addon) => {
-      if (filter === "updatable" && !addon.needsUpdate) return false;
+      if (filter === "updatable" && !actionable(addon)) return false;
       if (filter === "pinned" && !addon.pinned) return false;
       if (!needle) return true;
       return (
@@ -47,7 +60,7 @@ export function AddonList({
 
     return [...matches].sort((a, b) => {
       if (sort === "updates") {
-        if (a.needsUpdate !== b.needsUpdate) return a.needsUpdate ? -1 : 1;
+        if (actionable(a) !== actionable(b)) return actionable(a) ? -1 : 1;
       }
       if (sort === "version") {
         return a.installedVersion.localeCompare(b.installedVersion);
@@ -156,12 +169,17 @@ function AddonRow({
   onOpen: () => void;
 }) {
   return (
-    <div className={`row${addon.needsUpdate ? " updatable" : ""}`}>
+    <div className={`row${actionable(addon) ? " updatable" : ""}`}>
       <div className="row-main">
         <div className="row-title">
           <strong>{addon.name}</strong>
           {addon.needsUpdate ? (
             <span className="tag update">{addon.latestVersion} available</span>
+          ) : null}
+          {!addon.pinned && addon.updateStatus === "channelChanged" ? (
+            <span className="tag update">
+              switch to {addon.channel === "source" ? "source" : "releases"}
+            </span>
           ) : null}
           {addon.pinned ? <span className="tag pinned">pinned</span> : null}
           {addon.channel === "source" ? (
@@ -187,9 +205,19 @@ function AddonRow({
 
       <div className="row-actions">
         {busy ? <span className="spinner" aria-label="Working" /> : null}
-        {addon.needsUpdate ? (
-          <button type="button" className="btn primary small" onClick={onUpdate} disabled={busy}>
-            Update
+        {actionable(addon) ? (
+          <button
+            type="button"
+            className="btn primary small"
+            onClick={onUpdate}
+            disabled={busy}
+            title={
+              addon.needsUpdate
+                ? "Install the newer version"
+                : `Fetch this addon from its ${addon.channel === "source" ? "default branch" : "latest release"}`
+            }
+          >
+            {addon.needsUpdate ? "Update" : "Switch"}
           </button>
         ) : null}
         <button

@@ -125,6 +125,51 @@ pub fn copy_addon_set(
         .collect())
 }
 
+/// Open a server's `Interface/AddOns` folder in the system file manager.
+///
+/// The folder itself, not any addon inside it — the point is to get at the
+/// directory the app installs into, for the things a manager will never do:
+/// dropping in a hand-built addon, clearing out a stray folder, checking what
+/// is actually there.
+///
+/// Created if missing, because a freshly registered server may not have one
+/// yet, and opening nothing is a worse answer than opening an empty folder.
+#[tauri::command]
+pub fn open_server_folder(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    server_id: String,
+) -> CommandResult<()> {
+    let store = state.snapshot()?;
+    let server = store
+        .server(&server_id)
+        .ok_or_else(|| CommandError {
+            kind: "unknownServer".into(),
+            message: format!("no server with id {server_id}"),
+            folder: None,
+        })?
+        .clone();
+
+    // An unplugged drive is a "not right now", not a failure to explain away.
+    if !server.is_available() {
+        return Err(CommandError {
+            kind: "unavailable".into(),
+            message: format!("{} is not reachable right now", server.name),
+            folder: None,
+        });
+    }
+
+    let dir = server.addons_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    tauri_plugin_opener::OpenerExt::opener(&app)
+        .open_path(dir.to_string_lossy().to_string(), None::<String>)
+        .map_err(|e| CommandError {
+            kind: "unexpected".into(),
+            message: e.to_string(),
+            folder: None,
+        })
+}
+
 /// Remember which server the switcher had selected.
 #[tauri::command]
 pub fn set_selected_server(state: State<'_, AppState>, id: Option<String>) -> CommandResult<()> {
