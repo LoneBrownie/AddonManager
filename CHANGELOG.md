@@ -7,7 +7,7 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
-## 2.0.0-beta.6 — unreleased
+## 2.0.0-beta.6 — 2026-08-12
 
 ### Fixed
 - **Updating an adopted addon is no longer blocked by its own folders.** An
