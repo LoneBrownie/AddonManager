@@ -83,6 +83,20 @@ impl FakeHttp {
         })
     }
 
+    /// True if any request carried this header at all, whatever its value.
+    ///
+    /// Distinct from [`saw_header`]: proving a credential was *not* sent means
+    /// asserting on the name alone, since the value is exactly what must not
+    /// have to be known to make the assertion.
+    pub fn saw_header_named(&self, name: &str) -> bool {
+        let Ok(requests) = self.requests.lock() else {
+            return false;
+        };
+        requests
+            .iter()
+            .any(|(_, headers)| headers.iter().any(|(k, _)| k.eq_ignore_ascii_case(name)))
+    }
+
     /// Every URL requested, in order.
     pub fn requested_urls(&self) -> Vec<String> {
         self.requests

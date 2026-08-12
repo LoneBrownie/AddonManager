@@ -70,9 +70,9 @@ pub async fn resolve(
         Source::Github { owner, repo } => {
             github::resolve(client, owner, repo, channel, token).await
         }
-        Source::Gitlab { owner, repo } => {
-            gitlab::resolve(client, owner, repo, channel, token).await
-        }
+        // The stored token is a GitHub one, so it is not offered here. See
+        // `gitlab`: forwarding it made gitlab.com refuse the request outright.
+        Source::Gitlab { owner, repo } => gitlab::resolve(client, owner, repo, channel).await,
         Source::Direct { url } => Ok(Resolved {
             r#ref: Ref::Direct {
                 url: url.clone(),

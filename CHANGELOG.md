@@ -7,6 +7,17 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
+## 2.0.0-beta.7 — unreleased
+
+### Fixed
+- **Setting a GitHub token no longer breaks every GitLab addon.** The token was
+  being sent to GitLab as well, and GitLab rejects a credential it does not
+  recognise — so a setting offered as a pure improvement quietly made most of
+  the curated 3.3.5a list unreachable for anyone who used it. GitLab is now
+  asked anonymously, which is what it wants: it allows 500 unauthenticated
+  requests a *minute*, where GitHub allows 60 an *hour*. The token is a GitHub
+  credential and now goes nowhere but GitHub, as Settings always claimed.
+
 ## 2.0.0-beta.6 — 2026-08-12
 
 ### Fixed

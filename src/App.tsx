@@ -864,7 +864,8 @@ function SettingsPage({
           <span className="hint">
             Without a token, GitHub allows 60 requests an hour, which a large
             addon list can exhaust. A read-only token raises that to 5,000. It is
-            stored locally and never sent anywhere except GitHub.
+            stored locally and never sent anywhere except GitHub — GitLab is
+            asked anonymously, which its own limits are generous enough to allow.
           </span>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <button
