@@ -142,6 +142,23 @@ const shipsFolder: Record<string, string> = {
   "thezephyrsong/MyKey": "MyKey",
 };
 
+/**
+ * Repositories that are no longer there.
+ *
+ * The third way, and the one that arrives in bulk: a V1 export is a record of
+ * what somebody installed over several years, and a proportion of those
+ * repositories have since been deleted, renamed or made private. An import of
+ * thirty lines producing four failures is the ordinary case rather than the
+ * unlucky one, which is the whole reason those failures need somewhere to live
+ * other than a stack of cards in the corner.
+ */
+const gone = new Set([
+  "oldguild/QuestHelper-335",
+  "archived/AtlasLoot-Enhanced",
+  "wotlk-forks/Titan-Panel-335",
+  "someone/OmniCC-Backport",
+]);
+
 function row(
   addonId: string,
   name: string,
@@ -316,6 +333,15 @@ export async function mockInvoke<T>(
       const fallbackToSource = Boolean(args?.["fallbackToSource"]);
       const adoptExisting = Boolean(args?.["adoptExisting"]);
       const onDisk = shipsFolder[repo];
+
+      // Deleted, renamed or made private. Nothing to fall back to.
+      if (gone.has(repo)) {
+        throw {
+          kind: "notFound",
+          message: `${repo} could not be found — the repository may have been deleted, renamed or made private`,
+          folder: null,
+        };
+      }
 
       // No releases: install from the branch, or say so.
       if (noReleases.has(repo) && !fallbackToSource) {

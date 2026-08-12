@@ -1,6 +1,7 @@
 import { useState } from "react";
 import * as api from "../api";
 import type { Server } from "../api";
+import type { Notify } from "../activity";
 import { Dialog } from "./Dialog";
 
 /** Colours that stay distinguishable against both themes. */
@@ -51,7 +52,7 @@ export function ManageServers({
   servers: Server[];
   onChanged: () => Promise<void>;
   onAddServer: () => void;
-  notify: (kind: "info" | "error" | "success", text: string) => void;
+  notify: Notify;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
@@ -338,7 +339,7 @@ function CopySetDialog({
   servers: Server[];
   onClose: () => void;
   onDone: (lines: string[]) => Promise<void>;
-  notify: (kind: "info" | "error" | "success", text: string) => void;
+  notify: Notify;
 }) {
   const targets = servers.filter(
     (server) => server.id !== from.id && server.canInstall,

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import * as appUpdate from "../appUpdate";
+import type { Notify } from "../activity";
 
 type State =
   | { kind: "idle" }
@@ -18,7 +19,7 @@ type State =
 export function AppUpdate({
   notify,
 }: {
-  notify: (kind: "success" | "error" | "info", text: string) => void;
+  notify: Notify;
 }) {
   const [state, setState] = useState<State>({ kind: "idle" });
 

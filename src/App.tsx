@@ -18,10 +18,11 @@ import {
   ImportListDialog,
 } from "./components/transfer";
 import { WhatsNewDialog } from "./components/WhatsNew";
+import { ActivityDrawer, ToastStack } from "./components/Activity";
+import { useActivity, type Notify } from "./activity";
 import * as theme from "./theme";
 
 type Page = "addons" | "browse" | "servers" | "settings";
-type Toast = { id: number; kind: "info" | "error" | "success"; text: string };
 
 export default function App() {
   const [servers, setServers] = useState<Server[]>([]);
@@ -30,7 +31,6 @@ export default function App() {
   const [page, setPage] = useState<Page>("addons");
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [checking, setChecking] = useState(false);
-  const [toasts, setToasts] = useState<Toast[]>([]);
   const [showAddServer, setShowAddServer] = useState(false);
   const [showAddAddon, setShowAddAddon] = useState(false);
   const [confirming, setConfirming] = useState<Addon | null>(null);
@@ -41,20 +41,26 @@ export default function App() {
   const [dependents, setDependents] = useState<string[]>([]);
   const [whatsNew, setWhatsNew] = useState<api.WhatsNew | null>(null);
   const [appTheme, setAppTheme] = useState<api.Theme>(null);
+  const [activityOpen, setActivityOpen] = useState(false);
 
   const selected = useMemo(
     () => servers.find((server) => server.id === selectedId) ?? null,
     [servers, selectedId],
   );
 
-  const notify = useCallback((kind: Toast["kind"], text: string) => {
-    const id = Date.now() + Math.random();
-    setToasts((current) => [...current, { id, kind, text }]);
-    // Errors stay until dismissed; they usually need reading.
-    if (kind !== "error") {
-      setTimeout(() => setToasts((c) => c.filter((t) => t.id !== id)), 4000);
-    }
-  }, []);
+  // Every message in the app goes through this. The toast is the first
+  // sighting; the drawer is where it stays.
+  const activity = useActivity();
+  const { notify, markRead } = activity;
+
+  // Opening the drawer *is* reading them, so the toasts go with it — leaving
+  // them up would show the same messages twice, one stack over the other.
+  const { dismissAll } = activity;
+  const openActivity = useCallback(() => {
+    setActivityOpen(true);
+    markRead();
+    dismissAll();
+  }, [markRead, dismissAll]);
 
   const refreshServers = useCallback(async () => {
     try {
@@ -195,28 +201,60 @@ export default function App() {
     }
   }
 
-  async function handleUpdate(addonId: string) {
-    if (!selectedId) return;
-    markBusy(addonId, true);
+  /**
+   * Update one addon and report nothing. The caller decides what to say,
+   * because one addon and twenty addons want very different things said.
+   */
+  async function updateOne(addon: Addon): Promise<{ name: string; version?: string; error?: string }> {
+    if (!selectedId) return { name: addon.name, error: "no server selected" };
+    markBusy(addon.addonId, true);
     try {
-      const updated = await api.updateAddon(selectedId, addonId);
+      const updated = await api.updateAddon(selectedId, addon.addonId);
       setAddons((current) =>
-        current.map((row) => (row.addonId === addonId ? updated : row)),
+        current.map((row) => (row.addonId === addon.addonId ? updated : row)),
       );
       void refreshUnmet();
-      notify("success", `${updated.name} updated to ${updated.installedVersion}`);
+      return { name: updated.name, version: updated.installedVersion };
     } catch (error) {
-      notify("error", api.errorMessage(error));
+      return { name: addon.name, error: api.errorMessage(error) };
     } finally {
-      markBusy(addonId, false);
+      markBusy(addon.addonId, false);
     }
   }
 
+  async function handleUpdate(addonId: string) {
+    const addon = addons.find((row) => row.addonId === addonId);
+    if (!addon) return;
+    const result = await updateOne(addon);
+    if (result.error) notify("error", `${result.name}: ${result.error}`);
+    else notify("success", `${result.name} updated to ${result.version}`);
+  }
+
+  /**
+   * One message for the batch, not one per addon.
+   *
+   * Updating twenty addons used to raise twenty messages, and any that failed
+   * stayed on screen until each was clicked away. The failures are now the
+   * detail of a single line, which is both less to dismiss and easier to read:
+   * they sit together instead of interleaved with the successes.
+   */
   async function handleUpdateAll() {
-    const updatable = addons.filter(actionable);
-    for (const addon of updatable) {
-      await handleUpdate(addon.addonId);
+    const queue = addons.filter(actionable);
+    if (queue.length === 0) return;
+
+    const results = [];
+    for (const addon of queue) {
+      results.push(await updateOne(addon));
     }
+
+    const failed = results.filter((result) => result.error);
+    notify(
+      failed.length === 0 ? "success" : "warn",
+      failed.length === 0
+        ? `Updated ${queue.length} addon${queue.length === 1 ? "" : "s"}`
+        : `Updated ${queue.length - failed.length} of ${queue.length} — ${failed.length} failed`,
+      failed.map((result) => `${result.name} — ${result.error}`),
+    );
   }
 
   async function handleRemove(addon: Addon) {
@@ -291,12 +329,12 @@ export default function App() {
       const outcomes = await api.installAddonToMany(serverIds, url, channel);
       const ok = outcomes.filter((outcome) => outcome.ok).length;
       notify(
-        ok === outcomes.length ? "success" : "info",
+        ok === outcomes.length ? "success" : "warn",
         `Installed to ${ok} of ${outcomes.length} servers`,
+        outcomes
+          .filter((outcome) => !outcome.ok)
+          .map((outcome) => `${outcome.serverName} — ${outcome.message}`),
       );
-      for (const outcome of outcomes.filter((o) => !o.ok)) {
-        notify("error", `${outcome.serverName}: ${outcome.message}`);
-      }
     }
     setShowAddAddon(false);
     await refreshAddons();
@@ -351,6 +389,25 @@ export default function App() {
             onClick={() => setPage("settings")}
           >
             Settings
+          </button>
+          {/* Not a page — it opens over whatever you are looking at, because
+              the reason to read it is usually to compare it against that. */}
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-expanded={activityOpen}
+            onClick={openActivity}
+          >
+            Activity
+            {activity.unread > 0 ? (
+              <span
+                className={`count${
+                  activity.unreadProblems === "none" ? "" : ` ${activity.unreadProblems}`
+                }`}
+              >
+                {activity.unread}
+              </span>
+            ) : null}
           </button>
         </nav>
 
@@ -586,14 +643,16 @@ export default function App() {
           onDone={async (installed, failed, adopted) => {
             setTransfer(null);
             notify(
-              failed.length === 0 ? "success" : "info",
+              failed.length === 0 ? "success" : "warn",
               `Imported ${installed} addon${installed === 1 ? "" : "s"}` +
                 // Worth saying: it is the difference between an import that
                 // downloaded everything and one that downloaded nothing.
                 (adopted > 0 ? `, ${adopted} already here` : "") +
                 (failed.length > 0 ? `, ${failed.length} failed` : ""),
+              // The failures used to be a toast each — thirty bad lines meant
+              // thirty cards, none of which could be read after the fact.
+              failed,
             );
-            for (const line of failed) notify("error", line);
             await refreshAddons();
             void refreshServers();
           }}
@@ -659,20 +718,22 @@ export default function App() {
         />
       ) : null}
 
-      <div className="toasts" role="status" aria-live="polite">
-        {toasts.map((toast) => (
-          <div key={toast.id} className={`toast ${toast.kind}`}>
-            <span style={{ flex: 1 }}>{toast.text}</span>
-            <button
-              type="button"
-              aria-label="Dismiss"
-              onClick={() => setToasts((c) => c.filter((t) => t.id !== toast.id))}
-            >
-              ×
-            </button>
-          </div>
-        ))}
-      </div>
+      {activityOpen ? (
+        <ActivityDrawer
+          entries={activity.entries}
+          onClose={() => setActivityOpen(false)}
+          onClear={activity.clear}
+        />
+      ) : null}
+
+      {activityOpen ? null : (
+        <ToastStack
+          showing={activity.showing}
+          overflow={activity.overflow}
+          onDismiss={activity.dismiss}
+          onReview={openActivity}
+        />
+      )}
     </div>
   );
 }
@@ -891,7 +952,7 @@ function SettingsPage({
   appTheme,
   onTheme,
 }: {
-  notify: (kind: Toast["kind"], text: string) => void;
+  notify: Notify;
   appTheme: api.Theme;
   onTheme: (theme: api.Theme) => void;
 }) {

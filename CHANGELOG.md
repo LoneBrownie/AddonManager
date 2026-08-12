@@ -7,6 +7,33 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
+## Unreleased
+
+### Added
+- **An activity stream**, under *Activity* in the sidebar. Every message the app
+  raises goes there and stays for the session, so a notification that has been
+  and gone can still be read. It opens over whatever you are looking at rather
+  than replacing it, filters down to just the problems, and copies out as text
+  for a bug report.
+
+### Changed
+- **Anything that acts on many addons at once now says so once.** Importing a
+  list of thirty with a dozen bad URLs used to put a dozen separate messages on
+  screen, each needing its own dismissal; the same is true of *Update all* and
+  of installing to several servers. Each of those is now a single line — "6
+  imported, 4 failed" — with the individual failures folded underneath it in
+  the activity stream.
+- **Notifications no longer stay on screen until dismissed.** Errors used to,
+  because a dismissed message was gone for good. Now that everything is kept,
+  they clear themselves like the rest, and no more than three are ever stacked
+  at once.
+
+### Fixed
+- **Updating an addon no longer overwrites folders it does not own.** It could,
+  unconditionally, which was only ever meant to cover the first update after
+  adopting an addon that was already in the game folder — before the app has
+  recorded the rest of its folders. It is now limited to exactly that.
+
 ## 2.0.1 — 2026-08-12
 
 ### Added
