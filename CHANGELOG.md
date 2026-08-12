@@ -34,7 +34,7 @@ people are actually running.
 - **Open folder**, on each server row and beside the addon list, opening that
   server's `Interface/AddOns` in the file manager.
 - The **running version** at the foot of Settings.
-- A purple **highlight on Browse cards** under the cursor.
+- A purple **highlight** under the cursor on Browse cards and server rows.
 
 ## 2.0.0-beta.3 — 2026-08-12
 

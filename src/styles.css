@@ -433,29 +433,39 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   display: flex;
   flex-direction: column;
   gap: 7px;
-  /* Border and shadow only — no transform, because a card that moves under
-     the cursor makes a grid of them feel unsteady when scanning across it. */
+}
+
+/* Hover highlight, shared by the browse cards and the server rows — the two
+   places that are a set of things to pick between. Declared once so they
+   cannot drift apart.
+   Border and shadow only, no transform: something that moves under the cursor
+   makes a grid feel unsteady when scanning across it. */
+.card,
+.server-row {
   transition:
     border-color 140ms ease,
     box-shadow 140ms ease,
     background-color 140ms ease;
 }
-.card:hover {
+.card:hover,
+.server-row:hover {
   border-color: var(--accent);
   background: var(--surface-2);
-  /* The accent as a soft edge rather than a hard ring: the gold-on-violet
-     palette is already loud enough without a second bright outline. */
+  /* The accent as a soft edge rather than a hard ring: the palette is already
+     loud enough without a second bright outline. */
   box-shadow:
     0 0 0 1px var(--accent-soft),
     0 6px 18px rgb(0 0 0 / 28%);
 }
-:root[data-theme="light"] .card:hover {
+:root[data-theme="light"] .card:hover,
+:root[data-theme="light"] .server-row:hover {
   box-shadow:
     0 0 0 1px var(--accent-soft),
     0 6px 18px rgb(30 20 55 / 12%);
 }
 /* Keyboard users get the same affordance as the mouse. */
-.card:focus-within {
+.card:focus-within,
+.server-row:focus-within {
   border-color: var(--accent);
 }
 .card h4 { margin: 0; font-size: 14px; }

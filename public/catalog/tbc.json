@@ -1,1 +1,9 @@
-[]
+[
+  {
+    "id": "notplater",
+    "name": "NotPlater",
+    "description": "Advanced nameplate addon with extensive customization options.",
+    "repoUrl": "https://github.com/RichSteini/NotPlater",
+    "category": "Interface"
+  }
+]

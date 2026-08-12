@@ -18,6 +18,16 @@ That last part is not hypothetical — this used to name `main` explicitly, and
 renaming `main` to `v1-archive` would have taken Browse down for every shipped
 build.
 
+## These are not release notes
+
+Edits here reach users as soon as they land on the default branch, because the
+app fetches the lists rather than bundling them. They are not tied to a build
+and do not belong in `CHANGELOG.md`, which records what changed in a *release*.
+
+`customFolderName` is gone. V1 used it to force an install folder; V2 derives
+the folder from the `.toc` matching the server's game version, so the field did
+nothing and named the wrong folder for any version but one.
+
 ## Entry shape
 
 ```jsonc

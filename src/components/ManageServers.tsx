@@ -134,7 +134,7 @@ export function ManageServers({
         ) : (
           <div className="rows">
             {servers.map((server) => (
-              <div className="row" key={server.id}>
+              <div className="row server-row" key={server.id}>
                 <div className="row-main">
                   <div className="row-title">
                     <span

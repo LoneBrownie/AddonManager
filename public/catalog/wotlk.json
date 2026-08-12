@@ -85,8 +85,19 @@
     "name": "DragonUI",
     "description": "Modern Dragonflight-style user interface for Classic WoW with updated visuals and functionality.",
     "repoUrl": "https://github.com/NeticSoul/DragonUI",
+    "category": "Interface"
+  },
+  {
+    "id": "dragonui-newera",
+    "name": "DragonUI NewEra",
+    "description": "Downports Dragonflight-style panels to 3.3.5a — character sheet with equipment manager, spellbook, talents, professions, auction house and more.",
+    "repoUrl": "https://github.com/ghbset/DragonUI_NewEra",
     "category": "Interface",
-    "customFolderName": "DragonUI"
+    "dependencies": [
+      "dragonui",
+      "classicapi"
+    ],
+    "channel": "source"
   },
   {
     "id": "bagnon",
@@ -101,8 +112,7 @@
     "name": "NotPlater",
     "description": "Advanced nameplate addon with extensive customization options.",
     "repoUrl": "https://github.com/RichSteini/NotPlater",
-    "category": "Interface",
-    "customFolderName": "NotPlater-3.3.5"
+    "category": "Interface"
   },
   {
     "id": "WeakAuras",
