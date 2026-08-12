@@ -1,12 +1,11 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The app's own commands, plus a folder picker, an external-link opener, and the update check with the relaunch that follows it. No filesystem or HTTP permission is granted to the webview — everything goes through intent-level commands.",
+  "description": "The app's own commands, plus a folder picker and the update check with the relaunch that follows it. No filesystem, HTTP or opener permission is granted to the webview — everything goes through intent-level commands. Opening a link is one of those commands: `open_url` checks the address against the forge allowlist before handing it to the opener plugin, and the plugin's own command is deliberately not granted here, so there is no second route to it that skips the check.",
   "windows": ["main"],
   "permissions": [
     "core:default",
     "dialog:allow-open",
-    "opener:allow-open-url",
     "updater:default",
     "process:allow-restart"
   ]

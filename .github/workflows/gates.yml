@@ -88,3 +88,33 @@ jobs:
           test -f LICENSE || { echo "LICENSE missing"; exit 1; }
           grep -q "GNU GENERAL PUBLIC LICENSE" LICENSE || {
             echo "LICENSE is not the GPL text"; exit 1; }
+
+      # Everything above asks whether the code we wrote is sound. This asks the
+      # same of the code we did not write, which is most of it: an HTTP stack, a
+      # TLS implementation, a zip reader — all of them parsing bytes fetched
+      # from the internet on a user's machine. Nobody here is going to notice a
+      # RustSec advisory by reading about it, so the pipeline reads for them,
+      # and does it on the release path too rather than only on pushes.
+      #
+      # cargo-audit is fetched as a prebuilt binary and run directly, rather
+      # than through rustsec/audit-check, because that action reports through
+      # the checks API and so needs a token permission this workflow's callers
+      # do not grant it — and a reusable workflow cannot ask for more than its
+      # caller has. A plain `cargo audit` needs no token at all.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      # Vulnerabilities fail; "unmaintained" warnings do not. A Tauri dependency
+      # tree always contains a few crates nobody has touched in two years, and
+      # none of that is fixable from here — making it blocking would mean a red
+      # gate that has to be waved past, which is how a gate stops being read.
+      - name: Rust advisories
+        run: cargo audit
+
+      # Runtime dependencies only. The build and test tooling is large, noisy,
+      # and never reaches a user's machine; an advisory in it is a thing to fix
+      # in its own time rather than a reason to block a release. `--audit-level`
+      # keeps this to the ones worth stopping for.
+      - name: Frontend advisories
+        run: npm audit --omit=dev --audit-level=high

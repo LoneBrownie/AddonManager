@@ -244,19 +244,20 @@ pub fn unmet_dependencies(
 
 /// Reinstall an addon at whatever its channel currently resolves to.
 ///
-/// Unlike installing, this writes over folders the app did not create. That is
-/// not a weakening of the rule that protects hand-installed folders — it is
-/// where the rule stops applying. The refusal exists so that installing a *new*
-/// addon cannot destroy an unrelated folder that happens to share its name;
-/// nobody has said the two are the same thing. Here somebody has: this addon is
-/// already managed, the user named the repository it comes from, and they have
-/// asked for that repository to be put on disk.
+/// Folders this addon already owns are replaced without ceremony — that is what
+/// updating is. The interesting case is a folder on disk that *nothing* owns,
+/// and there this permits the write only while the addon's version is unknown,
+/// which in practice means the update immediately after adopting it.
 ///
-/// It matters most straight after adopting. Adoption records the folders that
-/// were on disk, and an addon that ships several usually has only one of them
-/// recognised — so the first update would land on the addon's own remaining
-/// folders and refuse, naming folders the user had just claimed. Those folders
-/// become recorded like the rest, so removing the addon later takes all of it.
+/// That window is where the refusal is wrong rather than protective. Adoption
+/// records the folders that were on disk, and an addon shipping several usually
+/// has only one of them recognised — so the first update lands on the addon's
+/// own remaining folders and refuses, naming folders the user had just claimed.
+/// They have named the repository those folders come from; the app simply has
+/// not caught up. After that update the folders are recorded like the rest, the
+/// version is known, and a collision means what it normally means: something
+/// unrelated is in the way and the user should be told rather than overwritten.
+/// So the licence expires the moment it has been used.
 #[tauri::command]
 pub async fn update_addon(
     state: State<'_, AppState>,
@@ -281,19 +282,24 @@ pub async fn update_addon(
             folder: None,
         })?;
 
+    // Both concessions below are for the same situation — an addon adopted from
+    // disk, whose version is therefore unknown — and both lapse as soon as it
+    // has been updated once.
+    let just_adopted = installation.installed_ref.is_unknown();
+
     let options = InstallOptions {
         channel: installation.channel,
         token: state.token(),
-        // See above: the user has already told us what this addon is and where
-        // it comes from, so its own folders are not somebody else's files.
-        overwrite_unmanaged: true,
+        // See above: the addon's own remaining folders, claimed but not yet
+        // recorded. Once it has a known version this is off again, and a
+        // collision with something unowned is reported rather than overwritten.
+        overwrite_unmanaged: just_adopted,
         // An adopted addon has a channel because a record needs one, not
         // because anybody picked it. So if the repository turns out to publish
         // no releases, taking the branch is not overriding a choice — and
         // refusing would leave the addon stuck at an unknown version forever,
-        // which is the one thing adoption exists to escape. Once updated it has
-        // a real version and this stops applying.
-        fallback_to_source: installation.installed_ref.is_unknown(),
+        // which is the one thing adoption exists to escape.
+        fallback_to_source: just_adopted,
         ..InstallOptions::default()
     };
 

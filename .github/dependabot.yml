@@ -1,0 +1,50 @@
+# Dependency updates, proposed as pull requests.
+#
+# This project has one maintainer and most of its code was written by a model,
+# so the thing most likely to go stale unnoticed is not the code but everything
+# underneath it: an HTTP stack, a zip reader and an archive extractor, all of
+# them parsing bytes fetched from the internet. `cargo audit` in the gates
+# workflow says when one of those has a known advisory; this is what turns that
+# into a diff somebody can merge.
+#
+# Weekly rather than daily, and grouped rather than one pull request per crate,
+# because a queue nobody reads is the same as no queue at all.
+
+version: 2
+
+updates:
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      rust:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "deps"
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      javascript:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    commit-message:
+      prefix: "deps"
+
+  # The workflows themselves. These run with a token and can publish releases,
+  # so a pinned action going unmaintained matters more here than a dev
+  # dependency does.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "ci"

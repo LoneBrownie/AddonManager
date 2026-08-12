@@ -134,12 +134,35 @@ pub fn extract<R: Read + Seek>(reader: R, dest: &Path, limits: Limits) -> Result
         }
 
         let mut entry = archive.by_index(index)?;
+
+        // Pass 1 checked the size the central directory *declares*. That is a
+        // number in the archive, not a fact about it: the zip crate bounds a
+        // reader by the entry's compressed length, so the decompressor will
+        // happily emit as many bytes as the compressed stream asks it to,
+        // however few it claimed. An entry declaring a kilobyte can therefore
+        // write gigabytes, and every check above would have passed. So the
+        // write is bounded too, and the declared size is held to.
+        let declared = entry.size();
+        let mut bounded = (&mut entry).take(declared.saturating_add(1));
         let mut file = std::fs::File::create(&target).map_err(|e| Error::io(&target, e))?;
-        let copied = std::io::copy(&mut entry, &mut file).map_err(|e| Error::io(&target, e))?;
+        let copied = std::io::copy(&mut bounded, &mut file).map_err(|e| Error::io(&target, e))?;
         file.flush().map_err(|e| Error::io(&target, e))?;
+
+        if copied > declared {
+            return Err(Error::ArchiveRejected(format!(
+                "entry {:?} declared {declared} bytes but contains more",
+                target.file_name().unwrap_or_default()
+            )));
+        }
 
         files_written += 1;
         bytes_written = bytes_written.saturating_add(copied);
+        if bytes_written > limits.max_total_bytes {
+            return Err(Error::ArchiveRejected(format!(
+                "extraction exceeded the limit of {} bytes",
+                limits.max_total_bytes
+            )));
+        }
 
         if is_toc(&target) {
             if let Some(parent) = target.parent() {
@@ -469,6 +492,59 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("{e}"));
         let result = extract(Cursor::new(bytes), tmp.path(), limits);
         assert!(matches!(result, Err(Error::ArchiveRejected(_))));
+    }
+
+    /// Rewrite the uncompressed size the central directory records for an
+    /// entry, leaving its data alone.
+    ///
+    /// This is what a hostile archive looks like from the inside: every number
+    /// the validation pass reads is simply untrue. The size cap, the total cap
+    /// and the ratio check are all computed from these fields, so a small
+    /// enough lie walks past all three.
+    fn lie_about_size(mut bytes: Vec<u8>, real: u32, claimed: u32) -> Vec<u8> {
+        let real = real.to_le_bytes();
+        let claimed = claimed.to_le_bytes();
+        let mut index = 0usize;
+        while index + 28 <= bytes.len() {
+            let is_central_header = bytes.get(index..index + 4) == Some(b"PK\x01\x02".as_slice());
+            if is_central_header {
+                if let Some(field) = bytes.get_mut(index + 24..index + 28) {
+                    if field == real {
+                        field.copy_from_slice(&claimed);
+                    }
+                }
+            }
+            index += 1;
+        }
+        bytes
+    }
+
+    /// The declared size is a claim, not a fact, and the checks above run on
+    /// the claim. So the write itself is bounded by it too — otherwise an entry
+    /// declaring sixteen bytes fills the disk and every limit reads as passed.
+    #[test]
+    fn an_entry_that_understates_its_size_is_cut_off_mid_write() {
+        let payload = vec![0u8; 4 * 1024 * 1024];
+        let bytes = zip_with(&[
+            ("A/A.toc", b"## Interface: 30300\n"),
+            ("A/big.bin", &payload),
+        ]);
+        let bytes = lie_about_size(bytes, 4 * 1024 * 1024, 16);
+
+        let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("{e}"));
+        let result = extract(Cursor::new(bytes), tmp.path(), Limits::default());
+
+        assert!(
+            matches!(result, Err(Error::ArchiveRejected(_))),
+            "an entry longer than it claims must be rejected, got {result:?}"
+        );
+        let written = std::fs::metadata(tmp.path().join("A/big.bin"))
+            .map(|meta| meta.len())
+            .unwrap_or(0);
+        assert!(
+            written <= 17,
+            "the write must stop at the declared size, not run to four megabytes ({written} written)"
+        );
     }
 
     #[test]
