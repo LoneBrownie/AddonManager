@@ -216,6 +216,15 @@ export async function mockInvoke<T>(
       return undefined as T;
     }
 
+    case "repoint_server": {
+      const server = servers.find((s) => s.id === args?.["id"]);
+      if (!server) throw { kind: "unknownServer", message: "no such server", folder: null };
+      server.path = String(args?.["path"] ?? server.path);
+      server.availability = "ready";
+      server.canInstall = true;
+      return { ...server } as T;
+    }
+
     case "forget_server": {
       const index = servers.findIndex((s) => s.id === args?.["id"]);
       if (index >= 0) servers.splice(index, 1);

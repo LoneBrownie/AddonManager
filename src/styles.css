@@ -318,6 +318,13 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 }
 .row-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
+/* A server whose folder is not reachable. Its addons are the last known state,
+   not something that can be acted on, and should read that way at a glance. */
+.row.offline {
+  opacity: 0.5;
+  filter: saturate(0.5);
+}
+
 /* An explanation attached to a row, for a state the row cannot fix by itself.
    Muted like .row-sub, but wrapping — it is prose, not a path. */
 /* The version at the foot of Settings. Findable when needed, ignorable

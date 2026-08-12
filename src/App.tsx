@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import logo from "./img/Logo.png";
 import * as api from "./api";
 import type { Addon, CatalogEntry, Server } from "./api";
-import { AddonList, actionable, installBlockedBecause } from "./components/AddonList";
+import {
+  AddonList,
+  ServerBlockedBanner,
+  actionable,
+  installBlockedBecause,
+} from "./components/AddonList";
 import { AppUpdate } from "./components/AppUpdate";
 import { ServerSwitcher } from "./components/ServerSwitcher";
 import { AddAddonDialog, AddServerDialog, ConfirmDialog } from "./components/dialogs";
@@ -57,6 +62,16 @@ export default function App() {
 
   useEffect(() => {
     void refreshServers();
+  }, [refreshServers]);
+
+  // Availability is worked out when the server list is read, so a drive that
+  // came back stayed "offline" until something else happened to reload it —
+  // renaming the server was the only reliable way to make it notice. Coming
+  // back to the window is exactly when someone has just plugged it in.
+  useEffect(() => {
+    const recheck = () => void refreshServers();
+    window.addEventListener("focus", recheck);
+    return () => window.removeEventListener("focus", recheck);
   }, [refreshServers]);
 
   // Both halves of a server's state, always together. Which dependencies are
@@ -423,6 +438,7 @@ export default function App() {
                   }}
                   onTogglePin={handleTogglePin}
                   onToggleChannel={handleToggleChannel}
+                  onRecheck={() => void refreshServers()}
                   onOpen={(url) => void api.openUrl(url)}
                   onAdd={() => setShowAddAddon(true)}
                 />
@@ -685,12 +701,10 @@ function BrowsePage({
               </select>
             </div>
 
-            {installBlockedBecause(server) ? (
-              <div className="banner">
-                <strong>Read-only.</strong> {installBlockedBecause(server)}. The
-                list is shown so you can see what is available.
-              </div>
-            ) : null}
+            <ServerBlockedBanner
+              server={server}
+              trailing="The list is shown so you can see what is available."
+            />
 
             {shown.length === 0 ? (
               <div className="empty">

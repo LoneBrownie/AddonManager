@@ -34,6 +34,50 @@ export function installBlockedBecause(server: Server | null): string | null {
   return null;
 }
 
+/** True when the folder cannot be reached at all — an unplugged drive. */
+export function unreachable(server: Server | null): boolean {
+  return server?.availability === "unavailable";
+}
+
+/**
+ * The banner both pages show when a server cannot be written to.
+ *
+ * Shared so the two cannot describe the same state differently — an offline
+ * server was being announced as read-only, which is a different problem with a
+ * different fix.
+ */
+export function ServerBlockedBanner({
+  server,
+  trailing,
+  onRecheck,
+}: {
+  server: Server | null;
+  trailing: string;
+  onRecheck?: () => void;
+}) {
+  if (!server || !installBlockedBecause(server)) return null;
+  const offline = unreachable(server);
+  // Its own wording rather than the tooltip's: a tooltip has to name the
+  // remedy in one line, a banner has room to and would otherwise say it twice.
+  return (
+    <div className={`banner${offline ? " bad" : ""}`}>
+      <strong>{offline ? "Not reachable." : "Read-only."}</strong>{" "}
+      {offline
+        ? `${server.name} is offline.`
+        : `${server.name} can’t be written to, due to admin restrictions.`}{" "}
+      {trailing}
+      {onRecheck ? (
+        <>
+          {" "}
+          <button type="button" className="btn small" onClick={onRecheck}>
+            Check again
+          </button>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 export function actionable(addon: Addon): boolean {
   if (addon.pinned) return false;
   // A missing addon is offered a reinstall. Not for a pinned one: reinstalling
@@ -52,6 +96,7 @@ export function AddonList({
   onToggleChannel,
   onOpen,
   onAdd,
+  onRecheck,
 }: {
   server: Server;
   addons: Addon[];
@@ -62,6 +107,7 @@ export function AddonList({
   onToggleChannel: (addon: Addon) => void;
   onOpen: (url: string) => void;
   onAdd: () => void;
+  onRecheck: () => void;
 }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("name");
@@ -91,32 +137,45 @@ export function AddonList({
     });
   }, [addons, query, sort, filter]);
 
-  if (server.availability === "unavailable") {
-    return (
-      <div className="banner bad">
-        <strong>{server.name} is not reachable.</strong> If it lives on an external
-        drive, reconnect it. Your addon list has been kept — nothing was removed.
-      </div>
-    );
-  }
+  const banner = (
+    <ServerBlockedBanner
+      server={server}
+      onRecheck={onRecheck}
+      trailing={
+        unreachable(server)
+          ? "If it lives on an external drive, reconnect it. The addons below are the last known state — nothing has been removed."
+          : "Existing addons are listed, but they can’t be changed."
+      }
+    />
+  );
 
   if (addons.length === 0) {
     return (
+      <>
+      {banner}
       <div className="empty">
         <h3>No addons here yet</h3>
         <p>
           Paste a GitHub or GitLab URL to install one, or browse the curated list
           for {server.versionLabel}.
         </p>
-        <button type="button" className="btn primary" onClick={onAdd}>
+        <button
+          type="button"
+          className="btn primary"
+          onClick={onAdd}
+          disabled={installBlockedBecause(server) !== null}
+          title={installBlockedBecause(server) ?? undefined}
+        >
           Add an addon
         </button>
       </div>
+      </>
     );
   }
 
   return (
     <>
+      {banner}
       <div className="searchbar">
         <input
           className="input"
@@ -148,13 +207,6 @@ export function AddonList({
         </select>
       </div>
 
-      {installBlockedBecause(server) ? (
-        <div className="banner">
-          <strong>Read-only.</strong> {installBlockedBecause(server)}. Existing
-          addons are listed, but they can’t be changed.
-        </div>
-      ) : null}
-
       {visible.length === 0 ? (
         <div className="empty">
           <h3>Nothing matches</h3>
@@ -173,6 +225,7 @@ export function AddonList({
               onToggleChannel={() => onToggleChannel(addon)}
               onOpen={() => onOpen(addon.sourceUrl)}
               blocked={installBlockedBecause(server)}
+              offline={unreachable(server)}
             />
           ))}
         </div>
@@ -190,6 +243,7 @@ function AddonRow({
   onToggleChannel,
   onOpen,
   blocked,
+  offline,
 }: {
   addon: Addon;
   busy: boolean;
@@ -199,9 +253,10 @@ function AddonRow({
   onToggleChannel: () => void;
   onOpen: () => void;
   blocked: string | null;
+  offline: boolean;
 }) {
   return (
-    <div className={`row${actionable(addon) ? " updatable" : ""}`}>
+    <div className={`row${actionable(addon) ? " updatable" : ""}${offline ? " offline" : ""}`}>
       <div className="row-main">
         <div className="row-title">
           <strong>{addon.name}</strong>
@@ -271,11 +326,13 @@ function AddonRow({
           type="button"
           className="btn small"
           onClick={onTogglePin}
-          disabled={busy}
+          disabled={busy || offline}
           title={
-            addon.pinned
+            blocked && offline
+              ? blocked
+              : addon.pinned
               ? "Resume checking this addon for updates"
-              : "Keep this version and stop checking for updates"
+                : "Keep this version and stop checking for updates"
           }
         >
           {addon.pinned ? "Unpin" : "Pin"}
@@ -284,15 +341,24 @@ function AddonRow({
           type="button"
           className="btn small"
           onClick={onToggleChannel}
-          disabled={busy}
-          title="Switch between tagged releases and the latest source build"
+          disabled={busy || offline}
+          title={
+            (offline ? blocked : null) ??
+            "Switch between tagged releases and the latest source build"
+          }
         >
           {addon.channel === "release" ? "Use source" : "Use releases"}
         </button>
         <button type="button" className="btn small" onClick={onOpen} disabled={busy}>
           Open page
         </button>
-        <button type="button" className="btn small danger" onClick={onRemove} disabled={busy}>
+        <button
+          type="button"
+          className="btn small danger"
+          onClick={onRemove}
+          disabled={busy || offline}
+          title={offline ? (blocked ?? undefined) : undefined}
+        >
           Remove
         </button>
       </div>

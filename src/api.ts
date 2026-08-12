@@ -170,6 +170,9 @@ export const renameServer = (id: string, name: string) =>
 export const setServerAccent = (id: string, accent: string | null) =>
   call<void>("set_server_accent", { id, accent });
 export const forgetServer = (id: string) => call<void>("forget_server", { id });
+/** Point a server at a different folder, keeping its addons. */
+export const repointServer = (id: string, path: string, force = false) =>
+  call<Server>("repoint_server", { id, path, force });
 export const setSelectedServer = (id: string | null) =>
   call<void>("set_selected_server", { id });
 export const scanExistingAddons = (serverId: string) =>

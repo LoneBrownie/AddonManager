@@ -125,6 +125,36 @@ pub fn copy_addon_set(
         .collect())
 }
 
+/// Point an existing server at a different folder.
+///
+/// For a game that moved or a drive that changed letter. Keeps the server's
+/// name, colour and every addon recorded against it — the alternative,
+/// forgetting and re-adding, loses all of that.
+#[tauri::command]
+pub fn repoint_server(
+    state: State<'_, AppState>,
+    id: String,
+    path: String,
+    force: Option<bool>,
+) -> CommandResult<ServerDto> {
+    let path = PathBuf::from(path);
+    let options = AddOptions {
+        force: force.unwrap_or(false),
+    };
+    let server = state.mutate_store(|store| servers::repoint(store, &id, &path, &options))?;
+
+    let store = state.snapshot()?;
+    servers::summaries(&store)
+        .into_iter()
+        .find(|summary| summary.server.id == server.id)
+        .map(ServerDto::from)
+        .ok_or_else(|| CommandError {
+            kind: "unexpected".into(),
+            message: "the server moved but could not be read back".into(),
+            folder: None,
+        })
+}
+
 /// Open a server's `Interface/AddOns` folder in the system file manager.
 ///
 /// The folder itself, not any addon inside it — the point is to get at the

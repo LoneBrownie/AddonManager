@@ -58,6 +58,35 @@ export function ManageServers({
   const [forgetting, setForgetting] = useState<Server | null>(null);
   const [copying, setCopying] = useState<Server | null>(null);
 
+  /**
+   * Point a server at a different folder.
+   *
+   * Separate from forget-and-re-add because that loses every addon recorded
+   * against it — which is the whole reason a moved game needs this.
+   */
+  async function repoint(server: Server) {
+    const picked = await api.pickFolder();
+    if (!picked) return;
+    try {
+      await api.repointServer(server.id, picked);
+      await onChanged();
+      notify("success", `${server.name} now points at ${picked}`);
+    } catch (error) {
+      // A folder that does not look like a game directory is refused; offer
+      // the same override the add flow has rather than a dead end.
+      const message = api.errorMessage(error);
+      if (window.confirm(`${message}\n\nUse it anyway?`)) {
+        try {
+          await api.repointServer(server.id, picked, true);
+          await onChanged();
+          notify("success", `${server.name} now points at ${picked}`);
+        } catch (retry) {
+          notify("error", api.errorMessage(retry));
+        }
+      }
+    }
+  }
+
   async function saveName(server: Server) {
     const name = draftName.trim();
     setEditing(null);
@@ -190,6 +219,14 @@ export function ManageServers({
                     }}
                   >
                     Rename
+                  </button>
+                  <button
+                    type="button"
+                    className="btn small"
+                    onClick={() => void repoint(server)}
+                    title="Point this server at a different folder, keeping its addons"
+                  >
+                    Change folder
                   </button>
                   <button
                     type="button"

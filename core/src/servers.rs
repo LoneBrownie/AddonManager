@@ -125,6 +125,60 @@ pub struct AddOptions {
 /// Rejects a folder that is already registered, since two entries pointing at
 /// one AddOns directory would let the same addon be "installed twice" and
 /// fight over the same folders.
+/// Point an existing server at a different folder.
+///
+/// For a game that moved or a drive that changed letter. The server keeps its
+/// id, name, colour and — the point of the exercise — every addon recorded
+/// against it, so this is not "forget and re-add".
+///
+/// Validated exactly as adding is: a folder that does not look like a game
+/// directory is refused unless forced, and a folder already registered to
+/// another server is refused outright, since two servers sharing one
+/// `Interface/AddOns` would each claim the other's addons.
+pub fn repoint(
+    store: &mut Store,
+    server_id: &str,
+    path: &Path,
+    options: &AddOptions,
+) -> Result<Server> {
+    if !store.servers.iter().any(|s| s.id == server_id) {
+        return Err(Error::UnknownServer(server_id.to_string()));
+    }
+
+    if !options.force {
+        if let PathVerdict::Rejected { .. } = inspect_path(path) {
+            return Err(Error::NotAWowDirectory {
+                path: path.to_path_buf(),
+                reason: "no WoW executable or recognisable game folders found",
+            });
+        }
+    }
+
+    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    let taken = store.servers.iter().any(|existing| {
+        existing.id != server_id
+            && existing
+                .path
+                .canonicalize()
+                .unwrap_or_else(|_| existing.path.clone())
+                == canonical
+    });
+    if taken {
+        return Err(Error::NotAWowDirectory {
+            path: path.to_path_buf(),
+            reason: "another server already points at this folder",
+        });
+    }
+
+    let server = store
+        .servers
+        .iter_mut()
+        .find(|s| s.id == server_id)
+        .ok_or_else(|| Error::UnknownServer(server_id.to_string()))?;
+    server.path = canonical;
+    Ok(server.clone())
+}
+
 pub fn add(
     store: &mut Store,
     name: &str,
@@ -582,5 +636,84 @@ mod tests {
 
         assert!(store.servers.is_empty());
         assert!(addon_dir.is_dir(), "files on disk must survive");
+    }
+}
+
+#[cfg(test)]
+mod repoint_tests {
+    use super::*;
+    use crate::model::{Addon, InstalledAddon, Source, Store};
+    use crate::testing::fake_wow_dir;
+    use crate::version::Ref;
+
+    fn store_with_server(path: &Path) -> (Store, String) {
+        let mut store = Store::default();
+        let server = Server::new("Epoch", path, GameVersion::Wotlk);
+        let id = server.id.clone();
+        store.servers.push(server);
+        store.addons.push(Addon::new(
+            Source::Github {
+                owner: "o".into(),
+                repo: "r".into(),
+            },
+            "R",
+        ));
+        store.installed.push(InstalledAddon {
+            server_id: id.clone(),
+            addon_id: "github:o/r".into(),
+            channel: crate::model::Channel::Release,
+            pinned: false,
+            installed_ref: Ref::release("v1"),
+            archive_sha256: None,
+            installed_at: String::new(),
+            folders: vec!["R".into()],
+            version_matches: true,
+        });
+        (store, id)
+    }
+
+    /// The whole point: a moved game keeps its addons. Forgetting and re-adding
+    /// would lose every record of what is installed.
+    #[test]
+    fn repointing_keeps_the_servers_identity_and_its_addons() {
+        let old = tempfile::tempdir().unwrap();
+        let new = tempfile::tempdir().unwrap();
+        fake_wow_dir(old.path()).unwrap();
+        fake_wow_dir(new.path()).unwrap();
+
+        let (mut store, id) = store_with_server(old.path());
+        let moved = repoint(&mut store, &id, new.path(), &AddOptions::default()).unwrap();
+
+        assert_eq!(moved.id, id, "the id is stable");
+        assert_eq!(moved.name, "Epoch");
+        assert_eq!(store.installed_for(&id).len(), 1, "addons come with it");
+        assert!(store.server(&id).unwrap().is_available());
+    }
+
+    #[test]
+    fn repointing_at_a_folder_another_server_uses_is_refused() {
+        let a = tempfile::tempdir().unwrap();
+        let b = tempfile::tempdir().unwrap();
+        fake_wow_dir(a.path()).unwrap();
+        fake_wow_dir(b.path()).unwrap();
+
+        let (mut store, id) = store_with_server(a.path());
+        let other = Server::new("Other", b.path(), GameVersion::Wotlk);
+        store.servers.push(other);
+
+        // Two servers sharing one AddOns folder would each claim the other's
+        // addons, so this is refused rather than merged.
+        assert!(repoint(&mut store, &id, b.path(), &AddOptions::default()).is_err());
+    }
+
+    #[test]
+    fn a_folder_that_is_not_a_game_directory_is_refused_unless_forced() {
+        let old = tempfile::tempdir().unwrap();
+        let empty = tempfile::tempdir().unwrap();
+        fake_wow_dir(old.path()).unwrap();
+
+        let (mut store, id) = store_with_server(old.path());
+        assert!(repoint(&mut store, &id, empty.path(), &AddOptions::default()).is_err());
+        assert!(repoint(&mut store, &id, empty.path(), &AddOptions { force: true }).is_ok());
     }
 }

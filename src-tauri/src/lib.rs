@@ -87,6 +87,7 @@ pub fn run() {
             commands::servers::set_server_version,
             commands::servers::forget_server,
             commands::servers::copy_addon_set,
+            commands::servers::repoint_server,
             commands::servers::open_server_folder,
             commands::servers::set_selected_server,
             commands::servers::scan_existing_addons,
