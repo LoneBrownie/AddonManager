@@ -282,6 +282,20 @@ pub fn unmet_dependencies(
 }
 
 /// Reinstall an addon at whatever its channel currently resolves to.
+///
+/// Unlike installing, this writes over folders the app did not create. That is
+/// not a weakening of the rule that protects hand-installed folders — it is
+/// where the rule stops applying. The refusal exists so that installing a *new*
+/// addon cannot destroy an unrelated folder that happens to share its name;
+/// nobody has said the two are the same thing. Here somebody has: this addon is
+/// already managed, the user named the repository it comes from, and they have
+/// asked for that repository to be put on disk.
+///
+/// It matters most straight after adopting. Adoption records the folders that
+/// were on disk, and an addon that ships several usually has only one of them
+/// recognised — so the first update would land on the addon's own remaining
+/// folders and refuse, naming folders the user had just claimed. Those folders
+/// become recorded like the rest, so removing the addon later takes all of it.
 #[tauri::command]
 pub async fn update_addon(
     state: State<'_, AppState>,
@@ -309,9 +323,16 @@ pub async fn update_addon(
     let options = InstallOptions {
         channel: installation.channel,
         token: state.token(),
-        // Updating replaces folders this app already owns, so no extra consent
-        // is needed — plan_folders classifies them as ReplaceOwn.
-        overwrite_unmanaged: false,
+        // See above: the user has already told us what this addon is and where
+        // it comes from, so its own folders are not somebody else's files.
+        overwrite_unmanaged: true,
+        // An adopted addon has a channel because a record needs one, not
+        // because anybody picked it. So if the repository turns out to publish
+        // no releases, taking the branch is not overriding a choice — and
+        // refusing would leave the addon stuck at an unknown version forever,
+        // which is the one thing adoption exists to escape. Once updated it has
+        // a real version and this stops applying.
+        fallback_to_source: installation.installed_ref.is_unknown(),
         ..InstallOptions::default()
     };
 

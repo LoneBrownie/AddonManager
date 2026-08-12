@@ -412,6 +412,116 @@ async fn takes_over_an_addon_already_on_disk_instead_of_reinstalling_it() {
     );
 }
 
+/// Updating an adopted addon finishes the job adoption started.
+///
+/// An addon that ships several folders is usually recognised by one of them, so
+/// the rest are still sitting there unowned. Refusing to write over those would
+/// name folders the user had just claimed and leave the addon permanently stuck
+/// at an unknown version — which is why `update_addon` overwrites and this test
+/// exists to pin the shape it has to survive.
+#[tokio::test]
+async fn updating_an_adopted_addon_takes_over_the_rest_of_its_folders() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    // On disk by hand: the main folder and one of its modules.
+    let addons = tmp.path().join("Interface").join("AddOns");
+    for folder in ["Skada", "Skada_Damage"] {
+        std::fs::create_dir_all(addons.join(folder)).unwrap();
+        std::fs::write(
+            addons.join(folder).join(format!("{folder}.toc")),
+            b"## Interface: 30300\n",
+        )
+        .unwrap();
+        std::fs::write(addons.join(folder).join("old.lua"), b"hand installed").unwrap();
+    }
+
+    // Adopted knowing only about the main folder — the case the list leaves.
+    store.upsert_installation(bam_core::model::InstalledAddon {
+        server_id: server_id.clone(),
+        addon_id: "github:o/r".into(),
+        channel: Channel::Release,
+        pinned: false,
+        installed_ref: Ref::Unknown,
+        folders: vec!["Skada".into()],
+        archive_sha256: None,
+        installed_at: "0".into(),
+        version_matches: true,
+    });
+    store.addons.push(bam_core::model::Addon::new(source(), "Skada".to_string()));
+
+    let client = forge_serving(
+        "v1.9.0",
+        zip_from(&[
+            ("Skada/Skada.toc", b"## Interface: 30300\n"),
+            ("Skada_Damage/Skada_Damage.toc", b"## Interface: 30300\n"),
+        ]),
+    );
+
+    // What `update_addon` passes: the addon is already managed and the user
+    // named its repository, so its own folders are not somebody else's files.
+    let options = InstallOptions {
+        overwrite_unmanaged: true,
+        ..InstallOptions::default()
+    };
+    let updated = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &options,
+        work.path(),
+    )
+    .await
+    .expect("updating an adopted addon must not be blocked by its own folders");
+
+    assert_eq!(
+        updated.installed_ref.display(),
+        "v1.9.0",
+        "no longer an unknown version"
+    );
+    assert_eq!(
+        updated.folders,
+        vec!["Skada".to_string(), "Skada_Damage".to_string()],
+        "the module is recorded too, so removing the addon later takes all of it"
+    );
+    assert!(!addons.join("Skada_Damage/old.lua").exists(), "replaced");
+    assert!(addons.join("Skada_Damage/Skada_Damage.toc").is_file());
+}
+
+/// Installing something new is still refused, which is the case the rule is
+/// actually for: nobody has said the colliding folder is the same addon.
+#[tokio::test]
+async fn a_fresh_install_still_refuses_to_write_over_a_hand_installed_folder() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let addons = tmp.path().join("Interface").join("AddOns");
+    std::fs::create_dir_all(addons.join("MyAddon")).unwrap();
+    std::fs::write(addons.join("MyAddon/precious.lua"), b"user data").unwrap();
+
+    let client = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+    let result = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await;
+
+    assert!(matches!(result, Err(Error::UnmanagedCollision { .. })));
+    assert_eq!(
+        std::fs::read_to_string(addons.join("MyAddon/precious.lua")).unwrap(),
+        "user data"
+    );
+}
+
 /// Adoption is opt-in too — the default is still the refusal that stops the app
 /// destroying a folder it did not create.
 #[tokio::test]

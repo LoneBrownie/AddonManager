@@ -7,6 +7,21 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
+## 2.0.0-beta.6 — unreleased
+
+### Fixed
+- **Updating an adopted addon is no longer blocked by its own folders.** An
+  addon that ships several folders is usually recognised by one of them, so the
+  rest were still unclaimed — and the update then refused to write over folders
+  you had just told it about. Updating now writes over them and records them, so
+  removing the addon later takes all of it. Installing something *new* still
+  refuses, which is the case that rule is actually for: there, nothing has said
+  the colliding folder is the same addon.
+- **An adopted addon whose repository has no releases can be updated.** Adoption
+  gives an addon a channel because a record needs one, not because anyone chose
+  it, so the first update falls back to the default branch instead of telling
+  you to go and switch a channel you never set.
+
 ## 2.0.0-beta.5 — 2026-08-12
 
 ### Fixed
