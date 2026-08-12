@@ -703,3 +703,151 @@ async fn a_cancelled_check_stops_issuing_requests() {
         "and no request is issued at all"
     );
 }
+
+/// NotPlater, end to end: one folder carrying a manifest per game version, a
+/// bundled library that ships its own `.toc`, and a server that decides which
+/// of the two manifests the client will open.
+///
+/// The repository *is* the addon — there is no inner folder — so a GitHub
+/// archive extracts as `NotPlater-<ref>`, which matches neither manifest and
+/// neither the repository name. That is what used to send the old rule to its
+/// alphabetical last resort and pick the 2.4.3 manifest on every server.
+#[tokio::test]
+async fn a_two_manifest_addon_lands_in_the_folder_its_server_needs() {
+    async fn install_to(
+        version: GameVersion,
+    ) -> (tempfile::TempDir, bam_core::model::InstalledAddon) {
+        let tmp = tempfile::tempdir().unwrap();
+        let work = tempfile::tempdir().unwrap();
+        let mut store = Store::default();
+        fake_wow_dir(tmp.path()).expect("create fake wow dir");
+        let server = Server::new("Server", tmp.path(), version);
+        let server_id = server.id.clone();
+        store.servers.push(server);
+
+        let zip = zip_from(&[
+            (
+                "NotPlater-3.2.4/NotPlater-2.4.3.toc",
+                b"## Interface: 20400\n",
+            ),
+            (
+                "NotPlater-3.2.4/NotPlater-3.3.5.toc",
+                b"## Interface: 30300\n",
+            ),
+            ("NotPlater-3.2.4/NotPlater.lua", b"-- code\n"),
+            (
+                "NotPlater-3.2.4/libs/LibStub/LibStub.toc",
+                b"## Interface: 30300\n",
+            ),
+            ("NotPlater-3.2.4/libs/LibStub/LibStub.lua", b"-- lib\n"),
+        ]);
+
+        let installed = install::install(
+            &forge_serving("v3.2.4", zip),
+            &mut store,
+            &server_id,
+            &source(),
+            &InstallOptions::default(),
+            work.path(),
+        )
+        .await
+        .expect("install should succeed");
+
+        (tmp, installed)
+    }
+
+    // --- WotLK ---
+    let (tmp, installed) = install_to(GameVersion::Wotlk).await;
+    let addons = tmp.path().join("Interface").join("AddOns");
+
+    assert_eq!(installed.folders, vec!["NotPlater-3.3.5".to_string()]);
+    assert!(
+        addons.join("NotPlater-3.3.5/NotPlater-3.3.5.toc").is_file(),
+        "the folder name must equal the manifest the client opens"
+    );
+    assert!(
+        addons.join("NotPlater-3.3.5/NotPlater-2.4.3.toc").is_file(),
+        "the other manifest comes along, inert"
+    );
+    assert!(
+        installed.version_matches,
+        "a 2.4.3 manifest sitting beside the 3.3.5 one is not a version mismatch: \
+         the client never opens it"
+    );
+
+    // The bundled library stays where the addon expects it, and does not become
+    // an addon in its own right.
+    assert!(
+        !addons.join("LibStub").exists(),
+        "a vendored library must not be installed as a sibling addon"
+    );
+    assert!(addons
+        .join("NotPlater-3.3.5/libs/LibStub/LibStub.lua")
+        .is_file());
+
+    // --- the same archive, a TBC server ---
+    let (tbc_tmp, tbc_installed) = install_to(GameVersion::Tbc).await;
+    assert_eq!(tbc_installed.folders, vec!["NotPlater-2.4.3".to_string()]);
+    assert!(tbc_tmp
+        .path()
+        .join("Interface/AddOns/NotPlater-2.4.3/NotPlater-2.4.3.toc")
+        .is_file());
+    assert!(
+        tbc_installed.version_matches,
+        "and it is a correct install there too"
+    );
+}
+
+/// An addon that changes its folder set between versions must not leave the old
+/// folders behind. Correcting the folder-name rule moves existing installs, so
+/// without this an updated NotPlater would sit next to its former self and the
+/// game would load both.
+#[tokio::test]
+async fn updating_removes_folders_the_addon_no_longer_installs() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+    let addons = tmp.path().join("Interface").join("AddOns");
+
+    // v1 ships two folders.
+    let v1 = zip_from(&[
+        ("Repo-1/Thing/Thing.toc", b"## Interface: 30300\n"),
+        (
+            "Repo-1/Thing_Extra/Thing_Extra.toc",
+            b"## Interface: 30300\n",
+        ),
+    ]);
+    install::install(
+        &forge_serving("v1.0.0", v1),
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("first install");
+    assert!(addons.join("Thing").is_dir());
+    assert!(addons.join("Thing_Extra").is_dir());
+
+    // v2 drops the second one.
+    let v2 = zip_from(&[("Repo-2/Thing/Thing.toc", b"## Interface: 30300\n")]);
+    let updated = install::install(
+        &forge_serving("v2.0.0", v2),
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("update");
+
+    assert_eq!(updated.folders, vec!["Thing".to_string()]);
+    assert!(addons.join("Thing").is_dir(), "the surviving folder stays");
+    assert!(
+        !addons.join("Thing_Extra").exists(),
+        "the folder this addon no longer installs must be gone, not orphaned"
+    );
+}

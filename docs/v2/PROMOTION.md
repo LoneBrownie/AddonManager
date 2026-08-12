@@ -77,11 +77,11 @@ The one thing no test here can substitute for. On a real machine:
 - [ ] Import a V1 export into a fresh server and confirm the set installs.
 - [ ] Import an existing hand-installed folder.
 - [ ] Confirm a second server gets its own addons and the first is untouched.
-- [ ] **Test `customFolderName`** — see the open question in
-      [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md). Install `notplater` and
-      confirm the game loads it from the folder V2 chooses. V1 forced
-      `NotPlater-3.3.5`; V2 derives the name from the `.toc`. If the game needs
-      the suffixed name, the override has to come back before release.
+- [ ] **Confirm NotPlater loads.** It ships a manifest per game version, and
+      the folder name is now derived from whichever one matches the server —
+      `NotPlater-3.3.5` on WotLK. Covered by an end-to-end engine test, but the
+      one thing that test cannot do is watch the game load it. Check DBM too:
+      its per-raid modules exercise the same multi-folder path.
 
 This is what the beta is *for*, so it can be done with real users rather than
 alone.

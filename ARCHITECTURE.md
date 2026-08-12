@@ -168,27 +168,40 @@ the author regardless of tooling.
 
 ---
 
-## Open question: `customFolderName`
+## Resolved: folder names are chosen per game version
 
-**Verify before reimplementing.** V1's curated list has a `customFolderName`
-field that forced an addon's install folder name. Two entries use it:
+V1's curated list had a `customFolderName` field forcing an addon's install
+folder name, used by two entries — `dragonui` (`DragonUI`) and `notplater`
+(`NotPlater-3.3.5`). The open question was whether V2 needed it back.
 
-| Entry | Forced name |
-|---|---|
-| `dragonui` | `DragonUI` |
-| `notplater` | `NotPlater-3.3.5` |
+**It does not, and the override would have been the wrong shape anyway.**
 
-V2 ignores it and derives folder names from `.toc` base names instead, which is
-correct for the overwhelming majority of addons and is what removed V1's
-folder-name guessing. But it is a **behaviour change**, and `NotPlater-3.3.5`
-looks like a case where the two disagree: a `NotPlater.toc` would install to
-`NotPlater`.
+NotPlater ships two manifests in one folder, `NotPlater-2.4.3.toc` and
+`NotPlater-3.3.5.toc`. These clients load `<Folder>/<Folder>.toc` and nothing
+else — flavour-suffixed manifests are a much later retail and Classic feature —
+so the folder has to be named after whichever manifest the client should open.
+That is `NotPlater-3.3.5` on a WotLK server and `NotPlater-2.4.3` on a TBC one.
 
-Before adding the override back, install both addons on a real client and check
-whether the game loads them from the folder V2 chooses. The override may have
-been added to V1 for a reason that no longer applies, or for one that still
-does — that is what needs establishing. If it is needed, it belongs as an
-explicit per-entry escape hatch, not as a general mechanism.
+A `customFolderName` is a single value per entry. It cannot be right for both,
+and V2's whole premise is several servers at once. So the name is derived from
+the target server's game version instead: prefer the `.toc` declaring that
+interface, then one whose filename names that flavour, then one making no claim,
+with deterministic tie-breaks after that. The folder is that file's full stem,
+suffix included.
+
+Consequences worth knowing:
+
+- A flavour suffix is now **kept**, not stripped. `MyAddon_Wrath.toc` installs to
+  `MyAddon_Wrath/`, because `MyAddon/` would leave the client looking for a
+  `MyAddon.toc` that does not exist, and the addon would silently not load.
+- The version warning is judged on the chosen manifest alone. A 2.4.3 manifest
+  sitting beside a 3.3.5 one is not a mismatch; the client never opens it.
+- Correcting the rule moves existing installs, so an install now removes folders
+  the addon previously owned and no longer does. Otherwise the old folder — which
+  still contains a manifest matching its own name — would load alongside the new
+  one.
+
+`dragonui` needs nothing special: it ships a single `DragonUI.toc`.
 
 ## Not yet built
 

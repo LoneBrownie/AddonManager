@@ -138,32 +138,45 @@ pub async fn install(
     // --- decide the destination folder names ---
     let addon_id = source.id();
     let mut sources_and_targets: Vec<(PathBuf, String)> = Vec::new();
+    // The manifest each folder will actually load, kept so the version warning
+    // is judged on that file rather than on every file present. An addon
+    // shipping a 2.4.3 manifest beside its 3.3.5 one is not "for the wrong
+    // version" — the client never opens the other one.
+    let mut chosen_tocs: Vec<toc::TocData> = Vec::new();
+
     for relative in &extracted.addon_dirs {
         let source_dir = unpacked.join(relative);
         let extracted_name = relative
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or_default();
-        let toc_names = archive::toc_file_names(&source_dir);
 
-        // The folder name WoW requires is the base name of the .toc — a lookup,
-        // not the heuristic pile V1 used.
-        let target = toc::canonical_addon_name(&toc_names, extracted_name, source.repo_name())
+        // Read from the staged copy, before anything reaches the game folder.
+        let tocs: Vec<toc::TocFile> = archive::toc_file_names(&source_dir)
+            .into_iter()
+            .map(|file_name| {
+                let data = std::fs::read_to_string(source_dir.join(&file_name))
+                    .map(|contents| toc::parse(&contents))
+                    .unwrap_or_default();
+                toc::TocFile { file_name, data }
+            })
+            .collect();
+
+        // The folder name WoW requires is the name of the .toc it will open,
+        // and which one that is depends on the server's version — a lookup, not
+        // the heuristic pile V1 used.
+        let chosen = toc::choose_toc(&tocs, server.version, extracted_name, source.repo_name());
+        let target = chosen
+            .and_then(|toc| toc.stem())
+            .map(str::to_string)
             .unwrap_or_else(|| extracted_name.to_string());
 
+        chosen_tocs.push(chosen.map(|toc| toc.data.clone()).unwrap_or_default());
         paths::validate_component(&target)?;
         sources_and_targets.push((source_dir, target));
     }
 
-    // Does this addon claim to support the server's game version? Read from the
-    // staged files, before anything is copied into the game folder.
-    let version_matches = sources_and_targets.iter().all(|(dir, _)| {
-        archive::toc_file_names(dir)
-            .iter()
-            .filter_map(|name| std::fs::read_to_string(dir.join(name)).ok())
-            .map(|contents| toc::parse(&contents))
-            .all(|parsed| parsed.supports(server.version))
-    });
+    let version_matches = chosen_tocs.iter().all(|data| data.supports(server.version));
 
     if sources_and_targets.is_empty() {
         return Err(Error::NoAddonFolders);
@@ -196,6 +209,38 @@ pub async fn install(
             std::fs::remove_dir_all(&destination).map_err(|e| Error::io(&destination, e))?;
         }
         copy_dir_all(source_dir, &destination)?;
+    }
+
+    // Folders this addon used to own and no longer does. An addon can drop a
+    // module between versions, and a rename can move the whole thing — the
+    // folder name depends on the server's version, so correcting how that name
+    // is chosen moves existing installs. Left behind, the old folder still
+    // contains a manifest matching its own name, so the game would load the
+    // addon twice.
+    //
+    // Only ever folders recorded against this addon on this server: those are
+    // exactly the ones we created.
+    let superseded: Vec<String> = store
+        .installation(&server.id, &addon_id)
+        .map(|previous| {
+            previous
+                .folders
+                .iter()
+                .filter(|folder| !target_names.contains(folder))
+                .cloned()
+                .collect()
+        })
+        .unwrap_or_default();
+
+    for folder in superseded {
+        let path = addons_dir.join(&folder);
+        if paths::confine(&addons_dir, &path).is_err() {
+            continue;
+        }
+        if path.is_dir() {
+            tracing::info!(%folder, "removing a folder this addon no longer installs");
+            std::fs::remove_dir_all(&path).map_err(|e| Error::io(&path, e))?;
+        }
     }
 
     drop(cleanup);

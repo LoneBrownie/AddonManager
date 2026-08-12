@@ -189,40 +189,99 @@ pub fn parse_toc_filename(file_name: &str) -> Option<(String, Option<GameVersion
     Some((stem.to_string(), None))
 }
 
-/// Choose the addon's canonical folder name from the `.toc` files it contains.
+/// A `.toc` file found in an addon folder: its name, and what it declares.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TocFile {
+    pub file_name: String,
+    pub data: TocData,
+}
+
+impl TocFile {
+    /// The filename without its extension — which is exactly the folder name
+    /// the client requires if this is the manifest it should load.
+    pub fn stem(&self) -> Option<&str> {
+        self.file_name
+            .strip_suffix(".toc")
+            .or_else(|| self.file_name.strip_suffix(".TOC"))
+            .filter(|stem| !stem.is_empty())
+    }
+
+    fn flavour(&self) -> Option<GameVersion> {
+        parse_toc_filename(&self.file_name).and_then(|(_, version)| version)
+    }
+}
+
+/// Pick the `.toc` the client will actually load, for a given game version.
 ///
-/// The folder name a WoW addon must have is the base name of its `.toc`, so
-/// this is a lookup rather than the heuristic pile V1 used
-/// (V2-PLAN.md D-b). Where several `.toc` files disagree, prefer one whose
-/// base name matches the folder we extracted it from, then one matching the
-/// repository name, then the alphabetically first — deterministic either way.
+/// These clients — 1.12, 2.4.3, 3.3.5a — load `<Folder>/<Folder>.toc` and
+/// nothing else. Flavour-suffixed manifests are a much later retail and Classic
+/// feature, so on these versions the folder name has to be the *full* stem of
+/// the chosen file, suffix included.
+///
+/// Which file that is depends on the server. NotPlater ships
+/// `NotPlater-2.4.3.toc` and `NotPlater-3.3.5.toc` side by side, so the same
+/// repository has to land in `NotPlater-3.3.5` on a WotLK server and
+/// `NotPlater-2.4.3` on a TBC one — which is why this takes the target version
+/// rather than being a per-addon override. An override is a single value and
+/// could only ever be right for one of them.
+///
+/// Preference runs: a `.toc` that declares the target interface, then one whose
+/// *filename* names the target flavour, then one making no version claim at
+/// all. Within whichever of those applies, prefer a stem matching the extracted
+/// folder, then the repository name, then an unsuffixed name, then the
+/// alphabetically first — deterministic at every step, never a guess
+/// (V2-PLAN.md D-b).
+pub fn choose_toc<'a>(
+    tocs: &'a [TocFile],
+    target: GameVersion,
+    extracted_folder: &str,
+    repo_name: Option<&str>,
+) -> Option<&'a TocFile> {
+    let mut usable: Vec<&TocFile> = tocs.iter().filter(|toc| toc.stem().is_some()).collect();
+    usable.sort_by(|a, b| a.stem().cmp(&b.stem()));
+    if usable.is_empty() {
+        return None;
+    }
+
+    let declares = |toc: &&TocFile| toc.data.interface.contains(&target.interface_version());
+    let named = |toc: &&TocFile| toc.flavour() == Some(target);
+    let unclaimed = |toc: &&TocFile| toc.flavour().is_none() && toc.data.interface.is_empty();
+
+    let narrowed: Vec<&TocFile> = [
+        usable.iter().copied().filter(declares).collect::<Vec<_>>(),
+        usable.iter().copied().filter(named).collect(),
+        usable.iter().copied().filter(unclaimed).collect(),
+        usable.clone(),
+    ]
+    .into_iter()
+    .find(|set| !set.is_empty())?;
+
+    narrowed
+        .iter()
+        .find(|toc| matches(toc, extracted_folder))
+        .or_else(|| repo_name.and_then(|repo| narrowed.iter().find(|toc| matches(toc, repo))))
+        .or_else(|| narrowed.iter().find(|toc| toc.flavour().is_none()))
+        .or_else(|| narrowed.first())
+        .copied()
+}
+
+fn matches(toc: &TocFile, name: &str) -> bool {
+    toc.stem()
+        .is_some_and(|stem| stem.eq_ignore_ascii_case(name))
+}
+
+/// The folder name this addon must have on `target`.
+///
+/// See [`choose_toc`] — this is that file's stem.
 pub fn canonical_addon_name(
-    toc_file_names: &[String],
+    tocs: &[TocFile],
+    target: GameVersion,
     extracted_folder: &str,
     repo_name: Option<&str>,
 ) -> Option<String> {
-    let mut bases: Vec<String> = toc_file_names
-        .iter()
-        .filter_map(|name| parse_toc_filename(name).map(|(base, _)| base))
-        .collect();
-    bases.sort();
-    bases.dedup();
-
-    if bases.is_empty() {
-        return None;
-    }
-    if let Some(exact) = bases
-        .iter()
-        .find(|b| b.eq_ignore_ascii_case(extracted_folder))
-    {
-        return Some(exact.clone());
-    }
-    if let Some(repo) = repo_name {
-        if let Some(matching) = bases.iter().find(|b| b.eq_ignore_ascii_case(repo)) {
-            return Some(matching.clone());
-        }
-    }
-    bases.first().cloned()
+    choose_toc(tocs, target, extracted_folder, repo_name)
+        .and_then(|toc| toc.stem())
+        .map(str::to_string)
 }
 
 #[cfg(test)]
@@ -347,42 +406,129 @@ mod tests {
 
     // --- canonical name, replacing V1's relatedness heuristics ---
 
+    /// `name.toc` declaring `interface`, or nothing if `interface` is 0.
+    fn toc_file(name: &str, interface: u32) -> TocFile {
+        TocFile {
+            file_name: name.to_string(),
+            data: TocData {
+                interface: if interface == 0 {
+                    Vec::new()
+                } else {
+                    vec![interface]
+                },
+                ..TocData::default()
+            },
+        }
+    }
+
     #[test]
     fn canonical_name_prefers_the_extracted_folder_match() {
-        let tocs = vec!["Foo.toc".to_string(), "Bar.toc".to_string()];
+        let tocs = vec![toc_file("Foo.toc", 0), toc_file("Bar.toc", 0)];
         assert_eq!(
-            canonical_addon_name(&tocs, "Bar", None).as_deref(),
+            canonical_addon_name(&tocs, GameVersion::Wotlk, "Bar", None).as_deref(),
             Some("Bar")
         );
     }
 
     #[test]
     fn canonical_name_falls_back_to_repo_name() {
-        let tocs = vec!["Zeta.toc".to_string(), "Alpha.toc".to_string()];
+        let tocs = vec![toc_file("Zeta.toc", 0), toc_file("Alpha.toc", 0)];
         assert_eq!(
-            canonical_addon_name(&tocs, "unrelated", Some("Zeta")).as_deref(),
+            canonical_addon_name(&tocs, GameVersion::Wotlk, "unrelated", Some("Zeta")).as_deref(),
             Some("Zeta")
         );
     }
 
     #[test]
     fn canonical_name_is_deterministic_without_any_match() {
-        let tocs = vec!["Zeta.toc".to_string(), "Alpha.toc".to_string()];
+        let tocs = vec![toc_file("Zeta.toc", 0), toc_file("Alpha.toc", 0)];
         assert_eq!(
-            canonical_addon_name(&tocs, "unrelated", None).as_deref(),
+            canonical_addon_name(&tocs, GameVersion::Wotlk, "unrelated", None).as_deref(),
             Some("Alpha")
         );
     }
 
+    /// The NotPlater case, and the reason this takes a game version at all.
+    ///
+    /// Two manifests differing only by a version suffix the flavour list does
+    /// not recognise. The old rule stripped nothing, found no match, and took
+    /// the alphabetically first — which is the 2.4.3 one, on every server.
     #[test]
-    fn multi_flavour_tocs_collapse_to_one_name() {
+    fn two_version_specific_tocs_are_chosen_by_the_servers_version() {
         let tocs = vec![
-            "WeakAuras_Wrath.toc".to_string(),
-            "WeakAuras_Vanilla.toc".to_string(),
+            toc_file("NotPlater-2.4.3.toc", 20400),
+            toc_file("NotPlater-3.3.5.toc", 30300),
+        ];
+        // Extracted as "NotPlater-<ref>" from a GitHub archive, so neither the
+        // folder nor the repo name settles it.
+        assert_eq!(
+            canonical_addon_name(
+                &tocs,
+                GameVersion::Wotlk,
+                "NotPlater-3.2.4",
+                Some("NotPlater")
+            )
+            .as_deref(),
+            Some("NotPlater-3.3.5")
+        );
+        assert_eq!(
+            canonical_addon_name(
+                &tocs,
+                GameVersion::Tbc,
+                "NotPlater-3.2.4",
+                Some("NotPlater")
+            )
+            .as_deref(),
+            Some("NotPlater-2.4.3")
+        );
+    }
+
+    /// The suffix stays on. These clients only ever open `<Folder>/<Folder>.toc`,
+    /// so stripping `_Wrath` produced a folder whose manifest the game could
+    /// not find, and the addon silently did not load.
+    #[test]
+    fn a_flavour_suffix_is_kept_because_the_client_matches_on_the_whole_name() {
+        let tocs = vec![
+            toc_file("WeakAuras_Wrath.toc", 30300),
+            toc_file("WeakAuras_Vanilla.toc", 11200),
         ];
         assert_eq!(
-            canonical_addon_name(&tocs, "WeakAuras", None).as_deref(),
-            Some("WeakAuras")
+            canonical_addon_name(&tocs, GameVersion::Wotlk, "WeakAuras", None).as_deref(),
+            Some("WeakAuras_Wrath")
+        );
+    }
+
+    /// The ordinary case: one manifest, no suffix, no change from before.
+    #[test]
+    fn a_single_plain_toc_names_the_folder_after_itself() {
+        let tocs = vec![toc_file("MyAddon.toc", 30300)];
+        assert_eq!(
+            canonical_addon_name(&tocs, GameVersion::Wotlk, "MyAddon-main", None).as_deref(),
+            Some("MyAddon")
+        );
+    }
+
+    /// A filename can name a flavour even when the manifest declares nothing.
+    #[test]
+    fn the_filename_decides_when_no_toc_declares_an_interface() {
+        let tocs = vec![
+            toc_file("Thing_Vanilla.toc", 0),
+            toc_file("Thing_Wrath.toc", 0),
+        ];
+        assert_eq!(
+            canonical_addon_name(&tocs, GameVersion::Wotlk, "Thing", None).as_deref(),
+            Some("Thing_Wrath")
+        );
+    }
+
+    /// Nothing matches the server: still deterministic, still installable, and
+    /// the version warning is left to say so.
+    #[test]
+    fn an_addon_for_another_version_entirely_still_resolves_to_a_name() {
+        let tocs = vec![toc_file("OldThing-2.4.3.toc", 20400)];
+        assert_eq!(
+            canonical_addon_name(&tocs, GameVersion::Wotlk, "OldThing", None).as_deref(),
+            Some("OldThing-2.4.3")
         );
     }
 

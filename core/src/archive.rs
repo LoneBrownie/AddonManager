@@ -154,8 +154,24 @@ pub fn extract<R: Read + Seek>(reader: R, dest: &Path, limits: Limits) -> Result
         return Err(Error::NoAddonFolders);
     }
 
+    // Keep only the outermost ones. Plenty of addons vendor their libraries,
+    // and some of those libraries ship a `.toc` of their own — without this,
+    // each embedded library is treated as an addon in its own right and copied
+    // into `Interface/AddOns` as a sibling, as well as remaining nested inside
+    // the addon that bundles it. A directory inside another addon's directory
+    // is part of that addon, not a separate one.
+    let top_level: Vec<PathBuf> = addon_dirs
+        .iter()
+        .filter(|dir| {
+            !dir.ancestors()
+                .skip(1)
+                .any(|ancestor| addon_dirs.contains(ancestor))
+        })
+        .cloned()
+        .collect();
+
     Ok(Extracted {
-        addon_dirs: addon_dirs.into_iter().collect(),
+        addon_dirs: top_level,
         files_written,
         bytes_written,
     })
@@ -236,6 +252,64 @@ mod tests {
         };
         let result = extract(Cursor::new(bytes), tmp.path(), Limits::default());
         (tmp, result)
+    }
+
+    /// A vendored library that ships its own `.toc` is part of the addon that
+    /// bundles it, not a second addon. Without this it would be copied into
+    /// `Interface/AddOns` alongside its host *and* stay nested inside it.
+    #[test]
+    fn a_bundled_library_is_not_treated_as_its_own_addon() {
+        let bytes = zip_with(&[
+            (
+                "NotPlater-3.2.4/NotPlater-3.3.5.toc",
+                b"## Interface: 30300\n",
+            ),
+            ("NotPlater-3.2.4/NotPlater.lua", b"-- code\n"),
+            (
+                "NotPlater-3.2.4/libs/LibStub/LibStub.toc",
+                b"## Interface: 30300\n",
+            ),
+            ("NotPlater-3.2.4/libs/LibStub/LibStub.lua", b"-- lib\n"),
+        ]);
+        let (tmp, result) = extract_to_temp(bytes);
+        let extracted = result.unwrap_or_else(|e| panic!("{e}"));
+
+        assert_eq!(
+            extracted.addon_dirs,
+            vec![PathBuf::from("NotPlater-3.2.4")],
+            "the bundled library must not become a top-level addon folder"
+        );
+        // It is still on disk, still where the addon expects to find it.
+        assert!(tmp
+            .path()
+            .join("NotPlater-3.2.4/libs/LibStub/LibStub.lua")
+            .exists());
+    }
+
+    /// Genuine siblings are still separate — this is WeakAuras and
+    /// WeakAuras_Options, not a library.
+    #[test]
+    fn sibling_addon_folders_are_all_kept() {
+        let bytes = zip_with(&[
+            (
+                "Repo-main/WeakAuras/WeakAuras.toc",
+                b"## Interface: 30300\n",
+            ),
+            (
+                "Repo-main/WeakAuras_Options/WeakAuras_Options.toc",
+                b"## Interface: 30300\n",
+            ),
+        ]);
+        let (_tmp, result) = extract_to_temp(bytes);
+        let extracted = result.unwrap_or_else(|e| panic!("{e}"));
+
+        assert_eq!(
+            extracted.addon_dirs,
+            vec![
+                PathBuf::from("Repo-main/WeakAuras"),
+                PathBuf::from("Repo-main/WeakAuras_Options"),
+            ]
+        );
     }
 
     // --- happy path ---

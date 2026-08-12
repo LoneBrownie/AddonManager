@@ -168,18 +168,6 @@ pub fn addon_zip(folder: &str, interface: u32, version: &str) -> Vec<u8> {
     ])
 }
 
-/// An archive whose folder carries several flavour `.toc` files.
-pub fn multi_flavour_addon_zip(folder: &str) -> Vec<u8> {
-    let wrath = format!("{folder}/{folder}_Wrath.toc");
-    let vanilla = format!("{folder}/{folder}_Vanilla.toc");
-    let lua = format!("{folder}/Core.lua");
-    zip_from(&[
-        (wrath.as_str(), b"## Interface: 30300\n"),
-        (vanilla.as_str(), b"## Interface: 11200\n"),
-        (lua.as_str(), b"-- code\n"),
-    ])
-}
-
 /// Create a plausible WoW directory tree under `root`.
 pub fn fake_wow_dir(root: &Path) -> std::io::Result<()> {
     std::fs::create_dir_all(root.join("Data"))?;
