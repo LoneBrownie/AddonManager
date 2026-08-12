@@ -136,7 +136,7 @@ export default function App() {
       // A pending channel switch is not an update, but saying "up to date"
       // while a Switch button is sitting there is just confusing.
       const switches = rows.filter(
-        (row) => actionable(row) && !row.needsUpdate,
+        (row) => row.channelPending && !row.pinned && !row.needsUpdate,
       ).length;
       const parts = [
         count > 0 ? `${count} update${count === 1 ? "" : "s"} available` : null,
@@ -532,6 +532,7 @@ export default function App() {
         <ImportListDialog
           server={selected}
           onClose={() => setTransfer(null)}
+          onInstalled={() => void refreshAddons()}
           onDone={async (installed, failed) => {
             setTransfer(null);
             notify(

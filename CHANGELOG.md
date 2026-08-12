@@ -7,6 +7,30 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
+## 2.0.0-beta.5 — unreleased
+
+### Fixed
+- **Importing a V1 addon list works on a game folder that already has the
+  addons in it** — which is every game folder anyone is importing into. Two
+  things were failing nearly every line of the list:
+  - An addon whose repository has never published a release now installs from
+    its default branch and is recorded as tracking `source`, instead of failing
+    with advice to go and switch a channel on an addon that was never installed.
+    Outside importing, that refusal stands: silently changing channel would hide
+    a mistyped URL.
+  - An addon already sitting in the game folder is **taken over where it
+    stands** rather than refused. Nothing on disk is touched — your working
+    files stay exactly as they are, tagged `adopted` at an unknown version, with
+    **Update** on the row to replace them with a version this app can name when
+    you want it.
+- **The list fills up as an import runs**, one addon at a time, rather than
+  staying still until the whole list has finished.
+- **An addon adopted from disk shows `unknown version` and offers Update.** It
+  used to read `adopted@adopted` and offer *Switch*, as if the user had changed
+  a channel they had never chosen.
+- **A server with nothing managed yet says so.** It claimed nothing matched a
+  search that had not been typed.
+
 ## 2.0.0-beta.4 — 2026-08-12
 
 ### Fixed

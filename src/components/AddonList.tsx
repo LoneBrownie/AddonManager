@@ -83,7 +83,17 @@ export function actionable(addon: Addon): boolean {
   // A missing addon is offered a reinstall. Not for a pinned one: reinstalling
   // fetches whatever the channel resolves to now, which would quietly move it
   // off the version the pin exists to hold.
-  return addon.needsUpdate || addon.channelPending || addon.missingFolders.length > 0;
+  //
+  // An adopted addon is offered one too: its files came from somewhere this app
+  // cannot name, so there is always a known version worth putting in their
+  // place — and without a button it would be the one row that can never reach
+  // one.
+  return (
+    addon.needsUpdate ||
+    addon.channelPending ||
+    addon.versionUnknown ||
+    addon.missingFolders.length > 0
+  );
 }
 
 export function AddonList({
@@ -180,7 +190,8 @@ export function AddonList({
   return (
     <>
       {banner}
-      <div className="searchbar">
+      {/* Nothing to search through until something is managed. */}
+      <div className="searchbar" hidden={addons.length === 0}>
         <input
           className="input"
           type="search"
@@ -212,10 +223,23 @@ export function AddonList({
       </div>
 
       {visible.length === 0 ? (
-        <div className="empty">
-          <h3>Nothing matches</h3>
-          <p>No addon on this server matches that search and filter.</p>
-        </div>
+        // Two different nothings. With unmanaged folders below and none of them
+        // adopted yet, the list is empty because nothing has been taken over —
+        // saying "nothing matches" blames a search the user never typed.
+        addons.length === 0 ? (
+          <div className="empty">
+            <h3>Nothing managed here yet</h3>
+            <p>
+              The folders below are already in {server.name}. Give one its
+              repository URL to start looking after it, or add an addon by URL.
+            </p>
+          </div>
+        ) : (
+          <div className="empty">
+            <h3>Nothing matches</h3>
+            <p>No addon on this server matches that search and filter.</p>
+          </div>
+        )
       ) : (
         <div className="rows">
           {visible.map((addon) => (
@@ -337,6 +361,14 @@ function AddonRow({
               switch to {addon.channel === "source" ? "source" : "releases"}
             </span>
           ) : null}
+          {addon.versionUnknown ? (
+            <span
+              className="tag"
+              title="Taken over from what was already in the game folder, so which version these files are was never recorded. Update to put a known one there."
+            >
+              adopted
+            </span>
+          ) : null}
           {addon.pinned ? <span className="tag pinned">pinned</span> : null}
           {addon.channel === "source" ? (
             <span className="tag source">source</span>
@@ -373,12 +405,14 @@ function AddonRow({
                 ? "Put this addon back — its folders are no longer on disk"
                 : addon.needsUpdate
                   ? "Install the newer version"
-                  : `Fetch this addon from its ${addon.channel === "source" ? "default branch" : "latest release"}`)
+                  : addon.versionUnknown
+                    ? "Replace these files with a version this app can name"
+                    : `Fetch this addon from its ${addon.channel === "source" ? "default branch" : "latest release"}`)
             }
           >
             {addon.missingFolders.length > 0
               ? "Reinstall"
-              : addon.needsUpdate
+              : addon.needsUpdate || addon.versionUnknown
                 ? "Update"
                 : "Switch"}
           </button>

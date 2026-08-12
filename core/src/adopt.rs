@@ -139,10 +139,10 @@ fn siblings_of(folder: &str, all: &[String]) -> Vec<String> {
 
 /// Adopt folders already on disk as a managed addon.
 ///
-/// The recorded ref is deliberately the branch-style placeholder `adopted`:
-/// we genuinely do not know which upstream version these files came from, and
-/// inventing a tag would make the first update check compare a fiction against
-/// a real release. The next update installs a known version and replaces it.
+/// The recorded ref is deliberately [`Ref::Unknown`]: we genuinely do not know
+/// which upstream version these files came from, and inventing a tag would make
+/// the first update check compare a fiction against a real release. The next
+/// update installs a known version and replaces it.
 pub fn adopt(
     store: &mut Store,
     server_id: &str,
@@ -191,7 +191,7 @@ pub fn adopt(
         addon_id,
         channel,
         pinned: false,
-        installed_ref: Ref::branch("adopted", "adopted"),
+        installed_ref: Ref::Unknown,
         folders,
         archive_sha256: None,
         installed_at: String::new(),
@@ -456,9 +456,10 @@ mod tests {
 
     /// The adopted ref must not pretend to be a release. Comparing a made-up
     /// tag against a real one is exactly the phantom-update class the Ref model
-    /// exists to prevent (V2-PLAN.md D-a).
+    /// exists to prevent (V2-PLAN.md D-a). Saying so honestly also gives the row
+    /// somewhere to go: an unknown version can always be updated.
     #[test]
-    fn an_adopted_addon_reports_a_channel_change_rather_than_a_fake_update() {
+    fn an_adopted_addon_offers_a_real_version_rather_than_comparing_a_fake_one() {
         let (_tmp, mut store, id) = server_with(&[("Questie", "## Interface: 30300\n")]);
         let adopted = adopt(
             &mut store,
@@ -470,7 +471,8 @@ mod tests {
         )
         .unwrap_or_else(|e| panic!("{e}"));
 
+        assert_eq!(adopted.installed_ref, Ref::Unknown);
         let status = crate::version::check(&adopted.installed_ref, &Ref::release("v11.3.0"));
-        assert_eq!(status, crate::version::UpdateStatus::ChannelChanged);
+        assert_eq!(status, crate::version::UpdateStatus::UpdateAvailable);
     }
 }

@@ -31,6 +31,23 @@ pub struct InstallOptions {
     /// Proceed even though a destination folder exists and we do not own it.
     /// Set only after the user has been shown the folder name and agreed.
     pub overwrite_unmanaged: bool,
+    /// Install from the default branch when the repository has no releases at
+    /// all, rather than failing.
+    ///
+    /// Off by default, and deliberately so: silently switching channel would
+    /// hide a mistyped URL and install a different kind of artifact than the
+    /// user asked for. Importing a list is the case where it is right — those
+    /// URLs are ones the user already ran, and half of 3.3.5a addons never cut
+    /// a release, so refusing turns a migration into a wall of errors.
+    pub fallback_to_source: bool,
+    /// Take over folders that are already on disk instead of refusing to
+    /// overwrite them.
+    ///
+    /// For importing a list into a game folder that already has the addons in
+    /// it — the V1-to-V2 case. Nothing on disk is touched: the existing files
+    /// stay exactly as they are and become managed at an unknown version, which
+    /// the next update replaces with a version this app can name.
+    pub adopt_existing: bool,
     pub limits: Limits,
 }
 
@@ -116,8 +133,22 @@ pub async fn install(
     std::fs::create_dir_all(&addons_dir).map_err(|e| Error::io(&addons_dir, e))?;
     ensure_writable(&addons_dir)?;
 
-    let resolved =
-        sources::resolve(client, source, options.channel, options.token.as_deref()).await?;
+    // The channel actually used, which is not always the one asked for: a
+    // repository with no releases can only be installed from its branch, and an
+    // import says up front that it would rather have that than an error. The
+    // resolver itself still refuses — the decision is made here, once, and
+    // recorded, so the row shows `source` and updates track the branch.
+    let mut channel = options.channel;
+    let resolved = match sources::resolve(client, source, channel, options.token.as_deref()).await {
+        Err(Error::NoResolvableRef(reason))
+            if options.fallback_to_source && channel == Channel::Release =>
+        {
+            tracing::info!(%reason, "no release; falling back to the source channel");
+            channel = Channel::Source;
+            sources::resolve(client, source, channel, options.token.as_deref()).await?
+        }
+        other => other?,
+    };
 
     // --- fetch and unpack into a staging area, never the game directory ---
     let staging = work_dir.join(format!("staging-{}", uuid::Uuid::new_v4().simple()));
@@ -188,16 +219,70 @@ pub async fn install(
         .collect();
 
     // --- refuse to clobber anything we did not create ---
-    for plan in plan_folders(store, &server, &addon_id, &target_names, &addons_dir) {
+    let plans = plan_folders(store, &server, &addon_id, &target_names, &addons_dir);
+    let collides_with_unmanaged = plans
+        .iter()
+        .any(|plan| matches!(plan, FolderPlan::ConflictsWithUnmanaged(_)));
+
+    for plan in &plans {
         match plan {
             FolderPlan::ConflictsWithAddon { folder, owner } => {
-                return Err(Error::ManagedCollision { folder, owner })
+                return Err(Error::ManagedCollision {
+                    folder: folder.clone(),
+                    owner: owner.clone(),
+                })
             }
-            FolderPlan::ConflictsWithUnmanaged(folder) if !options.overwrite_unmanaged => {
-                return Err(Error::UnmanagedCollision { folder })
+            FolderPlan::ConflictsWithUnmanaged(folder)
+                if !options.overwrite_unmanaged && !options.adopt_existing =>
+            {
+                return Err(Error::UnmanagedCollision {
+                    folder: folder.clone(),
+                })
             }
             _ => {}
         }
+    }
+
+    // --- already there: take it over rather than reinstall it ---
+    //
+    // Someone moving a whole collection across already has these addons in
+    // their game folder. Downloading over the top would replace working files
+    // with whatever upstream happens to be at today, which is a change they did
+    // not ask for and might not want mid-raid-tier. So the files are left
+    // exactly as they are and recorded at an unknown version, which the Update
+    // button on the row replaces the moment they want it.
+    //
+    // The archive is still fetched, and has to be: the folder names an addon
+    // installs into are in the archive, and nothing about a folder on disk
+    // reveals which repository it came from. That is the same reason adoption
+    // asks for the URL rather than guessing it.
+    if collides_with_unmanaged && !options.overwrite_unmanaged {
+        drop(cleanup);
+
+        // Only the folders genuinely on disk. Recording one that is not there
+        // would flag the addon `missing` the moment it is adopted.
+        let present: Vec<String> = target_names
+            .iter()
+            .filter(|folder| addons_dir.join(folder).is_dir())
+            .cloned()
+            .collect();
+
+        let installation = InstalledAddon {
+            server_id: server.id.clone(),
+            addon_id: addon_id.clone(),
+            channel,
+            pinned: false,
+            installed_ref: crate::version::Ref::Unknown,
+            folders: present,
+            archive_sha256: None,
+            installed_at: now_rfc3339(),
+            // The archive's manifest describes what upstream ships, not what is
+            // sitting in the folder, so it is not evidence about these files.
+            version_matches: true,
+        };
+
+        record(store, source, &addon_id, &resolved, installation.clone());
+        return Ok(installation);
     }
 
     // --- write ---
@@ -248,28 +333,42 @@ pub async fn install(
     let installation = InstalledAddon {
         server_id: server.id.clone(),
         addon_id: addon_id.clone(),
-        channel: options.channel,
+        channel,
         pinned: false,
-        installed_ref: resolved.r#ref,
+        installed_ref: resolved.r#ref.clone(),
         folders: target_names,
         archive_sha256: sha256,
         installed_at: now_rfc3339(),
         version_matches,
     };
 
-    if store.addon(&addon_id).is_none() {
+    record(store, source, &addon_id, &resolved, installation.clone());
+
+    Ok(installation)
+}
+
+/// Write the outcome of an install into the store.
+///
+/// Shared by installing and by adopting what was already there, so the two
+/// cannot drift on what a recorded addon looks like.
+fn record(
+    store: &mut Store,
+    source: &Source,
+    addon_id: &str,
+    resolved: &sources::Resolved,
+    installation: InstalledAddon,
+) {
+    if store.addon(addon_id).is_none() {
         let display = source
             .repo_name()
             .map(str::to_string)
-            .unwrap_or_else(|| addon_id.clone());
+            .unwrap_or_else(|| addon_id.to_string());
         store.addons.push(Addon::new(source.clone(), display));
     }
     if let Some(addon) = store.addons.iter_mut().find(|a| a.id == addon_id) {
         addon.cached_etag = resolved.etag.clone();
     }
-    store.upsert_installation(installation.clone());
-
-    Ok(installation)
+    store.upsert_installation(installation);
 }
 
 /// Remove an addon from one server, deleting exactly the folders we recorded.

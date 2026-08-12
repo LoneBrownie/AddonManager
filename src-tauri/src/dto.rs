@@ -107,6 +107,13 @@ pub struct AddonDto {
     pub pinned: bool,
     /// Already formatted for display — "v1.2.3" or "master@abc1234".
     pub installed_version: String,
+    /// These files were adopted, so which version they are is not known.
+    ///
+    /// Not a failure state: it means the row can always be updated, because
+    /// anything upstream offers is the first version this app can vouch for.
+    /// Answered here so the interface does not have to infer it from the
+    /// version string.
+    pub version_unknown: bool,
     pub latest_version: Option<String>,
     /// "upToDate" | "updateAvailable" | "channelChanged" | "unknown"
     pub update_status: String,
@@ -139,6 +146,7 @@ impl AddonDto {
             channel_pending: channel_pending(installation),
             pinned: installation.pinned,
             installed_version: installation.installed_ref.display(),
+            version_unknown: installation.installed_ref.is_unknown(),
             latest_version: None,
             update_status: "unknown".to_string(),
             needs_update: false,
@@ -432,6 +440,7 @@ mod tests {
             pinned: false,
             missing_folders: Vec::new(),
             installed_version: "v1.0.0".into(),
+            version_unknown: false,
             latest_version: None,
             update_status: "unknown".into(),
             needs_update: false,

@@ -15,6 +15,7 @@ import type {
   Addon,
   CatalogEntry,
   FolderVerdict,
+  FoundAddon,
   GameVersionOption,
   Outcome,
   Server,
@@ -40,6 +41,17 @@ const servers: Server[] = [
     versionLabel: "WotLK 3.3.5a",
     accent: "#22d3ee",
     addonCount: 2,
+    availability: "ready",
+    canInstall: true,
+  },
+  {
+    id: "srv_triumvirate",
+    name: "Triumvirate",
+    path: "D:\\Games\\Triumvirate",
+    version: "wotlk",
+    versionLabel: "WotLK 3.3.5a",
+    accent: "#f59e0b",
+    addonCount: 0,
     availability: "ready",
     canInstall: true,
   },
@@ -86,7 +98,46 @@ const addons: Record<string, Addon[]> = {
       sourceUrl: "https://gitlab.com/Tsoukie/classicapi",
     }),
   ],
+  // A game folder full of addons and nothing managing them: the state someone
+  // is in on the day they move over from V1.
+  srv_triumvirate: [],
   srv_usb: [row("github:o/Atlas", "Atlas", "v1.0.0")],
+};
+
+/**
+ * Folders sitting in the game directory that nothing manages yet.
+ *
+ * Mutable, and installing or adopting takes from it, because a static answer
+ * here would have the interface claiming a folder is still unmanaged the moment
+ * after it was taken over.
+ */
+const unmanaged: Record<string, FoundAddon[]> = {
+  srv_epoch: [
+    { folder: "Bartender4", title: "Bartender4", version: "4.5.9", author: "Nevcairiel", related: [], versionMatches: true },
+    { folder: "Recount", title: "Recount", version: "1.0", author: "Cryect", related: ["Recount_Config"], versionMatches: true },
+    { folder: "Skada", title: "Skada", version: "1.7.3", author: "bkader", related: [], versionMatches: true },
+    { folder: "MyKey", title: "MyKey", version: "2.1", author: "zephyrsong", related: [], versionMatches: true },
+    { folder: "RetailOnly", title: "Retail Only Addon", version: "11.0", author: "Someone", related: [], versionMatches: false },
+  ],
+  srv_triumvirate: [
+    { folder: "!!!ClassicAPI", title: "!!!ClassicAPI", version: "1.23", author: "Tsoukie", related: [], versionMatches: true },
+    { folder: "AtlasLoot", title: "AtlasLoot", version: "v5.11.04", author: "Hegarol", related: ["AtlasLoot_Cataclysm", "AtlasLoot_Loader"], versionMatches: true },
+    { folder: "MyKey", title: "MyKey", version: "2.1", author: "zephyrsong", related: [], versionMatches: true },
+    { folder: "Skada", title: "Skada", version: "1.7.3", author: "bkader", related: [], versionMatches: true },
+  ],
+};
+
+/**
+ * Repositories that have never cut a release, and ones whose addon is already
+ * sitting in the game folder.
+ *
+ * The two ways importing a V1 list fails, reproduced here so the interface's
+ * answer to them can be driven in a browser rather than only on a real machine.
+ */
+const noReleases = new Set(["thezephyrsong/TopFit", "NoM0Re/PallyPower-Improved-3.3.5"]);
+const shipsFolder: Record<string, string> = {
+  "bkader/Skada-WoTLK": "Skada",
+  "thezephyrsong/MyKey": "MyKey",
 };
 
 function row(
@@ -104,6 +155,7 @@ function row(
     channelPending: false,
     pinned: false,
     installedVersion,
+    versionUnknown: false,
     latestVersion: null,
     updateStatus: "unknown",
     needsUpdate: false,
@@ -236,17 +288,67 @@ export async function mockInvoke<T>(
 
     case "check_updates": {
       const rows = (serverId && addons[serverId]) || [];
-      // Pinned addons are not checked at all — they must never nag.
-      return rows.map((addon) =>
-        addon.pinned ? { ...addon, updateStatus: "upToDate" as const } : addon,
-      ) as T;
+      // Pinned addons are not checked at all — they must never nag. An adopted
+      // one always has an update: whatever upstream offers is the first version
+      // this app can name.
+      return rows.map((addon) => {
+        if (addon.pinned) return { ...addon, updateStatus: "upToDate" as const };
+        if (addon.versionUnknown) {
+          return {
+            ...addon,
+            latestVersion: "v1.0.0",
+            updateStatus: "updateAvailable" as const,
+            needsUpdate: true,
+          };
+        }
+        return addon;
+      }) as T;
     }
 
     case "install_addon": {
       const url = String(args?.["url"] ?? "");
-      const created = row(`github:${pathOf(url)}`, nameFrom(url), "v1.0.0");
+      const repo = pathOf(url);
+      const fallbackToSource = Boolean(args?.["fallbackToSource"]);
+      const adoptExisting = Boolean(args?.["adoptExisting"]);
+      const onDisk = shipsFolder[repo];
+
+      // No releases: install from the branch, or say so.
+      if (noReleases.has(repo) && !fallbackToSource) {
+        throw {
+          kind: "noResolvableRef",
+          message: `no release or source archive could be resolved for ${repo} — ${repo} has no published releases — switch this addon to the source channel`,
+          folder: null,
+        };
+      }
+      // Already in the game folder: take it over, or refuse to write over it.
+      if (onDisk && !adoptExisting) {
+        throw {
+          kind: "unmanagedCollision",
+          message: `The folder "${onDisk}" already exists and this app did not create it. Installing would overwrite whatever is in it.`,
+          folder: onDisk,
+        };
+      }
+
+      const adopted = Boolean(onDisk);
+      const branch = noReleases.has(repo);
+      const created = row(
+        `github:${repo}`,
+        nameFrom(url),
+        adopted ? "unknown version" : branch ? "master@9f2c1ab" : "v1.0.0",
+        {
+          versionUnknown: adopted,
+          channel: branch ? "source" : "release",
+          ...(onDisk ? { folders: [onDisk] } : {}),
+        },
+      );
       if (serverId) {
         addons[serverId] = [...(addons[serverId] ?? []), created];
+        // A folder that has just been taken over is no longer unmanaged.
+        if (onDisk) {
+          unmanaged[serverId] = (unmanaged[serverId] ?? []).filter(
+            (item) => item.folder !== onDisk,
+          );
+        }
         bumpCount(serverId);
       }
       return created as T;
@@ -286,10 +388,13 @@ export async function mockInvoke<T>(
         found.installedVersion =
           found.channel === "source"
             ? `master@${Math.random().toString(16).slice(2, 9)}`
-            : found.latestVersion ?? found.installedVersion;
+            : found.latestVersion ?? (found.versionUnknown ? "v1.0.0" : found.installedVersion);
         found.latestVersion = found.installedVersion;
         found.channelPending = false;
         found.needsUpdate = false;
+        // Updating an adopted addon is the whole point of adopting it: what is
+        // on disk is now a version this app put there and can name.
+        found.versionUnknown = false;
         found.updateStatus = "upToDate";
       }
       return { ...(found ?? rows[0]) } as T;
@@ -346,35 +451,26 @@ export async function mockInvoke<T>(
     }
 
     case "scan_existing_addons":
-      return [
-        {
-          folder: "Bartender4",
-          title: "Bartender4",
-          version: "4.5.9",
-          author: "Nevcairiel",
-          related: [],
-          versionMatches: true,
-        },
-        {
-          folder: "Recount",
-          title: "Recount",
-          version: "1.0",
-          author: "Cryect",
-          related: ["Recount_Config"],
-          versionMatches: true,
-        },
-        {
-          folder: "RetailOnly",
-          title: "Retail Only Addon",
-          version: "11.0",
-          author: "Someone",
-          related: [],
-          versionMatches: false,
-        },
-      ] as T;
+      return ((serverId && unmanaged[serverId]) || []) as T;
 
-    case "adopt_addon":
+    case "adopt_addon": {
+      const folders = (args?.["folders"] as string[]) ?? [];
+      const url = String(args?.["url"] ?? "");
+      if (serverId) {
+        addons[serverId] = [
+          ...(addons[serverId] ?? []),
+          row(`github:${pathOf(url)}`, String(args?.["name"] ?? nameFrom(url)), "unknown version", {
+            versionUnknown: true,
+            folders,
+          }),
+        ];
+        unmanaged[serverId] = (unmanaged[serverId] ?? []).filter(
+          (item) => !folders.includes(item.folder),
+        );
+        bumpCount(serverId);
+      }
       return undefined as T;
+    }
 
     case "cancel_update_check":
       return undefined as T;

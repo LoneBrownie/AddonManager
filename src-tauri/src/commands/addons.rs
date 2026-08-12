@@ -45,6 +45,11 @@ fn options_for(
 }
 
 /// Install an addon into the selected server, and **only** that server.
+///
+/// `fallback_to_source` and `adopt_existing` are what importing a list turns on:
+/// a repository with no releases installs from its branch, and an addon already
+/// sitting in the game folder is taken over rather than downloaded over. Both
+/// stay off everywhere else, where the refusal is the useful answer.
 #[tauri::command]
 pub async fn install_addon(
     state: State<'_, AppState>,
@@ -52,9 +57,15 @@ pub async fn install_addon(
     url: String,
     channel: Option<Channel>,
     overwrite_unmanaged: Option<bool>,
+    fallback_to_source: Option<bool>,
+    adopt_existing: Option<bool>,
 ) -> CommandResult<AddonDto> {
     let source = sources::parse_repo_url(&url)?;
-    let options = options_for(&state, channel, overwrite_unmanaged);
+    let options = InstallOptions {
+        fallback_to_source: fallback_to_source.unwrap_or(false),
+        adopt_existing: adopt_existing.unwrap_or(false),
+        ..options_for(&state, channel, overwrite_unmanaged)
+    };
 
     // The store lock is never held across an await: take a snapshot, do the
     // slow work, commit the result.

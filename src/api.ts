@@ -35,6 +35,8 @@ export interface Addon {
   channelPending: boolean;
   pinned: boolean;
   installedVersion: string;
+  /** These files were adopted, so their version is not known. */
+  versionUnknown: boolean;
   latestVersion: string | null;
   updateStatus:
     | "upToDate"
@@ -193,12 +195,34 @@ export const copyAddonSet = (
 
 export const listAddons = (serverId: string) =>
   call<Addon[]>("list_addons", { serverId });
+/**
+ * Extras only the import path asks for.
+ *
+ * `fallbackToSource` installs from the branch when a repository has never cut a
+ * release; `adoptExisting` takes over folders already in the game directory
+ * instead of refusing to write over them. Both are off elsewhere, where being
+ * told what is wrong is more use than a silent substitution.
+ */
+export interface InstallOptions {
+  overwriteUnmanaged?: boolean;
+  fallbackToSource?: boolean;
+  adoptExisting?: boolean;
+}
+
 export const installAddon = (
   serverId: string,
   url: string,
   channel: Channel = "release",
-  overwriteUnmanaged = false,
-) => call<Addon>("install_addon", { serverId, url, channel, overwriteUnmanaged });
+  options: InstallOptions = {},
+) =>
+  call<Addon>("install_addon", {
+    serverId,
+    url,
+    channel,
+    overwriteUnmanaged: options.overwriteUnmanaged ?? false,
+    fallbackToSource: options.fallbackToSource ?? false,
+    adoptExisting: options.adoptExisting ?? false,
+  });
 export const installAddonToMany = (
   serverIds: string[],
   url: string,

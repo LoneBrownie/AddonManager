@@ -262,6 +262,207 @@ async fn overwrites_a_hand_installed_folder_only_when_explicitly_allowed() {
     assert!(addons.join("MyAddon/MyAddon.toc").is_file());
 }
 
+/// Importing a V1 list: a repository that never cut a release is not an error.
+///
+/// Half the 3.3.5a scene ships from a branch and nothing else. Refusing those
+/// turned a migration into a screen of failures, each telling the user to go and
+/// switch a channel on an addon that had not been installed.
+#[tokio::test]
+async fn falls_back_to_the_branch_when_asked_and_there_are_no_releases() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let client = FakeHttp::new()
+        .status(RELEASES_URL, 404, r#"{"message":"Not Found"}"#)
+        .json(
+            "https://api.github.com/repos/o/r",
+            r#"{"default_branch":"master"}"#,
+        )
+        .json(
+            "https://api.github.com/repos/o/r/commits/master",
+            r#"{"sha":"abc1234def","commit":{"author":{"date":"2026-02-02T00:00:00Z"}}}"#,
+        )
+        .file(
+            "https://codeload.github.com/o/r/zip/refs/heads/master",
+            addon_zip("MyAddon", 30300, "1.0.0"),
+        );
+
+    let options = InstallOptions {
+        fallback_to_source: true,
+        ..InstallOptions::default()
+    };
+    let installed = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &options,
+        work.path(),
+    )
+    .await
+    .expect("a repo with no releases should install from its branch");
+
+    assert!(
+        matches!(installed.installed_ref, Ref::Branch { .. }),
+        "got {:?}",
+        installed.installed_ref
+    );
+    assert_eq!(
+        installed.channel,
+        Channel::Source,
+        "the channel actually used has to be recorded, or the next update check \
+         asks for a release again"
+    );
+    assert!(tmp.path().join("Interface/AddOns/MyAddon").is_dir());
+}
+
+/// And only when asked. Silently switching channel would hide a mistyped URL.
+#[tokio::test]
+async fn a_repo_with_no_releases_still_fails_by_default() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let client = FakeHttp::new().status(RELEASES_URL, 404, r#"{"message":"Not Found"}"#);
+    let result = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await;
+
+    assert!(matches!(result, Err(Error::NoResolvableRef(_))));
+}
+
+/// Importing into a game folder that already has the addons in it.
+///
+/// The V1-to-V2 case: the files are already there and working. Downloading over
+/// the top would swap them for whatever upstream is today, which is a change
+/// nobody asked for — so they are taken over as they stand, at a version this
+/// app cannot name, and left alone until the user updates.
+#[tokio::test]
+async fn takes_over_an_addon_already_on_disk_instead_of_reinstalling_it() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let addons = tmp.path().join("Interface").join("AddOns");
+    std::fs::create_dir_all(addons.join("MyAddon")).unwrap();
+    std::fs::write(addons.join("MyAddon/MyAddon.toc"), b"## Interface: 30300\n").unwrap();
+    std::fs::write(addons.join("MyAddon/precious.lua"), b"user data").unwrap();
+
+    let client = forge_serving("v1.0.0", addon_zip("MyAddon", 30300, "1.0.0"));
+    let options = InstallOptions {
+        adopt_existing: true,
+        ..InstallOptions::default()
+    };
+    let installed = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &options,
+        work.path(),
+    )
+    .await
+    .expect("an addon already on disk should be adopted, not refused");
+
+    assert_eq!(installed.installed_ref, Ref::Unknown, "version not invented");
+    assert_eq!(installed.folders, vec!["MyAddon".to_string()]);
+    assert_eq!(
+        std::fs::read_to_string(addons.join("MyAddon/precious.lua")).unwrap(),
+        "user data",
+        "nothing on disk may be touched"
+    );
+    assert!(
+        !addons.join("MyAddon/Core.lua").exists(),
+        "the archive must not be written over what is already there"
+    );
+
+    // ...and the whole point: it is now updatable to a version we can name.
+    let report = updates::check_update(&client, &store, &server_id, "github:o/r", None)
+        .await
+        .expect("check");
+    assert_eq!(report.status, UpdateStatus::UpdateAvailable);
+
+    install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &InstallOptions::default(),
+        work.path(),
+    )
+    .await
+    .expect("updating an adopted addon replaces folders it now owns");
+
+    assert!(addons.join("MyAddon/Core.lua").is_file());
+    assert_eq!(
+        store
+            .installation(&server_id, "github:o/r")
+            .map(|i| i.installed_ref.display()),
+        Some("v1.0.0".to_string())
+    );
+}
+
+/// Adoption is opt-in too — the default is still the refusal that stops the app
+/// destroying a folder it did not create.
+#[tokio::test]
+async fn only_the_folders_actually_on_disk_are_taken_over() {
+    let tmp = tempfile::tempdir().unwrap();
+    let work = tempfile::tempdir().unwrap();
+    let mut store = Store::default();
+    let server_id = register_server(&mut store, tmp.path());
+
+    let addons = tmp.path().join("Interface").join("AddOns");
+    std::fs::create_dir_all(addons.join("WeakAuras")).unwrap();
+    std::fs::write(addons.join("WeakAuras/WeakAuras.toc"), b"## Interface: 30300\n").unwrap();
+
+    // The archive ships two folders; only one of them is on disk.
+    let client = forge_serving(
+        "v1.0.0",
+        zip_from(&[
+            ("WeakAuras/WeakAuras.toc", b"## Interface: 30300\n"),
+            (
+                "WeakAuras_Options/WeakAuras_Options.toc",
+                b"## Interface: 30300\n",
+            ),
+        ]),
+    );
+    let options = InstallOptions {
+        adopt_existing: true,
+        ..InstallOptions::default()
+    };
+    let installed = install::install(
+        &client,
+        &mut store,
+        &server_id,
+        &source(),
+        &options,
+        work.path(),
+    )
+    .await
+    .expect("adopt");
+
+    assert_eq!(
+        installed.folders,
+        vec!["WeakAuras".to_string()],
+        "recording a folder that is not there would flag the addon missing the \
+         instant it was adopted"
+    );
+    assert!(
+        !addons.join("WeakAuras_Options").exists(),
+        "nothing is written: the addon is taken over as it stands"
+    );
+}
+
 /// The headline feature: one addon, two servers, independent versions.
 #[tokio::test]
 async fn the_same_addon_installs_independently_to_two_servers() {

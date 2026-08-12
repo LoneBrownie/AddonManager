@@ -15,10 +15,14 @@ export function ImportListDialog({
   server,
   onClose,
   onDone,
+  onInstalled,
 }: {
   server: Server;
   onClose: () => void;
   onDone: (installed: number, failed: string[]) => void;
+  /** One addon landed. Importing thirty takes minutes; the list behind this
+   *  dialog should fill up as they arrive rather than all at the end. */
+  onInstalled: () => void;
 }) {
   const [text, setText] = useState("");
   const [urls, setUrls] = useState<string[]>([]);
@@ -55,19 +59,31 @@ export function ImportListDialog({
     const failed: string[] = [];
     let installed = 0;
 
-    for (const [index, url] of urls.entries()) {
-      setProgress({ done: index, total: urls.length });
-      try {
-        await api.installAddon(server.id, url);
-        installed += 1;
-      } catch (thrown) {
-        // One bad URL in a pasted list must not abandon the rest.
-        failed.push(`${url} — ${api.errorMessage(thrown)}`);
+    try {
+      for (const [index, url] of urls.entries()) {
+        setProgress({ done: index, total: urls.length });
+        try {
+          // An imported list is a list of addons the user already runs, so the
+          // two things that make an import fail wholesale are handled rather
+          // than reported: a repository with no releases installs from its
+          // branch, and one already sitting in the game folder is taken over
+          // where it stands instead of being downloaded over the top.
+          await api.installAddon(server.id, url, "release", {
+            fallbackToSource: true,
+            adoptExisting: true,
+          });
+          installed += 1;
+          onInstalled();
+        } catch (thrown) {
+          // One bad URL in a pasted list must not abandon the rest.
+          failed.push(`${url} — ${api.errorMessage(thrown)}`);
+        }
       }
+    } finally {
+      // Whatever went wrong, the list has to end up describing the disk.
+      setProgress(null);
+      onDone(installed, failed);
     }
-
-    setProgress(null);
-    onDone(installed, failed);
   }
 
   return (

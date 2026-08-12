@@ -35,6 +35,14 @@ pub enum Ref {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         last_modified: Option<String>,
     },
+    /// The files are on disk but this app did not put them there, so which
+    /// upstream version they are is genuinely not known.
+    ///
+    /// Recorded when an addon is adopted — either one the user hands us, or one
+    /// an import found already installed. Inventing a tag instead would make the
+    /// first update check compare a fiction against a real release, which is the
+    /// phantom-update class this whole type exists to prevent.
+    Unknown,
 }
 
 impl Ref {
@@ -62,7 +70,13 @@ impl Ref {
                 format!("{branch}@{short}")
             }
             Ref::Direct { etag, .. } => etag.clone().unwrap_or_else(|| "latest".to_string()),
+            Ref::Unknown => "unknown version".to_string(),
         }
+    }
+
+    /// True when we do not know what is installed.
+    pub fn is_unknown(&self) -> bool {
+        matches!(self, Ref::Unknown)
     }
 }
 
@@ -79,6 +93,12 @@ pub enum UpdateStatus {
 /// Compare what is installed against what upstream currently offers.
 pub fn check(current: &Ref, latest: &Ref) -> UpdateStatus {
     match (current, latest) {
+        // Nothing known to compare against. Whatever upstream offers is worth
+        // installing, because it is the first version this app can vouch for —
+        // and it is an update, not a channel change: the user never chose a
+        // channel that these files came from.
+        (Ref::Unknown, _) => UpdateStatus::UpdateAvailable,
+
         (
             Ref::Release {
                 tag: current_tag,
@@ -387,6 +407,33 @@ mod tests {
         );
     }
 
+    // --- adopted files, whose version nobody knows ---
+
+    /// Adopting cannot be allowed to strand an addon. An unknown version has to
+    /// resolve to "there is something to install", or the row that most needs a
+    /// known version is the one row that can never get one.
+    #[test]
+    fn an_unknown_version_can_always_be_updated() {
+        assert_eq!(
+            check(&Ref::Unknown, &Ref::release("v1.2.3")),
+            UpdateStatus::UpdateAvailable
+        );
+        assert_eq!(
+            check(&Ref::Unknown, &Ref::branch("master", "abc1234")),
+            UpdateStatus::UpdateAvailable
+        );
+    }
+
+    /// It must not be reported as a channel change: the user never chose a
+    /// channel for files this app did not install.
+    #[test]
+    fn an_unknown_version_is_not_a_channel_change() {
+        assert_ne!(
+            check(&Ref::Unknown, &Ref::release("v1.2.3")),
+            UpdateStatus::ChannelChanged
+        );
+    }
+
     // --- display ---
 
     #[test]
@@ -403,6 +450,7 @@ mod tests {
         for value in [
             Ref::release("v1.0.0"),
             Ref::branch("master", "abc1234"),
+            Ref::Unknown,
             Ref::Direct {
                 url: "https://example.com/a.zip".into(),
                 etag: Some("W/\"1\"".into()),
