@@ -25,6 +25,21 @@ people are actually running.
     you want it.
 - **The list fills up as an import runs**, one addon at a time, rather than
   staying still until the whole list has finished.
+
+### Changed
+- **An addon list now carries the channel, the exact version and the folders
+  each addon occupies**, not just its repository. Which means an import into a
+  game folder that already has the addons in it **downloads nothing at all** —
+  it recognises what is there and records it at the version the list states.
+  Exports still read as a plain list of URLs, so V1 and older builds of this app
+  can still import them.
+- **A V1 list also imports without downloading.** V1 wrote each addon's name
+  beside its URL, and a folder on disk reports that same name in its `.toc`, so
+  an exact match identifies the folder — its component folders included. Where
+  nothing matches, the addon really is not there and is fetched as before.
+- The import dialog **lists what it found** — name, version, folders — before
+  installing anything, and says how many addons were already present when it
+  finishes.
 - **An addon adopted from disk shows `unknown version` and offers Update.** It
   used to read `adopted@adopted` and offer *Switch*, as if the user had changed
   a channel they had never chosen.

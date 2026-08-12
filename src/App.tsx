@@ -533,11 +533,14 @@ export default function App() {
           server={selected}
           onClose={() => setTransfer(null)}
           onInstalled={() => void refreshAddons()}
-          onDone={async (installed, failed) => {
+          onDone={async (installed, failed, adopted) => {
             setTransfer(null);
             notify(
               failed.length === 0 ? "success" : "info",
-              `Installed ${installed} addon${installed === 1 ? "" : "s"}` +
+              `Imported ${installed} addon${installed === 1 ? "" : "s"}` +
+                // Worth saying: it is the difference between an import that
+                // downloaded everything and one that downloaded nothing.
+                (adopted > 0 ? `, ${adopted} already here` : "") +
                 (failed.length > 0 ? `, ${failed.length} failed` : ""),
             );
             for (const line of failed) notify("error", line);

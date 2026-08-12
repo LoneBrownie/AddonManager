@@ -17,6 +17,7 @@ import type {
   FolderVerdict,
   FoundAddon,
   GameVersionOption,
+  ListEntry,
   Outcome,
   Server,
 } from "./api";
@@ -135,6 +136,7 @@ const unmanaged: Record<string, FoundAddon[]> = {
  * answer to them can be driven in a browser rather than only on a real machine.
  */
 const noReleases = new Set(["thezephyrsong/TopFit", "NoM0Re/PallyPower-Improved-3.3.5"]);
+const URL_PATTERN = /https?:\/\/(?:www\.)?(?:github|gitlab)\.com\/[\w.-]+\/[\w.-]+/;
 const shipsFolder: Record<string, string> = {
   "bkader/Skada-WoTLK": "Skada",
   "thezephyrsong/MyKey": "MyKey",
@@ -530,13 +532,90 @@ export async function mockInvoke<T>(
 
     case "export_addon_list": {
       const rows = (serverId && addons[serverId]) || [];
-      return rows.map((a) => `${a.name}: ${a.sourceUrl}`).join("\n") as T;
+      const server = servers.find((s) => s.id === serverId);
+      return [
+        "# Brownie’s Addon Manager — addon list",
+        `# ${server?.name ?? "Server"} · ${server?.versionLabel ?? ""}`,
+        "# name | repository | channel | version | folders",
+        ...rows.map((a) =>
+          [a.name, a.sourceUrl, a.channel, a.installedVersion, a.folders.join(", ")].join(" | "),
+        ),
+      ].join("\n") as T;
     }
 
     case "parse_addon_list": {
       const text = String(args?.["text"] ?? "");
-      const matches = text.match(/https?:\/\/(?:www\.)?(?:github|gitlab)\.com\/[\w.-]+\/[\w.-]+/g);
-      return Array.from(new Set(matches ?? [])) as T;
+      const entries: ListEntry[] = [];
+      for (const raw of text.split("\n")) {
+        const line = raw.trim();
+        if (!line || line.startsWith("#")) continue;
+
+        const columns = line.split("|").map((c) => c.trim());
+        const rich = columns.length >= 2 && /github\.com|gitlab\.com/.test(columns[1] ?? "");
+        const url = (rich ? columns[1] : line.match(URL_PATTERN)?.[0]) ?? null;
+        if (!url) continue;
+        if (entries.some((e) => e.url === url)) continue;
+
+        const channel = columns[2] === "source" ? "source" : columns[2] === "release" ? "release" : null;
+        entries.push({
+          url,
+          name: rich ? columns[0] ?? null : line.split(": ")[0]?.trim() || null,
+          channel: rich ? channel : null,
+          version: rich ? columns[3] || null : null,
+          versionRef: rich ? columns[3] || null : null,
+          folders: rich ? (columns[4] ?? "").split(",").map((f) => f.trim()).filter(Boolean) : [],
+        });
+      }
+      return entries as T;
+    }
+
+    case "import_addon": {
+      const entry = args?.["entry"] as ListEntry;
+      const repo = pathOf(entry.url);
+      // What the engine does: folders the list names, or a folder that answers
+      // to the name it gives, are taken over with no download at all.
+      const here = (serverId && unmanaged[serverId]) || [];
+      const named = entry.folders.filter((folder: string) => here.some((f) => f.folder === folder));
+      const byName = entry.name
+        ? here.filter(
+            (f) =>
+              f.folder.toLowerCase() === entry.name?.toLowerCase() ||
+              f.title?.toLowerCase() === entry.name?.toLowerCase(),
+          )
+        : [];
+      const folders =
+        named.length > 0
+          ? named
+          : byName.length === 1 && byName[0]
+            ? [byName[0].folder, ...byName[0].related]
+            : [];
+
+      if (folders.length > 0 && serverId) {
+        const created = row(
+          `github:${repo}`,
+          entry.name ?? nameFrom(entry.url),
+          entry.version ?? "unknown version",
+          {
+            versionUnknown: !entry.version,
+            channel: entry.channel ?? "release",
+            folders,
+          },
+        );
+        addons[serverId] = [...(addons[serverId] ?? []), created];
+        unmanaged[serverId] = here.filter((f) => !folders.includes(f.folder));
+        bumpCount(serverId);
+        return { addon: created, adopted: true } as T;
+      }
+
+      // Not here yet, so it really does have to be fetched.
+      const addon = await mockInvoke<Addon>("install_addon", {
+        serverId,
+        url: entry.url,
+        channel: entry.channel ?? "release",
+        fallbackToSource: true,
+        adoptExisting: true,
+      });
+      return { addon, adopted: addon.versionUnknown } as T;
     }
 
     case "diagnostics":

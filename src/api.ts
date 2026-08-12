@@ -96,6 +96,30 @@ export interface FoundAddon {
   versionMatches: boolean;
 }
 
+/**
+ * One line of a pasted addon list.
+ *
+ * A list this app wrote fills all of it in. A V1 list gives a name and a URL,
+ * and the rest is genuinely unknown rather than defaulted.
+ */
+export interface ListEntry {
+  name: string | null;
+  url: string;
+  channel: Channel | null;
+  /** Shortened for reading. */
+  version: string | null;
+  /** The same version as a list writes it. Opaque — pass it back untouched. */
+  versionRef: string | null;
+  folders: string[];
+}
+
+/** What importing one entry did. */
+export interface Imported {
+  addon: Addon;
+  /** It was already on disk and was taken over; nothing was downloaded. */
+  adopted: boolean;
+}
+
 /** An addon whose declared dependencies are not all present. */
 export interface Unmet {
   addonId: string;
@@ -196,12 +220,13 @@ export const copyAddonSet = (
 export const listAddons = (serverId: string) =>
   call<Addon[]>("list_addons", { serverId });
 /**
- * Extras only the import path asks for.
+ * Departures from the default install, all off unless asked for.
  *
  * `fallbackToSource` installs from the branch when a repository has never cut a
  * release; `adoptExisting` takes over folders already in the game directory
- * instead of refusing to write over them. Both are off elsewhere, where being
- * told what is wrong is more use than a silent substitution.
+ * instead of refusing to write over them. Importing a list turns both on, via
+ * {@link importAddon}. Everywhere else being told what is wrong is more use
+ * than a silent substitution.
  */
 export interface InstallOptions {
   overwriteUnmanaged?: boolean;
@@ -257,7 +282,9 @@ export const getCatalog = (serverId: string | null) =>
 export const exportAddonList = (serverId: string) =>
   call<string>("export_addon_list", { serverId });
 export const parseAddonList = (text: string) =>
-  call<string[]>("parse_addon_list", { text });
+  call<ListEntry[]>("parse_addon_list", { text });
+export const importAddon = (serverId: string, entry: ListEntry) =>
+  call<Imported>("import_addon", { serverId, entry });
 export const hasGithubToken = () => call<boolean>("has_github_token");
 export const setGithubToken = (token: string | null) =>
   call<void>("set_github_token", { token });

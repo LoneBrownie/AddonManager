@@ -5,7 +5,7 @@ use bam_core::sources;
 use tauri::State;
 
 use super::{CommandError, CommandResult};
-use crate::dto::{CatalogEntryDto, CatalogResultDto};
+use crate::dto::{CatalogEntryDto, CatalogResultDto, ListEntryDto};
 use crate::state::{AppState, Preferences};
 use bam_core::model::GameVersion;
 
@@ -117,55 +117,27 @@ pub async fn get_catalog(
 
 /// Render a server's addons as shareable text.
 ///
-/// Kept in V1's format — `Name: url`, one per line — so lists already floating
-/// around a guild's Discord still work.
+/// Carries the channel, the exact version and the folders each addon occupies,
+/// so importing the list somewhere the addons already exist needs no downloads
+/// at all. Every line still contains a bare repository URL, so V1 and older
+/// builds of this app read these lists as they always did.
 #[tauri::command]
 pub fn export_addon_list(state: State<'_, AppState>, server_id: String) -> CommandResult<String> {
     let store = state.snapshot()?;
-    let mut lines: Vec<String> = store
-        .installed_for(&server_id)
-        .into_iter()
-        .filter_map(|installation| {
-            let addon = store.addon(&installation.addon_id)?;
-            Some(format!(
-                "{}: {}",
-                addon.display_name,
-                addon.source.web_url()
-            ))
-        })
-        .collect();
-    lines.sort_by_key(|line| line.to_lowercase());
-    Ok(lines.join("\n"))
+    Ok(bam_core::list::render(&store, &server_id))
 }
 
-/// Pull repository URLs out of pasted text.
+/// Read a pasted addon list.
 ///
 /// Tolerant on purpose: people paste V1 exports, bare URL lists, and Discord
-/// messages with commentary around them. Anything that parses as a repo URL is
-/// taken; everything else is ignored.
+/// messages with commentary around them. A line this app wrote is read in full;
+/// anything else is scraped for repository URLs.
 #[tauri::command]
-pub fn parse_addon_list(text: String) -> Vec<String> {
-    let mut found: Vec<String> = Vec::new();
-
-    for token in text.split([
-        ' ', '\t', '\n', '\r', ',', ';', '<', '>', '"', '\'', '(', ')',
-    ]) {
-        let cleaned = token.trim().trim_end_matches(['.', ':', '!', '?']);
-        if cleaned.is_empty() {
-            continue;
-        }
-        if !cleaned.contains("github.com") && !cleaned.contains("gitlab.com") {
-            continue;
-        }
-        if let Ok(source) = sources::parse_repo_url(cleaned) {
-            let url = source.web_url();
-            if !found.contains(&url) {
-                found.push(url);
-            }
-        }
-    }
-
-    found
+pub fn parse_addon_list(text: String) -> Vec<ListEntryDto> {
+    bam_core::list::parse(&text)
+        .iter()
+        .map(ListEntryDto::from)
+        .collect()
 }
 
 /// Work out what installing a catalogue entry actually entails.
@@ -263,11 +235,20 @@ pub fn open_url(app: tauri::AppHandle, url: String) -> CommandResult<()> {
 mod tests {
     use super::*;
 
+    fn urls(text: &str) -> Vec<String> {
+        parse_addon_list(text.to_string())
+            .into_iter()
+            .map(|entry| entry.url)
+            .collect()
+    }
+
+    /// The format itself is the engine's; what is checked here is that the
+    /// command hands the interface what it needs.
     #[test]
     fn extracts_urls_from_a_v1_style_export() {
         let text = "Questie: https://github.com/o/questie\nAtlasLoot: https://gitlab.com/t/atlas\n";
         assert_eq!(
-            parse_addon_list(text.to_string()),
+            urls(text),
             vec![
                 "https://github.com/o/questie".to_string(),
                 "https://gitlab.com/t/atlas".to_string()
@@ -276,10 +257,22 @@ mod tests {
     }
 
     #[test]
+    fn carries_what_this_apps_own_export_wrote() {
+        let text = "Questie | https://github.com/o/questie | source | master@abc1234 | Questie, Questie_Extra";
+        let entries = parse_addon_list(text.to_string());
+        let entry = entries.first().unwrap_or_else(|| panic!("one entry"));
+
+        assert_eq!(entry.name.as_deref(), Some("Questie"));
+        assert_eq!(entry.channel, Some(bam_core::model::Channel::Source));
+        assert_eq!(entry.version.as_deref(), Some("master@abc1234"));
+        assert_eq!(entry.folders.len(), 2);
+    }
+
+    #[test]
     fn extracts_urls_from_prose() {
         let text = "hey grab <https://github.com/o/r> and also (https://github.com/a/b), thanks!";
         assert_eq!(
-            parse_addon_list(text.to_string()),
+            urls(text),
             vec![
                 "https://github.com/o/r".to_string(),
                 "https://github.com/a/b".to_string()
@@ -289,17 +282,13 @@ mod tests {
 
     #[test]
     fn ignores_non_repository_links_and_noise() {
-        let text = "see https://example.com/nope and https://github.com/only-an-owner";
-        assert!(parse_addon_list(text.to_string()).is_empty());
+        assert!(urls("see https://example.com/nope and https://github.com/only-an-owner").is_empty());
     }
 
     #[test]
     fn deduplicates_repeated_urls() {
         let text = "https://github.com/o/r https://github.com/o/r.git https://github.com/o/r/";
-        assert_eq!(
-            parse_addon_list(text.to_string()),
-            vec!["https://github.com/o/r".to_string()]
-        );
+        assert_eq!(urls(text), vec!["https://github.com/o/r".to_string()]);
     }
 
     #[test]

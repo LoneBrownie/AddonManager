@@ -26,6 +26,9 @@
 //! * [`servers`] — registering and managing game folders.
 //! * [`bulk`] — install-to-many and copy-set-between-servers.
 //! * [`adopt`] — adopting addon folders already on disk.
+//! * [`list`] — reading and writing the shareable addon list.
+//! * [`import`] — applying a list to a server, without downloading what is
+//!   already there.
 //! * [`http`] — the network trait the engine depends on (no client here).
 //! * [`testing`] — fakes, so nothing in the test suite touches the network.
 
@@ -46,7 +49,9 @@ pub mod cancel;
 pub mod deps;
 pub mod error;
 pub mod http;
+pub mod import;
 pub mod install;
+pub mod list;
 pub mod model;
 pub mod paths;
 pub mod servers;

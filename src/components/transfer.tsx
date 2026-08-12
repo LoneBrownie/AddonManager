@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import * as api from "../api";
-import type { FoundAddon, Server } from "../api";
+import type { FoundAddon, ListEntry, Server } from "../api";
 import { Dialog } from "./Dialog";
 
 /**
@@ -19,13 +19,13 @@ export function ImportListDialog({
 }: {
   server: Server;
   onClose: () => void;
-  onDone: (installed: number, failed: string[]) => void;
+  onDone: (installed: number, failed: string[], adopted: number) => void;
   /** One addon landed. Importing thirty takes minutes; the list behind this
    *  dialog should fill up as they arrive rather than all at the end. */
   onInstalled: () => void;
 }) {
   const [text, setText] = useState("");
-  const [urls, setUrls] = useState<string[]>([]);
+  const [entries, setEntries] = useState<ListEntry[]>([]);
   const [parsing, setParsing] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export function ImportListDialog({
   // Re-parse as the user types, so the count is live rather than a surprise.
   useEffect(() => {
     if (!text.trim()) {
-      setUrls([]);
+      setEntries([]);
       return;
     }
     let cancelled = false;
@@ -41,10 +41,10 @@ export function ImportListDialog({
     api
       .parseAddonList(text)
       .then((found) => {
-        if (!cancelled) setUrls(found);
+        if (!cancelled) setEntries(found);
       })
       .catch(() => {
-        if (!cancelled) setUrls([]);
+        if (!cancelled) setEntries([]);
       })
       .finally(() => {
         if (!cancelled) setParsing(false);
@@ -54,35 +54,37 @@ export function ImportListDialog({
     };
   }, [text]);
 
+  // A list this app wrote says which version and which folders. One from V1
+  // says neither, which changes what the import can do without downloading —
+  // so the dialog says which kind of list this is before anything runs.
+  const detailed = entries.filter((entry) => entry.folders.length > 0).length;
+
   async function install() {
     setError(null);
     const failed: string[] = [];
     let installed = 0;
+    let adopted = 0;
 
     try {
-      for (const [index, url] of urls.entries()) {
-        setProgress({ done: index, total: urls.length });
+      for (const [index, entry] of entries.entries()) {
+        setProgress({ done: index, total: entries.length });
         try {
-          // An imported list is a list of addons the user already runs, so the
-          // two things that make an import fail wholesale are handled rather
-          // than reported: a repository with no releases installs from its
-          // branch, and one already sitting in the game folder is taken over
-          // where it stands instead of being downloaded over the top.
-          await api.installAddon(server.id, url, "release", {
-            fallbackToSource: true,
-            adoptExisting: true,
-          });
+          // The engine decides between taking over what is already there and
+          // fetching what is not. It has the list and it has the disk; the
+          // interface has no business second-guessing either.
+          const result = await api.importAddon(server.id, entry);
           installed += 1;
+          if (result.adopted) adopted += 1;
           onInstalled();
         } catch (thrown) {
           // One bad URL in a pasted list must not abandon the rest.
-          failed.push(`${url} — ${api.errorMessage(thrown)}`);
+          failed.push(`${entry.name ?? entry.url} — ${api.errorMessage(thrown)}`);
         }
       }
     } finally {
       // Whatever went wrong, the list has to end up describing the disk.
       setProgress(null);
-      onDone(installed, failed);
+      onDone(installed, failed, adopted);
     }
   }
 
@@ -100,11 +102,11 @@ export function ImportListDialog({
             type="button"
             className="btn primary"
             onClick={install}
-            disabled={urls.length === 0 || progress !== null}
+            disabled={entries.length === 0 || progress !== null}
           >
             {progress
-              ? `Installing ${progress.done + 1} of ${progress.total}…`
-              : `Install ${urls.length} addon${urls.length === 1 ? "" : "s"}`}
+              ? `Importing ${progress.done + 1} of ${progress.total}…`
+              : `Import ${entries.length} addon${entries.length === 1 ? "" : "s"}`}
           </button>
         </>
       }
@@ -115,7 +117,9 @@ export function ImportListDialog({
         <strong>Moving over from V1?</strong> Open V1, use <em>Export Addon List</em>,
         and paste the result here. That list carries the exact repositories you
         installed from — which is something no amount of inspecting the folders
-        on disk can work out, since most 3.3.5a addons are backports.
+        on disk can work out, since most 3.3.5a addons are backports. Addons
+        already in this game folder are taken over as they are, not downloaded
+        again.
       </div>
 
       <div className="field">
@@ -130,18 +134,33 @@ export function ImportListDialog({
         <span className="hint">
           {parsing
             ? "Reading…"
-            : urls.length > 0
-              ? `${urls.length} repository URL${urls.length === 1 ? "" : "s"} found. Anything else in the text is ignored.`
-              : "Paste a V1 export, or any text containing GitHub and GitLab URLs."}
+            : entries.length > 0
+              ? `${entries.length} addon${entries.length === 1 ? "" : "s"} found. ` +
+                (detailed > 0
+                  ? `${detailed} of them name their folders and versions, so those go straight in.`
+                  : "Anything else in the text is ignored.")
+              : "Paste a V1 export, a list exported from this app, or any text containing GitHub and GitLab URLs."}
         </span>
       </div>
 
-      {urls.length > 0 ? (
+      {entries.length > 0 ? (
         <div className="rows" style={{ maxHeight: 190, overflowY: "auto" }}>
-          {urls.map((url) => (
-            <div className="row" key={url} style={{ padding: "8px 11px" }}>
-              <div className="row-sub" style={{ marginTop: 0 }}>
-                {url}
+          {entries.map((entry) => (
+            <div className="row" key={entry.url} style={{ padding: "8px 11px" }}>
+              <div className="row-main">
+                {entry.name ? (
+                  <div className="row-title">
+                    <strong>{entry.name}</strong>
+                    {entry.version ? <span className="tag">{entry.version}</span> : null}
+                    {entry.channel === "source" ? (
+                      <span className="tag source">source</span>
+                    ) : null}
+                  </div>
+                ) : null}
+                <div className="row-sub" style={entry.name ? undefined : { marginTop: 0 }}>
+                  {entry.url}
+                  {entry.folders.length > 0 ? ` · ${entry.folders.join(", ")}` : ""}
+                </div>
               </div>
             </div>
           ))}
@@ -197,13 +216,18 @@ export function ExportListDialog({
         <textarea
           className="input"
           readOnly
+          // Lines carry five fields now, so they wrap; a three-line box turns
+          // the list into a peephole.
+          style={{ minHeight: 210, whiteSpace: "pre", overflowX: "auto" }}
           value={text || "Nothing installed to this server yet."}
           aria-label="Addon list"
           onFocus={(event) => event.currentTarget.select()}
         />
         <span className="hint">
           Share this with a guildmate, or keep it as a record. Pasting it into
-          Import brings the same addons back.
+          Import brings the same addons back — at the versions listed here, and
+          without downloading any that are already in the target folder. Older
+          tools that only understand a list of URLs still read it.
         </span>
       </div>
     </Dialog>
