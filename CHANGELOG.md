@@ -7,7 +7,7 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
-## 2.0.0-beta.7 — unreleased
+## 2.0.0-beta.7 — 2026-08-12
 
 ### Added
 - **What changed, on the first launch after an update.** A window listing the
