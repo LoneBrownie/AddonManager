@@ -7,6 +7,25 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
+## 2.1.0 — unreleased
+
+### Added
+- **A theme setting**, under *Settings → Appearance*: **System**, **Dark** or
+  **Light**. The light theme existed in the stylesheet from the start and there
+  was no way to choose it, so nobody had ever seen it. *System* follows your
+  desktop and changes with it; picking dark or light means it stays there.
+
+### Fixed
+- **Scrollbars are the right colour.** They were the desktop's default — a white
+  bar down the side of every list in a dark window — because nothing told the
+  webview which way round the app is.
+- **The server you had selected comes back when you reopen the app.** It was
+  being recorded on every switch and never read, so it always opened on
+  whichever server happened to be first.
+- **The GitHub token is no longer readable by the interface.** It was included
+  in the preferences the frontend could ask for, which contradicted what
+  Settings says about it and what the "is a token set?" check exists for.
+
 ## 2.0.0 — 2026-08-12
 
 **V2 is out of beta.** A rewrite — a Rust engine with a React interface,

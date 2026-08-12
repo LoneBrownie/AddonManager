@@ -11,6 +11,9 @@ use bam_core::updates::UpdateReport;
 use bam_core::version::UpdateStatus;
 use serde::{Deserialize, Serialize};
 
+mod list;
+pub use list::{ImportedDto, ListEntryDto};
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerDto {
@@ -266,76 +269,18 @@ impl From<bam_core::adopt::FoundAddon> for FoundAddonDto {
     }
 }
 
-/// One line of a pasted addon list, as the engine reads it.
+/// The preferences the interface is allowed to read back.
 ///
-/// Everything but the URL is optional: a V1 list carries a name and nothing
-/// else, and the interface has to be able to say so rather than invent the
-/// difference.
+/// Deliberately not [`crate::state::Preferences`] itself, which also holds the
+/// GitHub token. Handing that to the webview would contradict what Settings
+/// tells the user and what [`has_github_token`] exists for — whether a token is
+/// configured is answerable without revealing it.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ListEntryDto {
-    pub name: Option<String>,
-    pub url: String,
-    pub channel: Option<Channel>,
-    /// Formatted for display — "v1.2.3", "master@abc1234", or absent.
-    pub version: Option<String>,
-    /// The same version, written the way a list writes it.
-    ///
-    /// Opaque to the interface, which passes it straight back when importing.
-    /// `version` shortens a commit to seven characters for reading, and handing
-    /// *that* back would record a sha no forge will ever report — every check
-    /// would then claim an update.
-    pub version_ref: Option<String>,
-    pub folders: Vec<String>,
-}
-
-impl From<&bam_core::list::ListEntry> for ListEntryDto {
-    fn from(entry: &bam_core::list::ListEntry) -> Self {
-        ListEntryDto {
-            name: entry.name.clone(),
-            url: entry.url.clone(),
-            channel: entry.channel,
-            version: entry
-                .version
-                .as_ref()
-                .filter(|reference| !reference.is_unknown())
-                .map(|reference| reference.display()),
-            version_ref: entry.version.as_ref().map(bam_core::list::write_ref),
-            folders: entry.folders.clone(),
-        }
-    }
-}
-
-impl ListEntryDto {
-    /// Back to what the engine works with.
-    pub fn into_entry(self) -> Result<bam_core::list::ListEntry, crate::commands::CommandError> {
-        // Re-validated here rather than trusted: this arrives from the webview,
-        // and a folder name is about to be acted on.
-        for folder in &self.folders {
-            bam_core::paths::validate_component(folder)?;
-        }
-        Ok(bam_core::list::ListEntry {
-            name: self.name,
-            url: self.url,
-            channel: self.channel,
-            version: self
-                .version_ref
-                .as_deref()
-                .and_then(|value| bam_core::list::read_ref(value, self.channel)),
-            folders: self.folders,
-        })
-    }
-}
-
-/// What importing one entry did.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ImportedDto {
-    pub addon: AddonDto,
-    /// True when the addon was already on disk and was taken over rather than
-    /// downloaded. Worth reporting: it is the difference between an import that
-    /// moved several gigabytes and one that moved none.
-    pub adopted: bool,
+pub struct PreferencesDto {
+    /// `None` means "follow the system", which is the default.
+    pub theme: Option<String>,
+    pub selected_server_id: Option<String>,
 }
 
 /// An addon whose declared dependencies are not all present.

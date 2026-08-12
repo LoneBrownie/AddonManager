@@ -6,8 +6,8 @@ use tauri::State;
 
 use super::{CommandError, CommandResult};
 use crate::changelog::WhatsNewDto;
-use crate::dto::{CatalogEntryDto, CatalogResultDto, ListEntryDto};
-use crate::state::{AppState, Preferences};
+use crate::dto::{CatalogEntryDto, CatalogResultDto, ListEntryDto, PreferencesDto};
+use crate::state::AppState;
 use bam_core::model::GameVersion;
 
 /// Base for the curated lists.
@@ -218,9 +218,18 @@ pub fn whats_new(state: State<'_, AppState>) -> CommandResult<Option<WhatsNewDto
     )
 }
 
+/// The preferences the interface needs at startup: which theme, and which
+/// server was selected last.
+///
+/// Returns a DTO rather than the stored struct, which also holds the GitHub
+/// token — see [`PreferencesDto`].
 #[tauri::command]
-pub fn get_preferences(state: State<'_, AppState>) -> CommandResult<Preferences> {
-    Ok(state.prefs()?)
+pub fn get_preferences(state: State<'_, AppState>) -> CommandResult<PreferencesDto> {
+    let prefs = state.prefs()?;
+    Ok(PreferencesDto {
+        theme: prefs.theme,
+        selected_server_id: prefs.selected_server_id,
+    })
 }
 
 /// Store or clear the GitHub token.

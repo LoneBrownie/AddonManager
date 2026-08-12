@@ -18,6 +18,7 @@ import {
   ImportListDialog,
 } from "./components/transfer";
 import { WhatsNewDialog } from "./components/WhatsNew";
+import * as theme from "./theme";
 
 type Page = "addons" | "browse" | "servers" | "settings";
 type Toast = { id: number; kind: "info" | "error" | "success"; text: string };
@@ -39,6 +40,7 @@ export default function App() {
   const [adopting, setAdopting] = useState<api.FoundAddon | null>(null);
   const [dependents, setDependents] = useState<string[]>([]);
   const [whatsNew, setWhatsNew] = useState<api.WhatsNew | null>(null);
+  const [appTheme, setAppTheme] = useState<api.Theme>(null);
 
   const selected = useMemo(
     () => servers.find((server) => server.id === selectedId) ?? null,
@@ -64,9 +66,39 @@ export default function App() {
     }
   }, [notify]);
 
+  // Startup, in one pass: the stored preferences decide the theme and which
+  // server comes back, so both have to be read before the first render settles.
+  // Not folded into refreshServers, which also runs on every window focus —
+  // re-reading preferences there would let a stale value fight the user.
   useEffect(() => {
-    void refreshServers();
-  }, [refreshServers]);
+    let cancelled = false;
+    (async () => {
+      const [prefs, list] = await Promise.all([
+        api.getPreferences().catch(() => null),
+        api.listServers(),
+      ]);
+      if (cancelled) return;
+
+      theme.apply(prefs?.theme ?? null);
+      setAppTheme(prefs?.theme ?? null);
+
+      setServers(list);
+      // The one that was selected last, if it is still here. A server that has
+      // been forgotten since falls back to the first rather than to nothing.
+      const remembered = list.find(
+        (server) => server.id === prefs?.selectedServerId,
+      );
+      setSelectedId(remembered?.id ?? list[0]?.id ?? null);
+    })().catch((error) => {
+      if (!cancelled) notify("error", api.errorMessage(error));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [notify]);
+
+  // Only while the choice is "system"; `follow` returns a no-op otherwise.
+  useEffect(() => theme.follow(appTheme), [appTheme]);
 
   // Shown once, on the first launch after an update. The engine decides
   // whether this is that launch — the interface cannot know what ran last time.
@@ -511,7 +543,17 @@ export default function App() {
           />
         ) : null}
 
-        {page === "settings" ? <SettingsPage notify={notify} /> : null}
+        {page === "settings" ? (
+          <SettingsPage
+            notify={notify}
+            appTheme={appTheme}
+            onTheme={async (next) => {
+              theme.apply(next);
+              setAppTheme(next);
+              await api.setTheme(next).catch(() => {});
+            }}
+          />
+        ) : null}
       </main>
 
       {showAddServer ? (
@@ -846,8 +888,12 @@ function EmptyCatalog({
 
 function SettingsPage({
   notify,
+  appTheme,
+  onTheme,
 }: {
   notify: (kind: Toast["kind"], text: string) => void;
+  appTheme: api.Theme;
+  onTheme: (theme: api.Theme) => void;
 }) {
   const [token, setToken] = useState("");
   const [hasToken, setHasToken] = useState(false);
@@ -868,6 +914,26 @@ function SettingsPage({
       </div>
       <div className="page-body">
         <div className="field" style={{ maxWidth: 520 }}>
+          <label>Appearance</label>
+          <div className="segmented" role="group" aria-label="Theme">
+            {([null, "dark", "light"] as api.Theme[]).map((option) => (
+              <button
+                key={option ?? "system"}
+                type="button"
+                aria-pressed={appTheme === option}
+                onClick={() => onTheme(option)}
+              >
+                {option === null ? "System" : option === "dark" ? "Dark" : "Light"}
+              </button>
+            ))}
+          </div>
+          <span className="hint">
+            Dark by default, because this sits beside a game. <em>System</em>
+            {" "}follows your desktop and changes with it.
+          </span>
+        </div>
+
+        <div className="field" style={{ maxWidth: 520, marginTop: 28 }}>
           <label htmlFor="token">GitHub token (optional)</label>
           <input
             id="token"

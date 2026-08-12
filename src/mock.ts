@@ -204,6 +204,9 @@ function entry(
 }
 
 let selectedFolder = "D:\\Games\\NewServer";
+// Preferences survive within a session, as they survive a restart in the app.
+let mockTheme: "dark" | "light" | null = null;
+let mockSelectedServer: string | null = "srv_epoch";
 let token: string | null = null;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -476,6 +479,17 @@ export async function mockInvoke<T>(
         ].join("\n"),
       } as T;
 
+    case "get_preferences":
+      return { theme: mockTheme, selectedServerId: mockSelectedServer } as T;
+
+    case "set_theme":
+      mockTheme = (args?.["theme"] as "dark" | "light" | null) ?? null;
+      return undefined as T;
+
+    case "set_selected_server":
+      mockSelectedServer = (args?.["id"] as string | null) ?? null;
+      return undefined as T;
+
     case "adopt_addon": {
       const folders = (args?.["folders"] as string[]) ?? [];
       const url = String(args?.["url"] ?? "");
@@ -657,9 +671,7 @@ export async function mockInvoke<T>(
       token = (args?.["token"] as string) || null;
       return undefined as T;
 
-    case "set_selected_server":
     case "set_server_accent":
-    case "set_theme":
     case "open_url":
       return undefined as T;
 

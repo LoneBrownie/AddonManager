@@ -113,6 +113,14 @@ export interface ListEntry {
   folders: string[];
 }
 
+/** `null` means "follow the system", which is the default. */
+export type Theme = "dark" | "light" | null;
+
+export interface Preferences {
+  theme: Theme;
+  selectedServerId: string | null;
+}
+
 /** The changelog for the version now running. */
 export interface WhatsNew {
   version: string;
@@ -293,6 +301,16 @@ export const parseAddonList = (text: string) =>
 export const importAddon = (serverId: string, entry: ListEntry) =>
   call<Imported>("import_addon", { serverId, entry });
 export const hasGithubToken = () => call<boolean>("has_github_token");
+/**
+ * Settings the interface restores at startup.
+ *
+ * The GitHub token is deliberately not among them — whether one is configured
+ * is answered by {@link hasGithubToken}, without handing the token itself to
+ * the webview.
+ */
+export const getPreferences = () => call<Preferences>("get_preferences");
+/** `null` follows the system. */
+export const setTheme = (theme: Theme) => call<void>("set_theme", { theme });
 export const setGithubToken = (token: string | null) =>
   call<void>("set_github_token", { token });
 export const openUrl = (url: string) => call<void>("open_url", { url });
