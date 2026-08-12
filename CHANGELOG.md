@@ -7,6 +7,14 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
+## 2.0.0-beta.8 — unreleased
+
+### Changed
+- **The release notes are no longer printed beside the update button.** They
+  were shown there as raw text, which meant a wall of Markdown punctuation the
+  moment the notes became real ones. What changed belongs in the window that
+  appears after the restart, which renders it properly, and nowhere else.
+
 ## 2.0.0-beta.7 — 2026-08-12
 
 ### Added

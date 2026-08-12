@@ -5,7 +5,7 @@ type State =
   | { kind: "idle" }
   | { kind: "checking" }
   | { kind: "current" }
-  | { kind: "found"; version: string; notes: string | null }
+  | { kind: "found"; version: string }
   | { kind: "installing"; fraction: number | null };
 
 /**
@@ -32,6 +32,7 @@ export function AppUpdate({
       <span className="hint">
         Checks this repository for a newer release. Nothing is downloaded until
         you ask for it, and the app restarts only once the update is installed.
+        What changed is shown after the restart, not here.
       </span>
 
       <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
@@ -44,11 +45,7 @@ export function AppUpdate({
             try {
               const found = await appUpdate.check();
               if (found) {
-                setState({
-                  kind: "found",
-                  version: found.version,
-                  notes: found.notes,
-                });
+                setState({ kind: "found", version: found.version });
               } else {
                 setState({ kind: "current" });
               }
@@ -104,12 +101,6 @@ export function AppUpdate({
             ? "Downloading…"
             : `Downloading… ${Math.round(state.fraction * 100)}%`}
         </span>
-      ) : null}
-
-      {state.kind === "found" && state.notes ? (
-        <pre className="hint" style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
-          {state.notes}
-        </pre>
       ) : null}
     </div>
   );

@@ -16,11 +16,10 @@ export const available = inTauri;
 
 export interface UpdateInfo {
   version: string;
-  notes: string | null;
 }
 
 /** The update handle, kept between checking and installing. */
-type Handle = { version: string; body?: string; downloadAndInstall: (
+type Handle = { version: string; downloadAndInstall: (
   onEvent: (event: { event: string; data?: { contentLength?: number; chunkLength?: number } }) => void,
 ) => Promise<void> };
 
@@ -42,7 +41,11 @@ export async function check(): Promise<UpdateInfo | null> {
     return null;
   }
   pending = update as unknown as Handle;
-  return { version: update.version, notes: update.body ?? null };
+  // The manifest carries the release notes and they are deliberately not read
+  // here. They are Markdown, and the place to show them is the window that
+  // appears after the restart, which renders them — not a raw dump beside a
+  // button, which is what this used to be.
+  return { version: update.version };
 }
 
 /**
