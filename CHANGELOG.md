@@ -34,6 +34,10 @@ people are actually running.
   they clear themselves too, and no more than three are ever stacked at once.
 
 ### Fixed
+- **Windows: a server's folder is shown as you would write it.** It appeared as
+  `\\?\C:\Program Files (x86)\World of Warcraft` — Windows' internal spelling,
+  which the app was storing without meaning to. Servers already registered are
+  corrected the next time the app starts; nothing needs re-adding.
 - **Updating an addon no longer overwrites folders it does not own.** It could,
   unconditionally, which was only ever meant to cover the first update after
   adopting an addon that was already in the game folder — before the app has

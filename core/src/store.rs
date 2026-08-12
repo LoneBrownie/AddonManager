@@ -61,13 +61,26 @@ impl StoreFile {
 
     fn read_from(&self, path: &Path) -> Result<Store> {
         let bytes = std::fs::read(path).map_err(|e| Error::io(path, e))?;
-        let store: Store = serde_json::from_slice(&bytes)?;
+        let mut store: Store = serde_json::from_slice(&bytes)?;
         if store.schema_version != SCHEMA_VERSION {
             return Err(Error::UnsupportedSchema {
                 found: store.schema_version,
                 expected: SCHEMA_VERSION,
             });
         }
+
+        // Servers registered before the verbatim prefix was stripped have it
+        // baked into the stored path, so fixing the write side alone would fix
+        // it for nobody who already had servers. Purely cosmetic — the two
+        // spellings name the same folder — so it does not need a schema bump,
+        // and it costs a string comparison per server on load.
+        for server in &mut store.servers {
+            let plain = crate::paths::strip_verbatim(&server.path);
+            if plain != server.path {
+                server.path = plain;
+            }
+        }
+
         Ok(store)
     }
 
@@ -127,6 +140,31 @@ mod tests {
             .servers
             .push(Server::new("Epoch", "/games/epoch", GameVersion::Wotlk));
         store
+    }
+
+    /// Servers registered on Windows before the fix have the verbatim prefix
+    /// stored, so the switcher showed `\\?\C:\...` for them. Fixing only the
+    /// write path would have fixed it for nobody who already had servers.
+    #[test]
+    fn a_stored_windows_verbatim_path_is_plain_when_loaded() {
+        let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("{e}"));
+        let file = StoreFile::new(tmp.path().join("store.json"));
+
+        let mut store = Store::default();
+        store.servers.push(Server::new(
+            "test1",
+            r"\\?\C:\Program Files (x86)\World of Warcraft",
+            GameVersion::Wotlk,
+        ));
+        file.save(&store).unwrap_or_else(|e| panic!("{e}"));
+
+        let loaded = file.load().unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(
+            loaded.servers.first().map(|s| s.path.clone()),
+            Some(std::path::PathBuf::from(
+                r"C:\Program Files (x86)\World of Warcraft"
+            ))
+        );
     }
 
     #[test]

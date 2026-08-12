@@ -154,15 +154,11 @@ pub fn repoint(
         }
     }
 
-    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    let taken = store.servers.iter().any(|existing| {
-        existing.id != server_id
-            && existing
-                .path
-                .canonicalize()
-                .unwrap_or_else(|_| existing.path.clone())
-                == canonical
-    });
+    let canonical = paths::canonical(path);
+    let taken = store
+        .servers
+        .iter()
+        .any(|existing| existing.id != server_id && paths::canonical(&existing.path) == canonical);
     if taken {
         return Err(Error::NotAWowDirectory {
             path: path.to_path_buf(),
@@ -205,14 +201,11 @@ pub fn add(
 
     // Compare canonically so `D:\Games\WoW` and `D:\Games\..\Games\WoW` are
     // recognised as the same folder.
-    let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-    let duplicate = store.servers.iter().any(|existing| {
-        existing
-            .path
-            .canonicalize()
-            .unwrap_or_else(|_| existing.path.clone())
-            == canonical
-    });
+    let canonical = paths::canonical(path);
+    let duplicate = store
+        .servers
+        .iter()
+        .any(|existing| paths::canonical(&existing.path) == canonical);
     if duplicate {
         return Err(Error::NotAWowDirectory {
             path: path.to_path_buf(),

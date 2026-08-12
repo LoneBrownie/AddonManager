@@ -19,6 +19,55 @@ const RESERVED_WINDOWS_NAMES: &[&str] = &[
 /// Archive metadata directories that should never be installed.
 const JUNK_COMPONENTS: &[&str] = &["__macosx", "_macosx", ".ds_store", "thumbs.db", ".git"];
 
+/// Canonicalise a path for storing, falling back to the path as given.
+///
+/// Canonicalising is what makes `D:\Games\WoW` and `D:\Games\..\Games\WoW` the
+/// same folder, which is how a duplicate server is detected. The prefix is then
+/// taken back off, because the canonical form is for the computer and this
+/// value is also the one shown to the user.
+pub fn canonical(path: &Path) -> PathBuf {
+    let resolved = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
+    strip_verbatim(&resolved)
+}
+
+/// Undo Windows' extended-length prefix: `\\?\C:\Games` → `C:\Games`.
+///
+/// Canonicalising on Windows returns the *verbatim* form, which is what the
+/// API wants and not what anybody wrote down — a server's folder rendered as
+/// `\\?\C:\Program Files (x86)\World of Warcraft` in the switcher looks like a
+/// bug, because it is one.
+///
+/// Only the two forms with an ordinary equivalent are converted. A volume GUID
+/// path (`\\?\Volume{…}`) has no plain spelling and is left as it is.
+///
+/// The prefix is real on Windows and impossible elsewhere, but the conversion
+/// is spelled out rather than compiled away so it can be tested from any
+/// platform — this is a bug nobody working on Linux can otherwise see.
+pub fn strip_verbatim(path: &Path) -> PathBuf {
+    // Only when the path is valid UTF-8, so nothing is ever reconstructed from
+    // a lossy conversion. A canonicalised Windows path always is in practice.
+    match path.to_str().and_then(plain_form) {
+        Some(plain) => PathBuf::from(plain),
+        None => path.to_path_buf(),
+    }
+}
+
+fn plain_form(text: &str) -> Option<String> {
+    if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
+        // `\\?\UNC\server\share` is the verbatim spelling of `\\server\share`.
+        return Some(format!(r"\\{rest}"));
+    }
+
+    let rest = text.strip_prefix(r"\\?\")?;
+    let mut chars = rest.chars();
+    let drive = chars.next()?;
+    if drive.is_ascii_alphabetic() && chars.next() == Some(':') {
+        Some(rest.to_string())
+    } else {
+        None
+    }
+}
+
 /// True if `name` is a Windows device name such as `CON` or `NUL.txt`.
 ///
 /// Checked on every platform, not just Windows: an addon installed on Linux
@@ -227,6 +276,63 @@ fn find_child_ignoring_case(parent: &Path, wanted: &str) -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    /// The Windows path bug: canonicalising returns the verbatim form, which
+    /// was being stored and then shown to the user as their server's folder.
+    /// Tested on every platform because it is a string transformation, and
+    /// because nobody developing on Linux can otherwise see it.
+    mod verbatim {
+        use super::super::strip_verbatim;
+        use std::path::{Path, PathBuf};
+
+        fn plain(text: &str) -> PathBuf {
+            strip_verbatim(Path::new(text))
+        }
+
+        #[test]
+        fn a_drive_path_loses_the_prefix() {
+            assert_eq!(
+                plain(r"\\?\C:\Program Files (x86)\World of Warcraft"),
+                PathBuf::from(r"C:\Program Files (x86)\World of Warcraft")
+            );
+        }
+
+        #[test]
+        fn a_lowercase_drive_letter_is_handled_too() {
+            assert_eq!(plain(r"\\?\d:\Games\WoW"), PathBuf::from(r"d:\Games\WoW"));
+        }
+
+        #[test]
+        fn a_network_share_gets_its_ordinary_spelling_back() {
+            assert_eq!(
+                plain(r"\\?\UNC\nas\games\WoW"),
+                PathBuf::from(r"\\nas\games\WoW")
+            );
+        }
+
+        /// A volume GUID has no plain equivalent, so mangling it into one
+        /// would produce a path that does not resolve.
+        #[test]
+        fn a_volume_guid_path_is_left_alone() {
+            let raw = r"\\?\Volume{b75e2c83-0000-0000-0000-602f00000000}\WoW";
+            assert_eq!(plain(raw), PathBuf::from(raw));
+        }
+
+        #[test]
+        fn an_ordinary_path_is_untouched() {
+            assert_eq!(plain(r"C:\Games\WoW"), PathBuf::from(r"C:\Games\WoW"));
+            assert_eq!(plain("/home/andy/wow"), PathBuf::from("/home/andy/wow"));
+            assert_eq!(plain(r"\\nas\games"), PathBuf::from(r"\\nas\games"));
+        }
+
+        /// Twice is the same as once, which is what makes it safe to run over
+        /// every stored path on load.
+        #[test]
+        fn stripping_is_idempotent() {
+            let once = plain(r"\\?\C:\Games\WoW");
+            assert_eq!(strip_verbatim(&once), once);
+        }
+    }
+
     use super::*;
 
     #[test]
