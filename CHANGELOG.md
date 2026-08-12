@@ -7,7 +7,7 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
-## 2.0.0-beta.4 — unreleased
+## 2.0.0-beta.4 — 2026-08-12
 
 ### Fixed
 - **Switching an addon between releases and source** now offers the **Switch**
