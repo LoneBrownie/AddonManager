@@ -56,6 +56,22 @@ jobs:
         shell: bash
         run: node scripts/check-bundle-config.mjs --tag "${{ github.event.inputs.tag || github.ref_name }}"
 
+      # The notes come from CHANGELOG.md, and a version with no section there
+      # fails here — in seconds, rather than publishing a release whose notes
+      # silently describe the previous one.
+      - name: Release notes from the changelog
+        id: notes
+        shell: bash
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          {
+            echo "body<<CHANGELOG_EOF"
+            node scripts/changelog.mjs --version "${TAG#v}"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
       # `createUpdaterArtifacts` is on, and with it Tauri builds every installer
       # and *then* refuses to finish without a private key — eight minutes in,
       # under the message "a public key has been found, but no private key".
@@ -116,34 +132,7 @@ jobs:
         with:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: "Brownie’s Addon Manager __VERSION__"
-          releaseBody: |
-            ## Brownie’s Addon Manager __VERSION__
-
-            > **This is a beta.** V2 is a rewrite, and this build has had far
-            > less real-world use than V1. Back up your `Interface/AddOns`
-            > folder before pointing it at a game directory you care about, and
-            > please report anything that misbehaves — **Settings → Copy
-            > diagnostics** produces a redacted summary worth attaching.
-
-            **It installs alongside V1 rather than over the top.** It is a
-            separate application with its own settings, so V1 keeps working and
-            nothing is migrated automatically. To carry your addons across:
-            export your list from V1 (**My Addons → Export Addon List**), add
-            your game folder here as a server, then **Import list**.
-
-            ### Windows
-            Download and run the `.exe` installer.
-
-            ### Linux
-            Take the **AppImage** unless you have a reason not to. A `.deb` is
-            also published; your package manager owns updates for it. There is
-            no `.rpm` during the beta — RPM refuses a version like
-            `2.0.0-beta.1` — so on Fedora or openSUSE, take the AppImage.
-
-            ### Updating
-            **Settings → Check for updates** will find the next beta. On Linux
-            that works for the AppImage only — `.deb` is owned by your package
-            manager, so re-download to upgrade that one.
+          releaseBody: ${{ steps.notes.outputs.body }}
           # Published, not a draft. A draft is invisible to everyone but the
           # repository owner, so a beta nobody can download is not a beta.
           #

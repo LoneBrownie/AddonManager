@@ -194,6 +194,9 @@ backend and no WoW installation needed:
 npm run dev
 ```
 
+[`CHANGELOG.md`](CHANGELOG.md) records what changed in each release, betas
+included; the release notes on GitHub are generated from it.
+
 See [`ARCHITECTURE.md`](ARCHITECTURE.md) for how the pieces fit together,
 and [`docs/v2/V2-PLAN.md`](docs/v2/V2-PLAN.md) for why V2 exists and what was
 decided along the way.

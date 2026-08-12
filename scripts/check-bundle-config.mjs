@@ -82,6 +82,24 @@ if (version?.includes("-") && (tauri.bundle?.targets || []).includes("rpm")) {
   );
 }
 
+// 5. The declared version has release notes.
+//
+// Checked on every push rather than only when tagging, so the notes are written
+// alongside the change they describe instead of being reconstructed from memory
+// at release time — which is when a changelog quietly turns into a commit log.
+try {
+  const changelog = readFileSync("CHANGELOG.md", "utf8");
+  const heading = new RegExp(`^## ${version?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "m");
+  if (version && !heading.test(changelog)) {
+    problems.push(
+      `CHANGELOG.md has no section for ${version}. The release notes are ` +
+        "generated from it, so add one with the change rather than at tag time.",
+    );
+  }
+} catch {
+  problems.push("CHANGELOG.md is missing — the release notes are generated from it.");
+}
+
 if (problems.length) {
   console.error("bundle config problems:");
   for (const problem of problems) console.error(`  - ${problem}`);

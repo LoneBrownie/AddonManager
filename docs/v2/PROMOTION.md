@@ -31,11 +31,17 @@ no branch, so the eventual rename costs nothing.
    | `package.json` | `version` |
    | `src-tauri/tauri.conf.json` | `version` |
 
-   `node scripts/check-bundle-config.mjs --tag v2.0.0-beta.2` confirms it, and
+   `node scripts/check-bundle-config.mjs --tag v2.0.0-beta.4` confirms it, and
    both CI and the release workflow run the same check, so a mismatch fails in
    seconds rather than after a full build.
 
-2. **Tag and push.**
+2. **Write the changelog section.** `CHANGELOG.md` gets a `## <version>`
+   heading describing what changed *for someone using the app* — not the commit
+   titles, which describe the code. The release notes are generated from it, and
+   both CI and the release refuse a version with no section, so this is not
+   optional and not something to reconstruct from memory later.
+
+3. **Tag and push.**
 
    ```sh
    git tag v2.0.0-beta.1
@@ -45,7 +51,7 @@ no branch, so the eventual rename costs nothing.
    The tag has to match the version, because the release is named from the
    version and found by the tag.
 
-3. **The workflow does the rest.** `.github/workflows/release.yml` builds on
+4. **The workflow does the rest.** `.github/workflows/release.yml` builds on
    Windows and Linux, runs the engine's tests as a gate, publishes a
    **pre-release** — not a draft — and then Cosign-signs the assets.
 
