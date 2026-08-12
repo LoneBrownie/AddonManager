@@ -251,7 +251,10 @@ input, select, textarea { font: inherit; color: inherit; }
 .main { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
 
 .page-head {
-  padding: 20px 26px 14px;
+  /* The right-hand padding is the activity tab's lane, matching .page-body —
+     the tab sits in the top corner, which is where the page's own actions
+     would otherwise reach. */
+  padding: 20px 52px 14px 26px;
   border-bottom: 1px solid var(--rule);
   display: flex;
   align-items: flex-end;
@@ -665,7 +668,10 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 .tab {
   position: relative;
   flex: none;
-  align-self: center;
+  /* Top corner, just clear of the window edge so both shoulders of the shape
+     are visible rather than the top one being cut off by it. */
+  align-self: flex-start;
+  margin-top: 14px;
   width: 28px;
   height: 132px;
   background: none;
