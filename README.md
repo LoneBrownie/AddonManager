@@ -7,7 +7,7 @@
 **Install and update World of Warcraft addons from GitHub and GitLab —
 across as many game folders as you run.**
 
-[![Version](https://img.shields.io/badge/version-2.0.0-8b5cf6?style=flat-square)](https://github.com/LoneBrownie/AddonManager/releases)
+[![Version](https://img.shields.io/github/v/release/LoneBrownie/AddonManager?style=flat-square&color=8b5cf6&label=version)](https://github.com/LoneBrownie/AddonManager/releases/latest)
 [![Windows](https://img.shields.io/badge/Windows-supported-8b5cf6?style=flat-square&logo=windows&logoColor=white)](#installing)
 [![Linux](https://img.shields.io/badge/Linux-supported-8b5cf6?style=flat-square&logo=linux&logoColor=white)](#installing)
 [![Licence](https://img.shields.io/badge/licence-GPL--3.0-a78bfa?style=flat-square)](LICENSE)
@@ -55,10 +55,17 @@ with the path shown underneath.
 - **Warnings that arrive before the mistake**: an addon built for another game
   version, a folder collision that would overwrite something the app did not
   create, or removing an addon others depend on.
-- **Export and import addon lists** as plain text, to share with your guild.
-- **Optional GitHub token** to lift the anonymous 60-requests-an-hour API limit
-  to 5,000.
+- **Export and import addon lists** as plain text, to share with your guild or
+  move to a new machine. The list records each addon's version and folders, so
+  importing it somewhere the addons already exist downloads nothing.
+- **Optional GitHub token** to lift GitHub's anonymous 60-requests-an-hour API
+  limit to 5,000. GitLab is asked anonymously and needs no token.
 - **Update checks run in parallel** and can be cancelled.
+- **Change a server's folder** when the game moves or a drive changes letter,
+  keeping its name, colour and addons.
+- **Addons deleted outside the app** are flagged rather than silently dropped,
+  with a button to put them back.
+- **Dark, light, or follow the system**, under *Settings → Appearance*.
 
 <div align="center">
   <img src="docs/v2/images/01-addons.png" alt="The addon list for one server" width="760" />
@@ -105,9 +112,13 @@ upgrading those means re-downloading.
 
 ### Where your addons go
 
-Addons install to `Interface/AddOns` inside each server's folder. The app never
-writes anywhere else, and **never deletes a folder it did not create** without
-asking first.
+Addons install to `Interface/AddOns` inside each server's folder, and the app
+never writes anywhere else.
+
+**Installing something new never overwrites a folder it did not create** — it
+stops and tells you which folder is in the way. Updating an addon you have
+already told it about is different: there you have named the repository the
+folders come from, so it replaces them, including any it did not write itself.
 
 If a folder is not writable — which usually means the game is installed under
 `Program Files` — the app tells you rather than asking to restart as
@@ -128,7 +139,7 @@ Bringing your addons across takes about a minute:
 |---|---|
 | **1** | In **V1**, open **My Addons → Export Addon List** and copy the text. |
 | **2** | In **V2**, add your game folder as a server (Browse to it, pick the game version, name it). |
-| **3** | Click **Import list**, paste, and press **Install**. |
+| **3** | Click **Import list**, paste, and press **Import**. |
 
 <div align="center">
   <img src="docs/v2/images/09-import-list.png" alt="Importing an addon list exported from V1" width="760" />
@@ -141,8 +152,12 @@ means a folder on disk cannot tell you which repository it was installed from �
 an addon's own metadata usually names the *upstream* project, not the fork you
 are running. Guessing would point updates at the wrong repository.
 
-For addons V1 never managed, **Import existing** lists the unmanaged folders in
-your game directory and lets you supply each URL yourself.
+Addons already in the game folder are recognised during the import and taken
+over where they stand — nothing is downloaded a second time to replace files
+that are already working.
+
+Anything V1 never managed appears at the foot of the addon list, greyed and
+tagged `unmanaged`, with a **Manage** button that asks for its repository URL.
 
 ---
 
@@ -212,6 +227,6 @@ distribute a modified version, it has to stay open too.
 
 ## Acknowledgments
 
-Our AI overlords Claude and ChatGPT.
+Claude, who wrote most of V2.
 
 My guildies for early testing.
