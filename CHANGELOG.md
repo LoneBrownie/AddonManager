@@ -7,7 +7,7 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
-## 2.1.0 — unreleased
+## 2.0.1 — unreleased
 
 ### Added
 - **A theme setting**, under *Settings → Appearance*: **System**, **Dark** or
