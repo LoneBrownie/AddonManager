@@ -1,6 +1,6 @@
 [package]
 name = "bam-net"
-description = "The reqwest-backed HttpClient for Brownie's Addon Manager."
+description = "The reqwest-backed HttpClient for Brownie’s Addon Manager."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

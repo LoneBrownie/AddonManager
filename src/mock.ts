@@ -392,7 +392,7 @@ export async function mockInvoke<T>(
 
     case "diagnostics":
       return [
-        "Brownie's Addon Manager 2.0.0",
+        "Brownie’s Addon Manager 2.0.0-beta.1",
         "Platform: windows x86_64",
         "GitHub token configured: false",
         "Servers: 3",

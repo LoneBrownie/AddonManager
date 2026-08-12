@@ -2,7 +2,7 @@
 
 <img src="docs/v2/images/logo.png" alt="" width="120" />
 
-# Brownie's Addon Manager
+# Brownie’s Addon Manager
 
 **Install and update World of Warcraft addons from GitHub and GitLab —
 across as many game folders as you run.**
@@ -21,9 +21,9 @@ across as many game folders as you run.**
 > **V2 is in beta.** There are installers to download — see
 > [Installing](#installing) — but this is a rewrite with far less real-world use
 > behind it than V1. Back up your `Interface/AddOns` folder before pointing it
-> at a game directory you care about, and expect to install new betas by hand.
-> If you would rather wait, [V1 is still there](#using-v1). What is left before
-> 2.0.0 proper is tracked in [`docs/v2/PROMOTION.md`](docs/v2/PROMOTION.md).
+> at a game directory you care about. If you would rather wait,
+> [V1 is still there](#using-v1). What is left before 2.0.0 proper is tracked in
+> [`docs/v2/PROMOTION.md`](docs/v2/PROMOTION.md).
 
 ---
 
@@ -136,10 +136,10 @@ openSUSE, take the AppImage.
 
 macOS is not supported.
 
-**Updating during the beta is manual.** The app does not yet check for its own
-new versions, and pre-releases would be invisible to that check anyway. Watch
-the repository to hear about new betas. Self-updating switches on for 2.0.0 —
-and on Linux only the AppImage can self-update at all.
+**Updating.** **Settings → Check for updates** finds the next beta and installs
+it, and nothing is downloaded until you ask for it. On Linux that works for the
+**AppImage only** — your package manager owns the `.deb`, so upgrading that one
+means re-downloading.
 
 ### Where your addons go
 

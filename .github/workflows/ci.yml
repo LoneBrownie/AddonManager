@@ -113,6 +113,11 @@ jobs:
       - name: Module size
         run: python scripts/check_module_size.py
 
+      # Same check the release runs, minus the tag. Catches a bad bundle config
+      # on the push that introduces it rather than on the tag that needs it.
+      - name: Bundle config
+        run: node scripts/check-bundle-config.mjs
+
       - name: Licence headers present
         run: |
           test -f LICENSE || { echo "LICENSE missing"; exit 1; }

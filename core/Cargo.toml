@@ -1,6 +1,6 @@
 [package]
 name = "bam-core"
-description = "Addon engine for Brownie's Addon Manager. Headless, no UI dependencies."
+description = "Addon engine for Brownie’s Addon Manager. Headless, no UI dependencies."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

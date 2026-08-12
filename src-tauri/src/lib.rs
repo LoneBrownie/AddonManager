@@ -58,6 +58,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let dir = data_dir(&app.handle().clone());
 
@@ -66,7 +67,7 @@ pub fn run() {
             if let Some(guard) = guard {
                 app.manage(guard);
             }
-            tracing::info!(?dir, "starting Brownie's Addon Manager");
+            tracing::info!(?dir, "starting Brownie’s Addon Manager");
 
             let client = bam_net::ReqwestClient::new()?;
             let state = AppState::new(dir, Box::new(client))?;
@@ -119,7 +120,7 @@ pub fn run() {
         .unwrap_or_else(|error| {
             // The only acceptable hard failure: the window could not be created
             // at all, so there is nowhere to render an error.
-            eprintln!("failed to start Brownie's Addon Manager: {error}");
+            eprintln!("failed to start Brownie’s Addon Manager: {error}");
             std::process::exit(1);
         });
 }

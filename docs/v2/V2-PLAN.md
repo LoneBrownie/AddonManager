@@ -1,4 +1,4 @@
-# Brownie's Addon Manager — V2 Plan
+# Brownie’s Addon Manager — V2 Plan
 
 **Status:** All decisions settled (D1–D11). Phases 0–2 engine complete and tested; UI outstanding.
 **Author:** Claude (via Claude Code)

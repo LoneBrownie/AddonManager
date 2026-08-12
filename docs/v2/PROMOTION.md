@@ -17,7 +17,11 @@ no branch, so the eventual rename costs nothing.
 
 ## Shipping a beta
 
-1. **Check the three version strings agree.** They are the beta's identity —
+> **Prerequisite:** the `TAURI_SIGNING_PRIVATE_KEY` secret must exist — see
+> §2 below. Updater artifacts are switched on, so the release workflow refuses
+> to start without it. That is the only manual setup a beta needs.
+
+1. **Bump the three version strings together.** They are the beta's identity —
    the release name, the installer filenames and the string in
    **Settings → Copy diagnostics** all come from them.
 
@@ -26,6 +30,10 @@ no branch, so the eventual rename costs nothing.
    | `Cargo.toml` | `workspace.package.version` |
    | `package.json` | `version` |
    | `src-tauri/tauri.conf.json` | `version` |
+
+   `node scripts/check-bundle-config.mjs --tag v2.0.0-beta.2` confirms it, and
+   both CI and the release workflow run the same check, so a mismatch fails in
+   seconds rather than after a full build.
 
 2. **Tag and push.**
 
@@ -52,8 +60,8 @@ GitHub keeps pre-releases out of `releases/latest`. That is the behaviour we
 want: the README still sends people who are not ready for V2 to *Latest
 release*, and that has to stay V1's installer until V2 is actually stable.
 
-The cost is that the in-app updater cannot see betas either — which is moot for
-now, because it is not switched on (see below).
+It does not cost us the updater. That reads a fixed `updater` tag rather than
+`releases/latest`, so betas are perfectly visible to it — see §3.
 
 ---
 
@@ -93,35 +101,46 @@ On Windows, `~` does not expand — give the path in full:
 npx @tauri-apps/cli signer generate -w "$env:USERPROFILE\.tauri\bam.key"
 ```
 
-- [ ] Put the **public** half in `src-tauri/tauri.conf.json` → `plugins.updater.pubkey`.
+- [x] Put the **public** half in `src-tauri/tauri.conf.json` → `plugins.updater.pubkey`.
 - [ ] Put the **private** half in the `TAURI_SIGNING_PRIVATE_KEY` repository secret.
 - [ ] If you set a password, add `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` too.
 
-Until this is done the release still builds — it simply produces no updater
-artifacts, because `createUpdaterArtifacts` is off. See the next section before
-turning it back on.
+**The two halves have to be from the same keypair, and nothing enforces it.**
+If they disagree, Tauri prints a *warning* and carries on:
 
-### 3. Switch the in-app updater on
+> Warn The updater secret key from `TAURI_SIGNING_PRIVATE_KEY` does not match
+> the public key from `plugins > updater > pubkey`.
 
-Four separate things are missing, and all four are needed:
+The build stays green and the release publishes; the failure only appears later,
+on a user's machine, as an update that refuses to install. The key ID is inside
+the encrypted half of the secret key, so this cannot be checked before building
+— read the release log for that warning after any key change.
 
-- [ ] The signing key above. Without a `pubkey` the plugin has nothing to
-      verify against.
-- [ ] **`createUpdaterArtifacts` is `false`** in `src-tauri/tauri.conf.json`.
-      Set it back to `true` *at the same time as* the signing secret, not
-      before: with it `true` and no `TAURI_SIGNING_PRIVATE_KEY`, the bundler
-      builds every installer and then fails the job outright — *"a public key
-      has been found, but no private key"* — so the release never gets
-      published. That is a hard dependency on a repository secret, which is why
-      it is off for the beta.
-- [ ] **Nothing calls it.** `tauri-plugin-updater` is registered in
-      `src-tauri/src/lib.rs`, but no command or startup hook invokes a check, so
-      the app never looks. This is deliberate for the beta rather than an
-      oversight.
-- [ ] The endpoint is `releases/latest/download/latest.json`, which resolves
-      only once there is a non-pre-release. It will start working by itself when
-      2.0.0 ships; it cannot be made to serve betas without publishing them as
-      normal releases, which would hijack the link V1 users follow.
+The release workflow does check that the secret *exists*, and fails in seconds
+if it does not, because `createUpdaterArtifacts` is on and Tauri would otherwise
+build every installer before refusing to finish.
+
+### 3. How the in-app updater works
+
+Done, but worth understanding, because the obvious configuration silently never
+updates anything.
+
+**The manifest lives at a fixed `updater` tag**, not at
+`releases/latest/download/latest.json`. GitHub defines "latest" as the newest
+release that is neither a draft nor a *pre-release*, so that URL can never
+resolve to a beta — and it is a property of the repository, not of the client,
+so a beta install cannot ask it for pre-release content either. Publishing betas
+as normal releases would fix the URL and break something worse: `releases/latest`
+is the link the README gives V1 users.
+
+A direct `releases/download/<tag>/` URL serves pre-release assets happily, so the
+release workflow copies each build's `latest.json` onto a permanent `updater`
+release. That release is itself marked as a pre-release, so it never becomes
+anyone's "latest". Nothing needs changing when 2.0.0 ships.
+
+**Checking is manual**, from *Settings → Check for updates*. This app writes into
+a game directory, and someone mid-session does not want it restarting itself, so
+there is no check on startup and nothing downloads until asked.
 
 Only the AppImage self-updates on Linux; `.deb` and `.rpm` are owned by the
 package manager.
@@ -139,8 +158,8 @@ not inferred. Once the version is plain `2.0.0` the problem disappears.
 The `.deb` has a milder version of the same wart and is shipped anyway: Debian
 reads `2.0.0-beta.1` as upstream `2.0.0` with revision `beta.1`, which sorts
 *newer* than a future plain `2.0.0`. `dpkg -i` installs over it regardless, and
-beta updates are manual, so it does not bite in practice — but do not be
-surprised if `apt` calls the stable release a downgrade.
+the `.deb` is not self-updating anyway, so it does not bite in practice — but do
+not be surprised if `apt` calls the stable release a downgrade.
 
 ### 5. Rename `dev` to `main`
 
@@ -184,6 +203,12 @@ be complete.
 - The release workflow publishes rather than drafting, and derives
   pre-release status from the tag — reading the `workflow_dispatch` input first,
   since `github.ref_name` is a *branch* on a hand-triggered run.
+- `scripts/check-bundle-config.mjs` runs in CI and again at the top of a release.
+  It catches a tag that disagrees with the declared version, a straight
+  apostrophe in `productName` (which breaks NSIS and nothing else), and an rpm
+  target while the version is a prerelease.
+- The product name uses a typographic apostrophe. A straight one broke the
+  Windows installer for exactly one beta.
 - The curated lists are served from `HEAD`, so they survive branch renames. The
   `public/handy-addons.json` shim is gone; `catalog/wotlk.json` carries those
   entries and only the default branch is consulted.

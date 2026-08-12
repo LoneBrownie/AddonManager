@@ -3,6 +3,7 @@ import logo from "./img/Logo.png";
 import * as api from "./api";
 import type { Addon, CatalogEntry, Server } from "./api";
 import { AddonList } from "./components/AddonList";
+import { AppUpdate } from "./components/AppUpdate";
 import { ServerSwitcher } from "./components/ServerSwitcher";
 import { AddAddonDialog, AddServerDialog, ConfirmDialog } from "./components/dialogs";
 import { ManageServers } from "./components/ManageServers";
@@ -207,7 +208,7 @@ export default function App() {
         <div className="brand">
           <img src={logo} alt="" width={34} height={34} />
           <div className="brand-text">
-            <h1>Brownie's Addon Manager</h1>
+            <h1>Brownie’s Addon Manager</h1>
             <p>World of Warcraft addons</p>
           </div>
         </div>
@@ -754,6 +755,8 @@ function SettingsPage({
             ) : null}
           </div>
         </div>
+
+        <AppUpdate notify={notify} />
 
         <div className="field" style={{ maxWidth: 520, marginTop: 28 }}>
           <label>Diagnostics</label>

@@ -335,7 +335,7 @@ pub fn open_logs_folder(app: tauri::AppHandle) -> CommandResult<()> {
 pub fn diagnostics(state: State<'_, AppState>) -> CommandResult<String> {
     let store = state.snapshot()?;
     let mut lines = vec![
-        format!("Brownie's Addon Manager {}", env!("CARGO_PKG_VERSION")),
+        format!("Brownie’s Addon Manager {}", env!("CARGO_PKG_VERSION")),
         format!(
             "Platform: {} {}",
             std::env::consts::OS,

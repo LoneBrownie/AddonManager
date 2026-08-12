@@ -1,6 +1,6 @@
 [package]
 name = "bam-app"
-description = "Brownie's Addon Manager — Tauri shell."
+description = "Brownie’s Addon Manager — Tauri shell."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -21,6 +21,8 @@ bam-net = { path = "../net" }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
+# Only for the relaunch after an update installs. Nothing else uses it.
+tauri-plugin-process = "2"
 serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true

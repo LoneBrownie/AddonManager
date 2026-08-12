@@ -49,29 +49,30 @@ jobs:
         with:
           node-version: '22'
 
-      # The tag names the release; the config files name the build. Nothing
-      # reconciles them, so a tag of v2.0.0-beta.2 against a config still saying
-      # beta.1 produces installers, a release title and a Copy-diagnostics
-      # string that all disagree with the tag people downloaded. Cheaper to
-      # catch here than to re-cut a beta.
-      - name: Tag agrees with the declared version
+      # Fails in seconds on things that otherwise fail after the whole build:
+      # a tag that disagrees with the declared version, an apostrophe that
+      # breaks NSIS, an rpm target that cannot express a prerelease version.
+      - name: Check the bundle config
+        shell: bash
+        run: node scripts/check-bundle-config.mjs --tag "${{ github.event.inputs.tag || github.ref_name }}"
+
+      # `createUpdaterArtifacts` is on, and with it Tauri builds every installer
+      # and *then* refuses to finish without a private key — eight minutes in,
+      # under the message "a public key has been found, but no private key".
+      # Checking the secret here turns that into a ten-second failure that says
+      # what to do about it.
+      - name: Updater signing key is configured
         shell: bash
         env:
-          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
-          node -e '
-            const fs = require("fs");
-            const declared = {
-              "src-tauri/tauri.conf.json": JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json", "utf8")).version,
-              "package.json": JSON.parse(fs.readFileSync("package.json", "utf8")).version,
-              "Cargo.toml": (fs.readFileSync("Cargo.toml", "utf8").match(/^version = "(.+)"$/m) || [])[1],
-            };
-            const tag = process.env.TAG.replace(/^v/, "");
-            const wrong = Object.entries(declared).filter(([, v]) => v !== tag);
-            for (const [file, v] of wrong) console.error(`${file} declares ${v}, tag is ${tag}`);
-            if (wrong.length) process.exit(1);
-            console.log(`tag and all three version files agree on ${tag}`);
-          '
+          if [ -z "$KEY" ]; then
+            echo "::error::TAURI_SIGNING_PRIVATE_KEY is not set. Generate a key with" \
+                 "'npm run tauri -- signer generate' and add the private half as a" \
+                 "repository secret, or set bundle.createUpdaterArtifacts to false."
+            exit 1
+          fi
+          echo "signing key present"
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -114,9 +115,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
-          releaseName: "Brownie's Addon Manager __VERSION__"
+          releaseName: "Brownie’s Addon Manager __VERSION__"
           releaseBody: |
-            ## Brownie's Addon Manager __VERSION__
+            ## Brownie’s Addon Manager __VERSION__
 
             > **This is a beta.** V2 is a rewrite, and this build has had far
             > less real-world use than V1. Back up your `Interface/AddOns`
@@ -140,10 +141,9 @@ jobs:
             `2.0.0-beta.1` — so on Fedora or openSUSE, take the AppImage.
 
             ### Updating
-            There is no in-app update during the beta. Betas are published as
-            pre-releases, which GitHub deliberately keeps out of
-            `releases/latest`, so watch this repository and install new ones by
-            hand. Self-updating switches on for 2.0.0 proper.
+            **Settings → Check for updates** will find the next beta. On Linux
+            that works for the AppImage only — `.deb` is owned by your package
+            manager, so re-download to upgrade that one.
           # Published, not a draft. A draft is invisible to everyone but the
           # repository owner, so a beta nobody can download is not a beta.
           #
@@ -202,3 +202,37 @@ jobs:
           if [ ${#uploads[@]} -gt 0 ]; then
             gh release upload "$TAG" "${uploads[@]}" --repo "$GITHUB_REPOSITORY" --clobber
           fi
+
+      # The updater reads one fixed URL, so the manifest has to live at one.
+      #
+      # The obvious choice, `releases/latest/download/latest.json`, cannot work
+      # here: GitHub defines "latest" as the newest release that is *not* a
+      # pre-release, so it would never resolve to a beta — and making betas
+      # non-pre-releases would hand `releases/latest` to V2 and break the link
+      # V1 users follow. A fixed `updater` tag sidesteps both: direct
+      # `releases/download/<tag>/` URLs serve pre-release assets happily, and
+      # this release never becomes anyone's "latest".
+      #
+      # tauri-action writes latest.json onto the release being built, merging
+      # both platforms into it. This runs after both, so it copies the merged
+      # one.
+      - name: Publish the updater manifest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p manifest && cd manifest
+
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'latest.json'
+
+          # Created once, reused forever. Marked as a pre-release so it stays
+          # out of `releases/latest` like everything else here.
+          gh release view updater --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create updater \
+              --repo "$GITHUB_REPOSITORY" \
+              --prerelease \
+              --title "Updater manifest" \
+              --notes "Not a download. This release exists so the in-app updater has a stable URL to read; the installers are on the versioned releases."
+
+          gh release upload updater latest.json --repo "$GITHUB_REPOSITORY" --clobber

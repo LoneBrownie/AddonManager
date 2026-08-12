@@ -1,4 +1,4 @@
-//! The addon engine for Brownie's Addon Manager V2.
+//! The addon engine for Brownie’s Addon Manager V2.
 //!
 //! This crate is **headless**: it has no dependency on Tauri, on a webview, or
 //! on any UI. That is deliberate. V1's engine grew inside a React renderer and

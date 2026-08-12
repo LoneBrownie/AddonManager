@@ -1,12 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The app's own commands, plus a folder picker and an external-link opener. No filesystem or HTTP permission is granted to the webview — everything goes through intent-level commands.",
+  "description": "The app's own commands, plus a folder picker, an external-link opener, and the update check with the relaunch that follows it. No filesystem or HTTP permission is granted to the webview — everything goes through intent-level commands.",
   "windows": ["main"],
   "permissions": [
     "core:default",
     "dialog:allow-open",
     "opener:allow-open-url",
-    "updater:default"
+    "updater:default",
+    "process:allow-restart"
   ]
 }
