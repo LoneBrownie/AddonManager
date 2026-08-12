@@ -433,6 +433,30 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   display: flex;
   flex-direction: column;
   gap: 7px;
+  /* Border and shadow only — no transform, because a card that moves under
+     the cursor makes a grid of them feel unsteady when scanning across it. */
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+.card:hover {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  /* The accent as a soft edge rather than a hard ring: the gold-on-violet
+     palette is already loud enough without a second bright outline. */
+  box-shadow:
+    0 0 0 1px var(--accent-soft),
+    0 6px 18px rgb(0 0 0 / 28%);
+}
+:root[data-theme="light"] .card:hover {
+  box-shadow:
+    0 0 0 1px var(--accent-soft),
+    0 6px 18px rgb(30 20 55 / 12%);
+}
+/* Keyboard users get the same affordance as the mouse. */
+.card:focus-within {
+  border-color: var(--accent);
 }
 .card h4 { margin: 0; font-size: 14px; }
 .card p { margin: 0; font-size: 12.5px; color: var(--ink-3); flex: 1; }
