@@ -9,12 +9,14 @@ import { ago, asText, isProblem, type Entry } from "../activity";
  * actually raises — and the one the old corner-of-the-screen stack could not
  * answer at all, because reading a message meant reading it before it went.
  *
- * Part of the layout rather than a modal over it: the reason to open it is
- * almost always to compare a failure against the addon list, so the list moves
- * aside instead of being covered, and stays usable while the panel is open.
- * That is also why there is no backdrop and no focus trap — nothing here is
- * blocking, and treating it as though it were would make the app inert for a
- * panel you are meant to read *alongside* your work.
+ * It floats over the work rather than displacing it. Pushing the addon list
+ * aside sounds kinder, but the window is 900px at its narrowest and the list
+ * has nowhere to go — its rows start stacking their own buttons. Covering the
+ * right-hand third of a list you can restore with one click costs less.
+ *
+ * Nothing about it is modal, though: no backdrop, no focus trap, and the app
+ * behind stays live. It is a thing to consult while working, not a question to
+ * answer before continuing.
  */
 export function ActivityDock({
   entries,
@@ -71,6 +73,32 @@ export function ActivityDock({
 
   return (
     <aside className="dock" data-open={open || undefined}>
+      {/* The pull-tab. Always there, so the panel is discoverable without
+          occupying a place in the navigation — it is not a destination — and
+          small enough that it does not read as a second sidebar. It sits to
+          the left of the panel, so opening carries it out with the panel
+          rather than leaving it stranded at the window's edge. */}
+      <button
+        type="button"
+        className="tab"
+        aria-expanded={open}
+        aria-label={unread > 0 ? `Activity, ${unread} unread` : "Activity"}
+        title="Activity"
+        onClick={open ? onClose : onOpen}
+      >
+        <Tab />
+        <span className="tab-content">
+          {unread > 0 ? (
+            <span
+              className={`tab-count${unreadProblems === "none" ? "" : ` ${unreadProblems}`}`}
+            >
+              {unread > 99 ? "99+" : unread}
+            </span>
+          ) : null}
+          <span className="tab-label">Activity</span>
+        </span>
+      </button>
+
       <div className="panel" aria-hidden={!open}>
         <div className="panel-inner" role="region" aria-label="Activity">
           <header>
@@ -141,28 +169,24 @@ export function ActivityDock({
         </div>
       </div>
 
-      {/* The handle. Always there, so the panel is discoverable without
-          occupying a place in the navigation — it is not a destination. */}
-      <button
-        type="button"
-        className="rail"
-        aria-expanded={open}
-        aria-label={
-          unread > 0 ? `Activity, ${unread} unread` : "Activity"
-        }
-        title="Activity"
-        onClick={open ? onClose : onOpen}
-      >
-        {unread > 0 ? (
-          <span
-            className={`rail-count${unreadProblems === "none" ? "" : ` ${unreadProblems}`}`}
-          >
-            {unread > 99 ? "99+" : unread}
-          </span>
-        ) : null}
-        <span className="rail-label">Activity</span>
-      </button>
     </aside>
+  );
+}
+
+/**
+ * The tab's outline.
+ *
+ * Drawn rather than built from a border radius because the shape that reads as
+ * a tab is not a rounded rectangle: it needs shoulders that leave the edge
+ * along the edge and arrive at the face along the face, which is two cubics
+ * and no amount of `border-radius`. Stroked at a half-pixel inset so neither
+ * side of the outline is clipped by the viewBox.
+ */
+function Tab() {
+  return (
+    <svg className="tab-shape" viewBox="0 0 28 132" aria-hidden="true">
+      <path d="M27.5 0.5 C27.5 12 0.5 10 0.5 22 L0.5 110 C0.5 122 27.5 120 27.5 131.5 Z" />
+    </svg>
   );
 }
 

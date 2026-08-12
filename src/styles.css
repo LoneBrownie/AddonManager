@@ -97,16 +97,7 @@ input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- shell ---- */
-/* Sidebar, work, and the activity dock down the right. The dock sizes itself:
-   a handle when closed, the handle plus the panel when open. */
-.app {
-  display: grid;
-  grid-template-columns: 264px minmax(0, 1fr) auto;
-  height: 100vh;
-  /* The activity panel anchors to this when the window is too narrow for it
-     to sit beside the work. */
-  position: relative;
-}
+.app { display: grid; grid-template-columns: 264px minmax(0, 1fr); height: 100vh; }
 
 .sidebar {
   background: var(--surface);
@@ -278,7 +269,11 @@ input, select, textarea { font: inherit; color: inherit; }
 .page-head p { margin: 3px 0 0; color: var(--ink-3); font-size: 13px; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
-.page-body { overflow-y: auto; padding: 18px 26px 40px; flex: 1; }
+/* The extra room on the right is the activity tab's lane. It is fixed to the
+   window edge, so without this it sits on top of every row's right-hand
+   border. Every page pays the gutter, which keeps the pages aligned with each
+   other whether or not the tab happens to be over one of them. */
+.page-body { overflow-y: auto; padding: 18px 52px 40px 26px; flex: 1; }
 
 /* ---- controls ---- */
 /* Outline buttons: a fill barely above the surface, a border and text tinted
@@ -587,8 +582,7 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 /* ---- toasts ---- */
 .toasts {
   position: fixed;
-  /* Clear of the activity handle, which owns the right edge. */
-  right: 52px;
+  right: 18px;
   bottom: 18px;
   z-index: 200;
   display: flex;
@@ -647,29 +641,109 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 
 /* ---- activity dock ---- */
 
-/* A section of the layout rather than something over it: opening it moves the
-   addon list aside instead of covering it, which is what you want when the
-   reason to open it is to read a failure against that list. */
-.dock { display: flex; align-items: stretch; min-height: 0; }
+/* A layer over the work, not a column beside it. Pushing the addon list aside
+   reads better in a screenshot and worse in use: the window is 900px at its
+   narrowest, and a list squeezed into what is left starts stacking each row's
+   buttons onto their own line. Covering part of it, reversibly, costs less.
+   Fixed rather than absolute so it does not care what it is nested in. */
+.dock {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: flex;
+  align-items: stretch;
+  /* Only the tab and the panel take clicks; the strip of nothing between the
+     tab's shoulders and the window edge must not. */
+  pointer-events: none;
+}
+.dock > * { pointer-events: auto; }
 
-/* Width, not a grid track: `grid-template-columns` interpolation is not
-   dependable across the two webviews this app ships on, and a transitioned
-   width with the content held at its full size inside gets the same result
-   everywhere. */
+/* The tab is a flex item to the panel's left, so opening the panel carries it
+   out on the same transition rather than needing one of its own. */
+.tab {
+  position: relative;
+  flex: none;
+  align-self: center;
+  width: 28px;
+  height: 132px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--ink-3);
+}
+.tab-shape { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tab-shape path {
+  fill: var(--surface);
+  stroke: var(--rule);
+  stroke-width: 1;
+}
+.tab:hover { color: var(--ink); }
+.tab:hover .tab-shape path { fill: var(--surface-2); stroke: var(--btn-line-hover); }
+.dock[data-open] .tab { color: var(--ink); }
+.dock[data-open] .tab-shape path { fill: var(--surface-2); stroke: var(--accent); }
+/* The outline is the shape, so the focus ring has to follow it too. */
+.tab:focus-visible { outline: 0; }
+.tab:focus-visible .tab-shape path { stroke: var(--accent); stroke-width: 2; }
+
+.tab-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+.tab-label {
+  writing-mode: vertical-rl;
+  font-size: 11.5px;
+  letter-spacing: 0.05em;
+}
+.tab-count {
+  font-family: var(--mono);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--ink-3);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 0 4px;
+}
+.tab-count.error {
+  color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 45%, var(--rule));
+}
+.tab-count.warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--rule));
+}
+
 .panel {
   width: 0;
   overflow: hidden;
   background: var(--surface);
   border-left: 1px solid var(--rule);
+  box-shadow: var(--shadow);
+  /* Closed, its contents must be out of the tab order as well as out of
+     sight; the delay keeps it visible for the length of the collapse. */
+  visibility: hidden;
+  transition: visibility 0s linear 200ms;
 }
-.dock[data-open] .panel { width: 360px; border-right: 1px solid var(--rule); }
+.dock[data-open] .panel {
+  width: min(380px, 100vw - 60px);
+  visibility: visible;
+  transition: visibility 0s;
+}
 @media (prefers-reduced-motion: no-preference) {
-  .panel { transition: width 200ms ease; }
+  .panel { transition: width 200ms ease, visibility 0s linear 200ms; }
+  .dock[data-open] .panel { transition: width 200ms ease, visibility 0s; }
 }
 
 /* Fixed, so the content does not reflow line by line as the panel opens. */
 .panel-inner {
-  width: 360px;
+  width: min(380px, 100vw - 60px);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -722,63 +796,6 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 }
 .panel-inner footer { padding: 10px 16px; border-top: 1px solid var(--rule); }
 .panel-inner footer .hint { font-size: 11.5px; color: var(--ink-3); }
-
-/* The handle. Always visible, so the panel is discoverable without taking a
-   place in the navigation — it is a tool, not a destination. */
-.rail {
-  flex: none;
-  width: 34px;
-  background: var(--surface);
-  border: 0;
-  border-left: 1px solid var(--rule);
-  color: var(--ink-3);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 9px;
-  padding: 13px 0;
-}
-.rail:hover { background: var(--surface-2); color: var(--ink); }
-.dock[data-open] .rail { background: var(--accent-soft); color: var(--ink); }
-.rail-label {
-  writing-mode: vertical-rl;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-}
-.rail-count {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  color: var(--ink-3);
-  background: var(--ground);
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  padding: 1px 5px;
-}
-.rail-count.error {
-  color: var(--bad);
-  border-color: color-mix(in srgb, var(--bad) 45%, var(--rule));
-}
-.rail-count.warn {
-  color: var(--warn);
-  border-color: color-mix(in srgb, var(--warn) 45%, var(--rule));
-}
-
-/* Under about 1120px there is not enough width left to sit beside the work
-   without crushing it — the buttons on an addon row start stacking one per
-   line — so below that the panel goes over the top instead of pushing. The
-   handle stays in the layout either way, so nothing jumps as the window is
-   resized across the threshold. */
-@media (max-width: 1119px) {
-  .dock[data-open] .panel {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    right: 34px;
-    z-index: 60;
-    box-shadow: var(--shadow);
-    border-right: 0;
-  }
-}
 
 /* Cards, like everything else in the app that is a list of things. */
 .activity {
