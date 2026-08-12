@@ -28,6 +28,14 @@
   --bad: #ef4444;
   --shadow: 0 12px 34px rgb(0 0 0 / 55%);
 
+  /* Button face and edge. Split out because the contrast a control needs
+     differs by theme: on a dark ground a faint edge still reads, on a white
+     one it reads as disabled. */
+  --btn-face: color-mix(in srgb, var(--ink-3) 6%, var(--surface));
+  --btn-line: color-mix(in srgb, var(--ink-3) 24%, var(--rule));
+  --btn-face-hover: color-mix(in srgb, var(--ink-3) 14%, var(--surface));
+  --btn-line-hover: color-mix(in srgb, var(--ink-3) 60%, var(--rule));
+
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
@@ -54,6 +62,13 @@
   --warn: #b45309;
   --bad: #b91c1c;
   --shadow: 0 12px 34px rgb(30 20 55 / 14%);
+
+  /* Stronger than the dark theme's: a control has to hold its own against
+     white, and the disabled state needs somewhere weaker to go. */
+  --btn-face: var(--surface-2);
+  --btn-line: color-mix(in srgb, var(--ink-3) 42%, var(--rule));
+  --btn-face-hover: var(--surface-3);
+  --btn-line-hover: color-mix(in srgb, var(--ink-3) 78%, var(--rule));
 }
 
 * { box-sizing: border-box; }
@@ -250,24 +265,73 @@ input, select, textarea { font: inherit; color: inherit; }
 .page-body { overflow-y: auto; padding: 18px 26px 40px; flex: 1; }
 
 /* ---- controls ---- */
+/* Outline buttons: a fill barely above the surface, a border and text tinted
+   by what the button *does*, and hover that brightens the border and text
+   rather than swapping the fill — so a row of them stays level and only the
+   one under the cursor lifts.
+
+   Colour carries meaning, so an ordinary button stays neutral. Tinting every
+   button with the accent makes the accent mean nothing, and leaves no way for
+   the one button that matters to stand out. Purple is reserved for the primary
+   action, red for the destructive one.
+
+   Each is mixed from the theme tokens, so the light theme derives its own set
+   rather than needing a second palette. */
 .btn {
-  background: var(--surface-2);
-  border: 1px solid var(--rule);
-  border-radius: 7px;
+  background: var(--btn-face);
+  border: 1px solid var(--btn-line);
+  border-radius: 8px;
   padding: 7px 13px;
   color: var(--ink-2);
   white-space: nowrap;
+  font-weight: 500;
+  transition:
+    border-color 130ms ease,
+    color 130ms ease,
+    background-color 130ms ease;
 }
-.btn:hover:not(:disabled) { background: var(--surface-3); color: var(--ink); }
-.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:hover:not(:disabled) {
+  background: var(--btn-face-hover);
+  border-color: var(--btn-line-hover);
+  color: var(--ink);
+}
+.btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--ink-3) 20%, var(--surface));
+}
+
+.btn:disabled {
+  background: transparent;
+  border-color: var(--rule-soft);
+  color: var(--ink-3);
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* The one action the page is for. */
 .btn.primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--on-accent);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--rule));
+  color: color-mix(in srgb, var(--accent-hover) 30%, var(--ink));
   font-weight: 600;
 }
-.btn.primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
-.btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--rule)); }
+.btn.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 30%, var(--surface));
+  border-color: var(--accent-hover);
+  color: var(--ink);
+}
+
+/* Deletes something. */
+.btn.danger {
+  background: color-mix(in srgb, var(--bad) 7%, var(--surface));
+  border-color: color-mix(in srgb, var(--bad) 32%, var(--rule));
+  color: color-mix(in srgb, var(--bad) 72%, var(--ink-2));
+}
+.btn.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bad) 15%, var(--surface));
+  border-color: var(--bad);
+  color: color-mix(in srgb, var(--bad) 45%, var(--ink));
+}
+
 .btn.small { padding: 4px 9px; font-size: 12px; border-radius: 6px; }
 
 .input, .select {

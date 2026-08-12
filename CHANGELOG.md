@@ -37,6 +37,10 @@ people are actually running.
 - A purple **highlight** under the cursor on Browse cards and server rows.
 
 ### Changed
+- **Buttons are outlined rather than filled**, taking their colour from what
+  they do: ordinary actions stay neutral, the primary action is purple, and
+  anything destructive is red. Hovering brightens a button's edge and text
+  instead of moving it.
 - **Addons already in your game folder that this app does not manage now appear
   in the list**, after your managed ones, greyed and tagged `unmanaged`, each
   with a **Manage** button that asks for its repository URL. They used to be
