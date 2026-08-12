@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as api from "../api";
 import * as appUpdate from "../appUpdate";
 
 type State =
@@ -9,7 +10,8 @@ type State =
   | { kind: "installing"; fraction: number | null };
 
 /**
- * The Settings section for updating the app itself.
+ * The Settings section for the app itself: which version this is, and whether
+ * there is a newer one.
  *
  * Manual rather than automatic on purpose: this app writes into a game
  * directory, and someone mid-session does not want it restarting itself. The
@@ -21,19 +23,28 @@ export function AppUpdate({
   notify: (kind: "success" | "error" | "info", text: string) => void;
 }) {
   const [state, setState] = useState<State>({ kind: "idle" });
+  const [version, setVersion] = useState<string | null>(null);
 
-  if (!appUpdate.available) return null;
+  // Shown whether or not the updater can run, because "which version am I on"
+  // is the first thing a bug report needs and the browser build has no updater.
+  useEffect(() => {
+    api.appVersion().then(setVersion).catch(() => setVersion(null));
+  }, []);
 
   const busy = state.kind === "checking" || state.kind === "installing";
 
   return (
     <div className="field" style={{ maxWidth: 520, marginTop: 28 }}>
-      <label>App updates</label>
+      <label>This app</label>
       <span className="hint">
-        Checks this repository for a newer release. Nothing is downloaded until
-        you ask for it, and the app restarts only once the update is installed.
+        Version <strong>{version ?? "…"}</strong>
+        {appUpdate.available
+          ? ". Checking looks for a newer release; nothing is downloaded until you ask for it, and the app restarts only once an update is installed."
+          : "."}
       </span>
 
+      {!appUpdate.available ? null : (
+      <>
       <div style={{ display: "flex", gap: 8, marginTop: 8, alignItems: "center" }}>
         <button
           type="button"
@@ -111,6 +122,8 @@ export function AppUpdate({
           {state.notes}
         </pre>
       ) : null}
+      </>
+      )}
     </div>
   );
 }

@@ -231,6 +231,7 @@ export const hasGithubToken = () => call<boolean>("has_github_token");
 export const setGithubToken = (token: string | null) =>
   call<void>("set_github_token", { token });
 export const openUrl = (url: string) => call<void>("open_url", { url });
+export const appVersion = () => call<string>("app_version");
 export const openLogsFolder = () => call<void>("open_logs_folder");
 /** Open a server's `Interface/AddOns` in the system file manager. */
 export const openServerFolder = (serverId: string) =>

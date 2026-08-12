@@ -384,6 +384,14 @@ export async function mockInvoke<T>(
       return [...deps, ...(entry ? [entry] : [])] as T;
     }
 
+    case "app_version":
+      return "0.0.0-mock" as T;
+
+    case "open_server_folder":
+      // Nothing to open in a browser; the real command hands the path to the
+      // system file manager.
+      return undefined as T;
+
     case "get_catalog": {
       // Recomputed per request, as the engine does, rather than served from
       // the fixture. A static `installed` would make the interface look

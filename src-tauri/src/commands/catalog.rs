@@ -198,6 +198,16 @@ pub async fn resolve_catalog_install(
         .collect())
 }
 
+/// The running version, for Settings to show.
+///
+/// Its own command rather than reading Tauri's app metadata from the webview:
+/// the version people need to quote in a bug report is the one the binary was
+/// compiled as, and this is that string.
+#[tauri::command]
+pub fn app_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+
 #[tauri::command]
 pub fn get_preferences(state: State<'_, AppState>) -> CommandResult<Preferences> {
     Ok(state.prefs()?)

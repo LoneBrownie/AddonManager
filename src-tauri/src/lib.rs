@@ -109,6 +109,7 @@ pub fn run() {
             commands::catalog::resolve_catalog_install,
             commands::catalog::export_addon_list,
             commands::catalog::parse_addon_list,
+            commands::catalog::app_version,
             commands::catalog::get_preferences,
             commands::catalog::set_github_token,
             commands::catalog::has_github_token,
