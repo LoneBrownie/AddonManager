@@ -282,7 +282,9 @@ mod tests {
 
     #[test]
     fn ignores_non_repository_links_and_noise() {
-        assert!(urls("see https://example.com/nope and https://github.com/only-an-owner").is_empty());
+        assert!(
+            urls("see https://example.com/nope and https://github.com/only-an-owner").is_empty()
+        );
     }
 
     #[test]

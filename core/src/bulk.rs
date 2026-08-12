@@ -177,7 +177,7 @@ fn copy_one(
     installation: &InstalledAddon,
     overwrite_unmanaged: bool,
 ) -> Result<Vec<String>> {
-    let plans = install::plan_folders(
+    let plans = crate::plan::plan_folders(
         store,
         to,
         &installation.addon_id,
@@ -187,13 +187,13 @@ fn copy_one(
 
     for plan in &plans {
         match plan {
-            install::FolderPlan::ConflictsWithAddon { folder, owner } => {
+            crate::plan::FolderPlan::ConflictsWithAddon { folder, owner } => {
                 return Err(Error::ManagedCollision {
                     folder: folder.clone(),
                     owner: owner.clone(),
                 })
             }
-            install::FolderPlan::ConflictsWithUnmanaged(folder) if !overwrite_unmanaged => {
+            crate::plan::FolderPlan::ConflictsWithUnmanaged(folder) if !overwrite_unmanaged => {
                 return Err(Error::UnmanagedCollision {
                     folder: folder.clone(),
                 })

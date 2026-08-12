@@ -95,8 +95,7 @@ pub async fn apply(
         adopt_existing: true,
         ..InstallOptions::default()
     };
-    let installed =
-        install::install(client, store, server_id, &source, &options, work_dir).await?;
+    let installed = install::install(client, store, server_id, &source, &options, work_dir).await?;
 
     // The install may have found the folders already there and adopted them.
     let outcome = if installed.installed_ref.is_unknown() {
@@ -143,7 +142,12 @@ fn folders_on_disk(
     }
 
     // 2. The list named the addon, and a folder on disk answers to that name.
-    let Some(name) = entry.name.as_deref().map(str::trim).filter(|n| !n.is_empty()) else {
+    let Some(name) = entry
+        .name
+        .as_deref()
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+    else {
         return Ok(None);
     };
     let found = adopt::scan(store, &server)?;
@@ -268,7 +272,9 @@ mod tests {
             "V1 never recorded a version, so none is invented"
         );
         assert_eq!(
-            store.addon("github:bkader/Skada-WoTLK").map(|a| a.id.clone()),
+            store
+                .addon("github:bkader/Skada-WoTLK")
+                .map(|a| a.id.clone()),
             Some("github:bkader/Skada-WoTLK".to_string()),
             "the folder is now managed against the repository the user named"
         );
@@ -342,9 +348,11 @@ mod tests {
         // Nothing is adopted, so it falls through to installing — which fails,
         // because this client serves nothing. Failing is the right outcome:
         // picking one of the two would be a guess.
-        assert!(apply(&offline(), &mut store, &id, &entry, None, work.path())
-            .await
-            .is_err());
+        assert!(
+            apply(&offline(), &mut store, &id, &entry, None, work.path())
+                .await
+                .is_err()
+        );
         assert!(store.installed.is_empty());
     }
 
@@ -372,11 +380,15 @@ mod tests {
             ..ListEntry::default()
         };
 
-        assert!(apply(&offline(), &mut store, &id, &entry, None, work.path())
-            .await
-            .is_err());
+        assert!(
+            apply(&offline(), &mut store, &id, &entry, None, work.path())
+                .await
+                .is_err()
+        );
         assert_eq!(
-            store.folder_owner(&id, "Questie").map(|i| i.addon_id.clone()),
+            store
+                .folder_owner(&id, "Questie")
+                .map(|i| i.addon_id.clone()),
             Some("github:someone/else".to_string())
         );
     }

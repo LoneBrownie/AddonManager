@@ -19,6 +19,7 @@
 //! * [`model`] — servers, addons, and the join between them.
 //! * [`store`] — atomic persistence.
 //! * [`sources`] — resolving GitHub and GitLab.
+//! * [`plan`] — what an install would do, decided before anything is written.
 //! * [`install`] — install and remove orchestration.
 //! * [`updates`] — asking the forges whether something newer exists.
 //! * [`deps`] — dependency checks and catalogue install ordering.
@@ -54,6 +55,7 @@ pub mod install;
 pub mod list;
 pub mod model;
 pub mod paths;
+pub mod plan;
 pub mod servers;
 pub mod sources;
 pub mod store;

@@ -121,7 +121,9 @@ fn parse_columns(columns: &[&str]) -> Option<ListEntry> {
     // Column 1 is the URL in a line we wrote. Anything else is not our format,
     // however many pipes it happens to contain — a Discord table, say — so it
     // falls through to the scrape rather than being half-read.
-    let url = crate::sources::parse_repo_url(columns.get(1)?).ok()?.web_url();
+    let url = crate::sources::parse_repo_url(columns.get(1)?)
+        .ok()?
+        .web_url();
 
     let name = columns
         .first()
@@ -172,9 +174,7 @@ fn parse_loose(line: &str) -> Vec<ListEntry> {
     let name = line
         .split_once(": ")
         .map(|(before, _)| before.trim())
-        .filter(|before| {
-            !before.is_empty() && !before.contains("://") && !before.contains('/')
-        })
+        .filter(|before| !before.is_empty() && !before.contains("://") && !before.contains('/'))
         .map(str::to_string);
 
     let mut found = Vec::new();
@@ -366,7 +366,8 @@ mod tests {
 
     #[test]
     fn urls_pasted_out_of_a_chat_message_still_work() {
-        let entries = parse("hey grab <https://github.com/o/r> and (https://github.com/a/b) thanks");
+        let entries =
+            parse("hey grab <https://github.com/o/r> and (https://github.com/a/b) thanks");
         assert_eq!(entries.len(), 2);
         assert_eq!(entries[0].url, "https://github.com/o/r");
         assert_eq!(

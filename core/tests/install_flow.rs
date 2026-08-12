@@ -374,7 +374,11 @@ async fn takes_over_an_addon_already_on_disk_instead_of_reinstalling_it() {
     .await
     .expect("an addon already on disk should be adopted, not refused");
 
-    assert_eq!(installed.installed_ref, Ref::Unknown, "version not invented");
+    assert_eq!(
+        installed.installed_ref,
+        Ref::Unknown,
+        "version not invented"
+    );
     assert_eq!(installed.folders, vec!["MyAddon".to_string()]);
     assert_eq!(
         std::fs::read_to_string(addons.join("MyAddon/precious.lua")).unwrap(),
@@ -450,7 +454,9 @@ async fn updating_an_adopted_addon_takes_over_the_rest_of_its_folders() {
         installed_at: "0".into(),
         version_matches: true,
     });
-    store.addons.push(bam_core::model::Addon::new(source(), "Skada".to_string()));
+    store
+        .addons
+        .push(bam_core::model::Addon::new(source(), "Skada".to_string()));
 
     let client = forge_serving(
         "v1.9.0",
@@ -533,7 +539,11 @@ async fn only_the_folders_actually_on_disk_are_taken_over() {
 
     let addons = tmp.path().join("Interface").join("AddOns");
     std::fs::create_dir_all(addons.join("WeakAuras")).unwrap();
-    std::fs::write(addons.join("WeakAuras/WeakAuras.toc"), b"## Interface: 30300\n").unwrap();
+    std::fs::write(
+        addons.join("WeakAuras/WeakAuras.toc"),
+        b"## Interface: 30300\n",
+    )
+    .unwrap();
 
     // The archive ships two folders; only one of them is on disk.
     let client = forge_serving(
