@@ -455,6 +455,27 @@ export async function mockInvoke<T>(
     case "scan_existing_addons":
       return ((serverId && unmanaged[serverId]) || []) as T;
 
+    // The browser build always has notes to show, so the dialog can be driven
+    // and looked at. In the app the engine answers this once, after an update.
+    case "whats_new":
+      return {
+        version: "2.0.0-beta.7",
+        notes: [
+          "### Fixed",
+          "- **Setting a GitHub token no longer breaks every GitLab addon.** The token was",
+          "  being sent to GitLab as well, and GitLab rejects a credential it does not",
+          "  recognise — so a setting offered as a pure improvement quietly made most of",
+          "  the curated 3.3.5a list unreachable for anyone who used it. GitLab is now",
+          "  asked anonymously, which is what it wants: it allows 500 unauthenticated",
+          "  requests a *minute*, where GitHub allows 60 an *hour*.",
+          "- **Updating an adopted addon is no longer blocked by its own folders.**",
+          "  Installing something `new` still refuses, which is the case that rule is for.",
+          "",
+          "### Added",
+          "- **What changed, on the launch after an update** — this window.",
+        ].join("\n"),
+      } as T;
+
     case "adopt_addon": {
       const folders = (args?.["folders"] as string[]) ?? [];
       const url = String(args?.["url"] ?? "");

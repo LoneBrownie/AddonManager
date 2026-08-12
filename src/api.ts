@@ -113,6 +113,13 @@ export interface ListEntry {
   folders: string[];
 }
 
+/** The changelog for the version now running. */
+export interface WhatsNew {
+  version: string;
+  /** Markdown, in the small subset CHANGELOG.md uses. */
+  notes: string;
+}
+
 /** What importing one entry did. */
 export interface Imported {
   addon: Addon;
@@ -290,6 +297,14 @@ export const setGithubToken = (token: string | null) =>
   call<void>("set_github_token", { token });
 export const openUrl = (url: string) => call<void>("open_url", { url });
 export const appVersion = () => call<string>("app_version");
+/**
+ * What changed in the version now running, or null if it has been seen.
+ *
+ * Answered by the engine rather than worked out here: the interface has no way
+ * to know which version ran last, and the notes are compiled into the binary so
+ * they are available with no network at all.
+ */
+export const whatsNew = () => call<WhatsNew | null>("whats_new");
 export const openLogsFolder = () => call<void>("open_logs_folder");
 /** Open a server's `Interface/AddOns` in the system file manager. */
 export const openServerFolder = (serverId: string) =>

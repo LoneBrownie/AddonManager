@@ -24,6 +24,12 @@ pub struct Preferences {
     pub selected_server_id: Option<String>,
     #[serde(default)]
     pub theme: Option<String>,
+    /// The version that was running last time the app started.
+    ///
+    /// How "you have just updated" is known, which is the only way to show the
+    /// notes for a version once and then stop.
+    #[serde(default)]
+    pub last_seen_version: Option<String>,
 }
 
 pub struct AppState {
@@ -203,6 +209,7 @@ mod tests {
                 github_token: Some("ghp_x".into()),
                 selected_server_id: Some("srv_1".into()),
                 theme: Some("dark".into()),
+                last_seen_version: None,
             })
             .unwrap_or_else(|e| panic!("{e}"));
         }

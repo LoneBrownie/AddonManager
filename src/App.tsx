@@ -17,6 +17,7 @@ import {
   ExportListDialog,
   ImportListDialog,
 } from "./components/transfer";
+import { WhatsNewDialog } from "./components/WhatsNew";
 
 type Page = "addons" | "browse" | "servers" | "settings";
 type Toast = { id: number; kind: "info" | "error" | "success"; text: string };
@@ -37,6 +38,7 @@ export default function App() {
   const [unmanaged, setUnmanaged] = useState<api.FoundAddon[]>([]);
   const [adopting, setAdopting] = useState<api.FoundAddon | null>(null);
   const [dependents, setDependents] = useState<string[]>([]);
+  const [whatsNew, setWhatsNew] = useState<api.WhatsNew | null>(null);
 
   const selected = useMemo(
     () => servers.find((server) => server.id === selectedId) ?? null,
@@ -65,6 +67,12 @@ export default function App() {
   useEffect(() => {
     void refreshServers();
   }, [refreshServers]);
+
+  // Shown once, on the first launch after an update. The engine decides
+  // whether this is that launch — the interface cannot know what ran last time.
+  useEffect(() => {
+    api.whatsNew().then(setWhatsNew).catch(() => setWhatsNew(null));
+  }, []);
 
   // Availability is worked out when the server list is read, so a drive that
   // came back stayed "offline" until something else happened to reload it —
@@ -561,6 +569,14 @@ export default function App() {
             await refreshAddons();
             void refreshServers();
           }}
+        />
+      ) : null}
+
+      {whatsNew ? (
+        <WhatsNewDialog
+          version={whatsNew.version}
+          notes={whatsNew.notes}
+          onClose={() => setWhatsNew(null)}
         />
       ) : null}
 

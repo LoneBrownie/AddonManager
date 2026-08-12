@@ -39,6 +39,15 @@ if (!changes) {
   process.exit(1);
 }
 
+// The updater shows the notes in a small dialog before installing, where the
+// standing preamble and the download instructions are noise — it is already
+// installing, and it knows which platform it is on. `--section-only` returns
+// just the changelog entry for that.
+if (process.argv.includes("--section-only")) {
+  process.stdout.write(`${changes}\n`);
+  process.exit(0);
+}
+
 const beta = version.includes("-");
 
 // The standing part. Every release needs it, and it does not belong in the

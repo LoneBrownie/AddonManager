@@ -241,10 +241,18 @@ jobs:
           lin_name=$(printf '%s\n' "$names" | grep -- '\.AppImage$')
 
           base="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG"
+
+          # The real changelog entry, not a pointer to it. The updater shows
+          # this before installing, and "see the release notes" is no use to
+          # someone deciding whether to install — they are in the app, not on
+          # the release page.
+          notes=$(cd "$GITHUB_WORKSPACE" && node scripts/changelog.mjs \
+                    --version "${TAG#v}" --section-only)
+
           jq -n \
             --arg version "${TAG#v}" \
             --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg notes "See the release notes for $TAG." \
+            --arg notes "$notes" \
             --arg win_sig "$(cat -- *-setup.exe.sig)" \
             --arg win_url "$base/$win_name" \
             --arg lin_sig "$(cat -- *.AppImage.sig)" \

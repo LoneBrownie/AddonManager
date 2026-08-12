@@ -5,6 +5,7 @@ use bam_core::sources;
 use tauri::State;
 
 use super::{CommandError, CommandResult};
+use crate::changelog::WhatsNewDto;
 use crate::dto::{CatalogEntryDto, CatalogResultDto, ListEntryDto};
 use crate::state::{AppState, Preferences};
 use bam_core::model::GameVersion;
@@ -177,7 +178,44 @@ pub async fn resolve_catalog_install(
 /// compiled as, and this is that string.
 #[tauri::command]
 pub fn app_version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
+    crate::changelog::VERSION
+}
+
+/// What changed in this version, if the user has not seen it yet.
+///
+/// Called once at startup. Returns `None` when the running version is the one
+/// recorded last time — so the notes appear on the launch after an update and
+/// never again, without anything to dismiss permanently or a "don't show this"
+/// box to get wrong.
+///
+/// Recording happens whether or not there is anything to show, so a version
+/// with no notes still counts as seen.
+#[tauri::command]
+pub fn whats_new(state: State<'_, AppState>) -> CommandResult<Option<WhatsNewDto>> {
+    let current = crate::changelog::VERSION;
+
+    let mut prefs = state.prefs()?;
+    let previous = prefs.last_seen_version.clone();
+    if previous.as_deref() == Some(current) {
+        return Ok(None);
+    }
+    prefs.last_seen_version = Some(current.to_string());
+    state.set_prefs(prefs)?;
+
+    // Nothing recorded. Either this app has never run here — in which case the
+    // user chose this version and is not being told what changed since a
+    // version they never had — or it ran as a build from before this was
+    // recorded, and an existing setup is the evidence for that.
+    if previous.is_none() && state.with_store(|store| store.servers.is_empty())? {
+        return Ok(None);
+    }
+
+    Ok(
+        crate::changelog::section_for(current).map(|notes| WhatsNewDto {
+            version: current.to_string(),
+            notes,
+        }),
+    )
 }
 
 #[tauri::command]

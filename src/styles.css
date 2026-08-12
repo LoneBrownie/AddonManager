@@ -608,3 +608,22 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+
+/* --- what's new -------------------------------------------------------- */
+/* The changelog section, rendered from the small Markdown subset it uses. */
+.notes { font-size: 13.5px; line-height: 1.55; color: var(--ink-2); }
+.notes h4 {
+  margin: 16px 0 6px; font-size: 12px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.notes h4:first-child { margin-top: 0; }
+.notes ul { margin: 0; padding-left: 18px; }
+.notes li { margin: 5px 0; }
+.notes li.nested { margin-left: 14px; list-style-type: circle; }
+.notes strong { color: var(--ink-1); font-weight: 600; }
+.notes code {
+  font-family: var(--mono); font-size: 12px;
+  background: var(--surface-2); border: 1px solid var(--rule);
+  border-radius: 4px; padding: 0 4px;
+}
+.notes p { margin: 6px 0; }

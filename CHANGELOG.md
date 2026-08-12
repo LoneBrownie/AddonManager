@@ -9,6 +9,15 @@ people are actually running.
 
 ## 2.0.0-beta.7 — unreleased
 
+### Added
+- **What changed, on the first launch after an update.** A window listing the
+  entry for the version you have just moved to, shown once and then not again.
+  The notes are compiled into the app, so they appear whether or not the machine
+  is online and always describe the build actually running.
+- **The update itself now says what it contains** before you install it. It used
+  to offer "See the release notes for v2.0.0-beta.6", which is no help to
+  somebody deciding inside the app whether to take it.
+
 ### Fixed
 - **Setting a GitHub token no longer breaks every GitLab addon.** The token was
   being sent to GitLab as well, and GitLab rejects a credential it does not

@@ -6,6 +6,7 @@
 
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic))]
 
+pub mod changelog;
 pub mod commands;
 pub mod dto;
 pub mod state;
@@ -112,6 +113,7 @@ pub fn run() {
             commands::catalog::parse_addon_list,
             commands::import::import_addon,
             commands::catalog::app_version,
+            commands::catalog::whats_new,
             commands::catalog::get_preferences,
             commands::catalog::set_github_token,
             commands::catalog::has_github_token,
