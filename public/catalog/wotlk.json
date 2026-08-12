@@ -126,12 +126,5 @@
     "repoUrl": "https://github.com/NoM0Re/PallyPower-Improved-3.3.5",
     "category": "Interface",
     "channel": "source"
-  },
-  {
-    "id": "Details Damage Meter",
-    "name": "Details",
-    "description": "Damage Meter with extensive features for tracking and analyzing combat performance.",
-    "repoUrl": "https://github.com/NoM0Re/Details-WotLK",
-    "category": "Interface"
   }
 ]

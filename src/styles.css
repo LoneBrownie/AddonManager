@@ -318,6 +318,21 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 }
 .row-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
+/* An explanation attached to a row, for a state the row cannot fix by itself.
+   Muted like .row-sub, but wrapping — it is prose, not a path. */
+.row-note {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-3);
+  margin-top: 6px;
+  max-width: 60ch;
+}
+.row-note code {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
 .tag {
   font-family: var(--mono);
   font-size: 10px;

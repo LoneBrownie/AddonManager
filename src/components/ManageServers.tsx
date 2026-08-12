@@ -146,6 +146,19 @@ export function ManageServers({
                     {server.path} · {server.addonCount} addon
                     {server.addonCount === 1 ? "" : "s"}
                   </div>
+                  {server.availability === "readOnly" ? (
+                    // Naming the state without a way out is what the red tag
+                    // did on its own. Elevating instead is what V1 did, and is
+                    // the thing this app exists partly to avoid.
+                    <div className="row-note">
+                      Addons cannot be written here. Move the game folder
+                      somewhere you own — most 3.3.5a clients are portable, so
+                      copying it to <code>C:\Games\</code> is enough — or have an
+                      administrator grant you write access to this folder’s{" "}
+                      <code>Interface\AddOns</code> once. Running this app as
+                      Administrator is not required.
+                    </div>
+                  ) : null}
                   <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
                     {ACCENTS.map((colour) => (
                       <button
