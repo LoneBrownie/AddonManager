@@ -18,8 +18,17 @@ permissions:
   id-token: write
 
 jobs:
+  # The same rules CI enforces, enforced here too. Without this the release
+  # pipeline would happily ship code CI had already rejected — which is exactly
+  # what it did for two betas.
+  gates:
+    uses: ./.github/workflows/gates.yml
+    with:
+      tag: ${{ github.event.inputs.tag || github.ref_name }}
+
   build:
     name: ${{ matrix.label }}
+    needs: gates
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -49,12 +58,9 @@ jobs:
         with:
           node-version: '22'
 
-      # Fails in seconds on things that otherwise fail after the whole build:
-      # a tag that disagrees with the declared version, an apostrophe that
-      # breaks NSIS, an rpm target that cannot express a prerelease version.
-      - name: Check the bundle config
-        shell: bash
-        run: node scripts/check-bundle-config.mjs --tag "${{ github.event.inputs.tag || github.ref_name }}"
+      # The bundle config — tag against declared version, the apostrophe that
+      # breaks NSIS, an rpm target that cannot express a prerelease version — is
+      # checked by the gates job above, before any of this runs.
 
       # The notes come from CHANGELOG.md, and a version with no section there
       # fails here — in seconds, rather than publishing a release whose notes

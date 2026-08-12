@@ -44,9 +44,10 @@ jobs:
       # workspace, so an unscoped `cargo clippy` would drag the Tauri shell in
       # and fail here for want of WebKitGTK on Linux and an .ico on Windows.
       # The app is built by its own job, which installs those.
-      - name: Format
-        run: cargo fmt --all --check
-
+      # Formatting is platform-independent, so it is checked once, in the gates
+      # workflow below. Clippy and the tests run per OS because that is what
+      # this matrix is for: a lint or a test that only fails on Windows is
+      # exactly the kind this job exists to catch.
       - name: Clippy
         run: cargo clippy -p bam-core -p bam-net --all-targets --all-features -- -D warnings
 
@@ -98,28 +99,8 @@ jobs:
       - name: Build the Tauri shell
         run: cargo build -p bam-app
 
-  guardrails:
-    name: Guardrails
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-python@v7
-        with:
-          python-version: '3.12'
-
-      # Drift is the top risk for an AI-written codebase with no human
-      # reviewing the diffs (V2-PLAN.md 10). Enforced, not hoped for.
-      - name: Module size
-        run: python scripts/check_module_size.py
-
-      # Same check the release runs, minus the tag. Catches a bad bundle config
-      # on the push that introduces it rather than on the tag that needs it.
-      - name: Bundle config
-        run: node scripts/check-bundle-config.mjs
-
-      - name: Licence headers present
-        run: |
-          test -f LICENSE || { echo "LICENSE missing"; exit 1; }
-          grep -q "GNU GENERAL PUBLIC LICENSE" LICENSE || {
-            echo "LICENSE is not the GPL text"; exit 1; }
+  # Formatting, lints, module size, bundle config, licence — defined once and
+  # called by Release too, so the pipeline that ships cannot pass on code this
+  # one rejects.
+  gates:
+    uses: ./.github/workflows/gates.yml

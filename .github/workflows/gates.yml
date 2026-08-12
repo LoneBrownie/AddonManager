@@ -1,0 +1,90 @@
+name: Gates
+
+# The rules that have to hold for any commit that ships, in one definition,
+# called by both pipelines.
+#
+# They used to live only in CI, and the release workflow enforced none of them.
+# That is not a theoretical gap: CI sat red for five commits — unformatted code
+# and two modules past the size limit — while the release pipeline happily built
+# and published two betas from exactly that code. A guardrail the shipping path
+# ignores is a guardrail in name only, so Release now waits on this before it
+# builds anything (V2-PLAN.md 5.1.2, 10).
+#
+# Everything here is cheap and answerable in about a minute, which is the other
+# half of the point: a release that is going to be rejected should be rejected
+# before it spends eight minutes compiling.
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: 'Release tag, when there is one, so the version can be checked against it.'
+        required: false
+        type: string
+
+jobs:
+  gates:
+    name: Gates
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: always
+      RUSTFLAGS: -D warnings
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # Pinned rather than relying on whatever the runner image ships.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: gates-${{ hashFiles('Cargo.lock') }}
+          restore-keys: gates-
+
+      - name: Format
+        run: cargo fmt --all --check
+
+      # Scoped to the headless crates, as in CI: an unscoped clippy drags the
+      # Tauri shell in and fails here for want of WebKitGTK.
+      - name: Clippy
+        run: cargo clippy -p bam-core -p bam-net --all-targets --all-features -- -D warnings
+
+      # Drift is the top risk for an AI-written codebase with no human reviewing
+      # the diffs (V2-PLAN.md 10). Enforced, not hoped for.
+      - name: Module size
+        run: python scripts/check_module_size.py
+
+      # With a tag, this also checks that the tag and the declared version
+      # agree. Without one it checks everything else, so a bad bundle config is
+      # caught on the push that introduces it rather than on the tag that needs
+      # it.
+      - name: Bundle config
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if [ -n "$TAG" ]; then
+            node scripts/check-bundle-config.mjs --tag "$TAG"
+          else
+            node scripts/check-bundle-config.mjs
+          fi
+
+      - name: Licence present
+        run: |
+          test -f LICENSE || { echo "LICENSE missing"; exit 1; }
+          grep -q "GNU GENERAL PUBLIC LICENSE" LICENSE || {
+            echo "LICENSE is not the GPL text"; exit 1; }
