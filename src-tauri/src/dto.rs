@@ -96,6 +96,14 @@ pub struct AddonDto {
     /// "github" | "gitlab" | "direct"
     pub source_kind: String,
     pub channel: Channel,
+    /// The tracked channel no longer matches what is actually installed.
+    ///
+    /// Answered here rather than left to an update check: switching channel is
+    /// a decision the user just made, and the row has to offer the switch
+    /// immediately. `UpdateStatus::ChannelChanged` says the same thing but can
+    /// only be reached by fetching a ref to compare against, so it is not
+    /// available until a check has run.
+    pub channel_pending: bool,
     pub pinned: bool,
     /// Already formatted for display — "v1.2.3" or "master@abc1234".
     pub installed_version: String,
@@ -123,6 +131,7 @@ impl AddonDto {
             }
             .to_string(),
             channel: installation.channel,
+            channel_pending: channel_pending(installation),
             pinned: installation.pinned,
             installed_version: installation.installed_ref.display(),
             latest_version: None,
@@ -142,6 +151,17 @@ impl AddonDto {
         // for it to stay where it is.
         self.needs_update = !self.pinned && report.status == UpdateStatus::UpdateAvailable;
     }
+}
+
+/// Does the tracked channel disagree with the installed ref?
+///
+/// A direct download belongs to neither channel, so it never disagrees.
+fn channel_pending(installation: &InstalledAddon) -> bool {
+    use bam_core::version::Ref;
+    matches!(
+        (&installation.installed_ref, installation.channel),
+        (Ref::Release { .. }, Channel::Source) | (Ref::Branch { .. }, Channel::Release)
+    )
 }
 
 pub fn status_label(status: UpdateStatus) -> &'static str {
@@ -261,6 +281,37 @@ mod tests {
     use super::*;
     use bam_core::version::Ref;
 
+    /// The switch has to be offered the moment the channel changes, before any
+    /// update check has run — otherwise the user is told to switch and given
+    /// nothing to press until they check for updates by hand.
+    #[test]
+    fn a_switch_is_pending_when_the_channel_disagrees_with_what_is_installed() {
+        let release_installed = |channel| InstalledAddon {
+            server_id: "s".into(),
+            addon_id: "a".into(),
+            channel,
+            pinned: false,
+            installed_ref: Ref::release("v1.0.0"),
+            archive_sha256: None,
+            installed_at: String::new(),
+            folders: Vec::new(),
+            version_matches: true,
+        };
+        assert!(channel_pending(&release_installed(Channel::Source)));
+        assert!(!channel_pending(&release_installed(Channel::Release)));
+
+        let branch_installed = |channel| InstalledAddon {
+            installed_ref: Ref::Branch {
+                branch: "master".into(),
+                sha: "abc1234".into(),
+                committed_at: None,
+            },
+            ..release_installed(channel)
+        };
+        assert!(channel_pending(&branch_installed(Channel::Release)));
+        assert!(!channel_pending(&branch_installed(Channel::Source)));
+    }
+
     #[test]
     fn a_catalogue_entry_without_a_channel_means_releases() {
         let entry: CatalogEntryDto =
@@ -305,6 +356,7 @@ mod tests {
             source_url: "https://github.com/o/r".into(),
             source_kind: "github".into(),
             channel: Channel::Release,
+            channel_pending: false,
             pinned: false,
             installed_version: "v1.0.0".into(),
             latest_version: None,

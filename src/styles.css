@@ -320,6 +320,15 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 
 /* An explanation attached to a row, for a state the row cannot fix by itself.
    Muted like .row-sub, but wrapping — it is prose, not a path. */
+/* The version at the foot of Settings. Findable when needed, ignorable
+   otherwise — it is reference, not a control. */
+.version-note {
+  margin: 34px 0 0;
+  font-size: 11.5px;
+  font-family: var(--mono);
+  color: var(--ink-3);
+}
+
 .row-note {
   font-size: 12px;
   line-height: 1.5;

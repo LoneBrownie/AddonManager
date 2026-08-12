@@ -101,6 +101,7 @@ function row(
     sourceUrl: `https://github.com/${addonId.split(":")[1] ?? "o/r"}`,
     sourceKind: "github",
     channel: "release",
+    channelPending: false,
     pinned: false,
     installedVersion,
     latestVersion: null,
@@ -296,8 +297,15 @@ export async function mockInvoke<T>(
     case "set_addon_channel": {
       const rows = (serverId && addons[serverId]) || [];
       const found = rows.find((a) => a.addonId === args?.["addonId"]);
-      if (found) found.channel = args?.["channel"] as Addon["channel"];
-      return undefined as T;
+      if (!found) throw { kind: "unknownAddon", message: "not installed", folder: null };
+      found.channel = args?.["channel"] as Addon["channel"];
+      // As the engine does: a switch is pending while the installed version
+      // came from the other channel. "branch@sha" is how a source install
+      // displays; a release shows its tag.
+      const installedFromSource = found.installedVersion.includes("@");
+      found.channelPending =
+        (found.channel === "source") !== installedFromSource;
+      return { ...found } as T;
     }
 
     case "copy_addon_set": {

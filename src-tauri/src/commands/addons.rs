@@ -317,7 +317,7 @@ pub fn set_addon_channel(
     server_id: String,
     addon_id: String,
     channel: Channel,
-) -> CommandResult<()> {
+) -> CommandResult<AddonDto> {
     state.mutate_store(|store| {
         if let Some(installation) = store
             .installed
@@ -328,5 +328,16 @@ pub fn set_addon_channel(
         }
         Ok(())
     })?;
-    Ok(())
+
+    // The updated row, so the interface shows the consequence of the switch
+    // rather than working it out again from a rule the engine already owns.
+    let store = state.snapshot()?;
+    store
+        .installation(&server_id, &addon_id)
+        .and_then(|installation| AddonDto::build(&store, installation))
+        .ok_or_else(|| CommandError {
+            kind: "unknownAddon".into(),
+            message: format!("{addon_id} is not installed to {server_id}"),
+            folder: None,
+        })
 }

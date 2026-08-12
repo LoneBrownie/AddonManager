@@ -192,15 +192,22 @@ export default function App() {
     if (!selectedId) return;
     const channel = addon.channel === "release" ? "source" : "release";
     try {
-      await api.setAddonChannel(selectedId, addon.addonId, channel);
+      // The command returns the updated row, so whether a switch is now
+      // pending comes from the engine rather than being guessed at here.
+      const updated = await api.setAddonChannel(selectedId, addon.addonId, channel);
       setAddons((current) =>
         current.map((row) =>
-          row.addonId === addon.addonId ? { ...row, channel } : row,
+          row.addonId === addon.addonId
+            ? { ...updated, latestVersion: row.latestVersion, updateStatus: row.updateStatus, needsUpdate: row.needsUpdate }
+            : row,
         ),
       );
+      const tracks = channel === "source" ? "source builds" : "tagged releases";
       notify(
         "info",
-        `${addon.name} now tracks ${channel === "source" ? "source builds" : "tagged releases"}. Press Switch on its row to fetch it.`,
+        updated.channelPending
+          ? `${addon.name} now tracks ${tracks}. Press Switch on its row to fetch it.`
+          : `${addon.name} now tracks ${tracks}, which is what is already installed.`,
       );
     } catch (error) {
       notify("error", api.errorMessage(error));
@@ -772,9 +779,11 @@ function SettingsPage({
 }) {
   const [token, setToken] = useState("");
   const [hasToken, setHasToken] = useState(false);
+  const [version, setVersion] = useState<string | null>(null);
 
   useEffect(() => {
     api.hasGithubToken().then(setHasToken).catch(() => setHasToken(false));
+    api.appVersion().then(setVersion).catch(() => setVersion(null));
   }, []);
 
   return (
@@ -864,6 +873,11 @@ function SettingsPage({
             </button>
           </div>
         </div>
+
+        {/* Last, quiet, and always present: the string a bug report needs. */}
+        <p className="version-note">
+          Brownie’s Addon Manager {version ?? "…"}
+        </p>
       </div>
     </>
   );

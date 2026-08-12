@@ -17,7 +17,7 @@ type Filter = "all" | "updatable" | "pinned";
  */
 export function actionable(addon: Addon): boolean {
   if (addon.pinned) return false;
-  return addon.needsUpdate || addon.updateStatus === "channelChanged";
+  return addon.needsUpdate || addon.channelPending;
 }
 
 export function AddonList({
@@ -176,7 +176,7 @@ function AddonRow({
           {addon.needsUpdate ? (
             <span className="tag update">{addon.latestVersion} available</span>
           ) : null}
-          {!addon.pinned && addon.updateStatus === "channelChanged" ? (
+          {!addon.pinned && addon.channelPending ? (
             <span className="tag update">
               switch to {addon.channel === "source" ? "source" : "releases"}
             </span>

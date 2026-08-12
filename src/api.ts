@@ -31,6 +31,8 @@ export interface Addon {
   sourceUrl: string;
   sourceKind: "github" | "gitlab" | "direct";
   channel: Channel;
+  /** The tracked channel no longer matches what is installed. */
+  channelPending: boolean;
   pinned: boolean;
   installedVersion: string;
   latestVersion: string | null;
@@ -217,7 +219,7 @@ export const setAddonChannel = (
   serverId: string,
   addonId: string,
   channel: Channel,
-) => call<void>("set_addon_channel", { serverId, addonId, channel });
+) => call<Addon>("set_addon_channel", { serverId, addonId, channel });
 
 // --- catalogue, sharing, settings ------------------------------------------
 
