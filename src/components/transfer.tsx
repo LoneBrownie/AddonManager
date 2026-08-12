@@ -201,50 +201,40 @@ export function ExportListDialog({
  * worked and the only honest option: nothing on disk reveals which fork or
  * backport a given folder came from.
  */
-export function ImportExistingDialog({
+/**
+ * Take over one folder that is already on disk.
+ *
+ * The repository URL is asked for, never guessed: most 3.3.5a addons are
+ * backports, so an addon's own metadata usually names the upstream project
+ * rather than the fork actually installed, and guessing would point updates at
+ * the wrong repository (V2-PLAN.md D-b).
+ */
+export function AdoptDialog({
   server,
+  found,
   onClose,
   onAdopted,
 }: {
   server: Server;
+  found: FoundAddon;
   onClose: () => void;
   onAdopted: (folder: string) => void;
 }) {
-  const [found, setFound] = useState<FoundAddon[] | null>(null);
-  const [selected, setSelected] = useState<FoundAddon | null>(null);
   const [url, setUrl] = useState("");
   const [includeRelated, setIncludeRelated] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    api
-      .scanExistingAddons(server.id)
-      .then(setFound)
-      .catch((thrown) => {
-        setError(api.errorMessage(thrown));
-        setFound([]);
-      });
-  }, [server.id]);
-
   async function adopt() {
-    if (!selected) return;
     setBusy(true);
     setError(null);
     try {
       const folders =
-        includeRelated && selected.related.length > 0
-          ? [selected.folder, ...selected.related]
-          : [selected.folder];
-      await api.adoptAddon(server.id, folders, url.trim(), selected.title ?? undefined);
-      onAdopted(selected.folder);
-      setSelected(null);
-      setUrl("");
-      setFound((current) =>
-        (current ?? []).filter(
-          (item) => item.folder !== selected.folder && !folders.includes(item.folder),
-        ),
-      );
+        includeRelated && found.related.length > 0
+          ? [found.folder, ...found.related]
+          : [found.folder];
+      await api.adoptAddon(server.id, folders, url.trim(), found.title ?? undefined);
+      onAdopted(found.folder);
     } catch (thrown) {
       setError(api.errorMessage(thrown));
     } finally {
@@ -254,120 +244,69 @@ export function ImportExistingDialog({
 
   return (
     <Dialog
-      title="Import existing addons"
-      description={`Folders in ${server.name} that this app does not manage yet.`}
+      title={`Manage ${found.title ?? found.folder}`}
+      description={`Already in ${server.name}, but this app does not track it yet.`}
       onClose={onClose}
       footer={
-        <button type="button" className="btn" onClick={onClose}>
-          Done
-        </button>
+        <>
+          <button type="button" className="btn" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            onClick={adopt}
+            disabled={busy || url.trim().length === 0}
+          >
+            {busy ? "Adding…" : "Manage this addon"}
+          </button>
+        </>
       }
     >
       {error ? <div className="banner bad">{error}</div> : null}
 
-      {found === null ? (
-        <p>
-          <span className="spinner" /> Scanning…
-        </p>
-      ) : found.length === 0 ? (
-        <div className="empty">
-          <h3>Nothing unmanaged</h3>
-          <p>Every addon folder here is already managed by this app.</p>
+      <div className="field">
+        <label>Folder</label>
+        <div className="row-sub" style={{ marginTop: 0 }}>
+          {found.folder}
+          {found.version ? ` · ${found.version}` : ""}
+          {found.author ? ` · by ${found.author}` : ""}
         </div>
-      ) : selected ? (
-        <>
-          <div className="field">
-            <label>Folder</label>
-            <div className="row-sub" style={{ marginTop: 0 }}>
-              {selected.folder}
-              {selected.version ? ` · ${selected.version}` : ""}
-              {selected.author ? ` · by ${selected.author}` : ""}
-            </div>
-          </div>
+      </div>
 
-          {selected.related.length > 0 ? (
-            <div className="field">
-              <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 400 }}>
-                <input
-                  type="checkbox"
-                  checked={includeRelated}
-                  onChange={(event) => setIncludeRelated(event.target.checked)}
-                />
-                Also take over {selected.related.join(", ")}
-              </label>
-              <span className="hint">
-                These share a name prefix, so they are probably parts of the same
-                addon. Untick if they are separate.
-              </span>
-            </div>
-          ) : null}
-
-          <div className="field">
-            <label htmlFor="adopt-url">Repository URL</label>
+      {found.related.length > 0 ? (
+        <div className="field">
+          <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 400 }}>
             <input
-              id="adopt-url"
-              className="input"
-              value={url}
-              placeholder="https://github.com/owner/repo"
-              onChange={(event) => setUrl(event.target.value)}
+              type="checkbox"
+              checked={includeRelated}
+              onChange={(event) => setIncludeRelated(event.target.checked)}
             />
-            <span className="hint">
-              The repository <em>you</em> installed this from. It is not guessed:
-              most 3.3.5a addons are backports, so the original project is
-              usually the wrong answer.
-            </span>
-          </div>
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="button" className="btn" onClick={() => setSelected(null)}>
-              Back
-            </button>
-            <button
-              type="button"
-              className="btn primary"
-              onClick={adopt}
-              disabled={busy || url.trim().length === 0}
-            >
-              {busy ? "Adding…" : "Manage this addon"}
-            </button>
-          </div>
-        </>
-      ) : (
-        <div className="rows">
-          {found.map((item) => (
-            <div className="row" key={item.folder}>
-              <div className="row-main">
-                <div className="row-title">
-                  <strong>{item.title ?? item.folder}</strong>
-                  {!item.versionMatches ? (
-                    <span className="tag error">built for another version</span>
-                  ) : null}
-                  {item.related.length > 0 ? (
-                    <span className="tag">+{item.related.length} folder</span>
-                  ) : null}
-                </div>
-                <div className="row-sub">
-                  {item.folder}
-                  {item.version ? ` · ${item.version}` : ""}
-                </div>
-              </div>
-              <div className="row-actions">
-                <button
-                  type="button"
-                  className="btn small"
-                  onClick={() => {
-                    setSelected(item);
-                    setUrl("");
-                    setIncludeRelated(true);
-                  }}
-                >
-                  Manage…
-                </button>
-              </div>
-            </div>
-          ))}
+            Also take over {found.related.join(", ")}
+          </label>
+          <span className="hint">
+            These share a name prefix, so they are probably parts of the same
+            addon. Untick if they are separate.
+          </span>
         </div>
-      )}
+      ) : null}
+
+      <div className="field">
+        <label htmlFor="adopt-url">Repository URL</label>
+        <input
+          id="adopt-url"
+          className="input"
+          value={url}
+          autoFocus
+          placeholder="https://github.com/owner/repo"
+          onChange={(event) => setUrl(event.target.value)}
+        />
+        <span className="hint">
+          The repository <em>you</em> installed this from. It is not guessed:
+          most 3.3.5a addons are backports, so the original project is usually
+          the wrong answer.
+        </span>
+      </div>
     </Dialog>
   );
 }

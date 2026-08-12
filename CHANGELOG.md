@@ -36,6 +36,13 @@ people are actually running.
 - The **running version** at the foot of Settings.
 - A purple **highlight** under the cursor on Browse cards and server rows.
 
+### Changed
+- **Addons already in your game folder that this app does not manage now appear
+  in the list**, after your managed ones, greyed and tagged `unmanaged`, each
+  with a **Manage** button that asks for its repository URL. They used to be
+  visible only behind an *Import existing* button, which meant you had to know
+  to go looking; the button is gone, because the list says it now.
+
 ## 2.0.0-beta.3 — 2026-08-12
 
 ### Fixed

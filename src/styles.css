@@ -318,6 +318,31 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 }
 .row-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
+/* A heading inside a list, separating what this app manages from what it
+   merely found. */
+.list-divider {
+  margin: 22px 0 9px;
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.list-divider .hint { font-family: var(--sans); font-size: 12px; font-weight: 400; color: var(--ink-3); }
+
+/* A folder this app found but does not track. Deliberately quieter than a
+   managed row — it is not yours yet — but the action stays at full strength,
+   because dimming the one control that changes that is self-defeating. */
+.row.unmanaged {
+  background: transparent;
+  border-style: dashed;
+}
+.row.unmanaged .row-main { opacity: 0.62; }
+.row.unmanaged:hover { border-color: var(--rule); }
+.row.unmanaged:hover .row-main { opacity: 0.85; }
+
 /* A server whose folder is not reachable. Its addons are the last known state,
    not something that can be acted on, and should read that way at a glance. */
 .row.offline {

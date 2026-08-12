@@ -13,8 +13,8 @@ import { ServerSwitcher } from "./components/ServerSwitcher";
 import { AddAddonDialog, AddServerDialog, ConfirmDialog } from "./components/dialogs";
 import { ManageServers } from "./components/ManageServers";
 import {
+  AdoptDialog,
   ExportListDialog,
-  ImportExistingDialog,
   ImportListDialog,
 } from "./components/transfer";
 
@@ -32,8 +32,10 @@ export default function App() {
   const [showAddServer, setShowAddServer] = useState(false);
   const [showAddAddon, setShowAddAddon] = useState(false);
   const [confirming, setConfirming] = useState<Addon | null>(null);
-  const [transfer, setTransfer] = useState<"import" | "export" | "existing" | null>(null);
+  const [transfer, setTransfer] = useState<"import" | "export" | null>(null);
   const [unmet, setUnmet] = useState<api.Unmet[]>([]);
+  const [unmanaged, setUnmanaged] = useState<api.FoundAddon[]>([]);
+  const [adopting, setAdopting] = useState<api.FoundAddon | null>(null);
   const [dependents, setDependents] = useState<string[]>([]);
 
   const selected = useMemo(
@@ -93,6 +95,7 @@ export default function App() {
     if (!selectedId) {
       setAddons([]);
       setUnmet([]);
+      setUnmanaged([]);
       return;
     }
     try {
@@ -101,6 +104,13 @@ export default function App() {
       notify("error", api.errorMessage(error));
     }
     await refreshUnmet();
+    // Folders on disk this app does not track. Read with the rest of the
+    // server's state so adopting one, or installing something that lands in a
+    // folder already there, is reflected without a page change.
+    await api
+      .scanExistingAddons(selectedId)
+      .then(setUnmanaged)
+      .catch(() => setUnmanaged([]));
   }, [selectedId, notify, refreshUnmet]);
 
   useEffect(() => {
@@ -367,18 +377,6 @@ export default function App() {
                   <button
                     type="button"
                     className="btn"
-                    onClick={() => setTransfer("existing")}
-                    disabled={!selected.canInstall}
-                    title={
-                      installBlockedBecause(selected) ??
-                      "Take over addon folders already in this game directory"
-                    }
-                  >
-                    Import existing
-                  </button>
-                  <button
-                    type="button"
-                    className="btn"
                     onClick={() => setTransfer("import")}
                     disabled={!selected.canInstall}
                     title={
@@ -439,6 +437,8 @@ export default function App() {
                   onTogglePin={handleTogglePin}
                   onToggleChannel={handleToggleChannel}
                   onRecheck={() => void refreshServers()}
+                  unmanaged={unmanaged}
+                  onAdopt={setAdopting}
                   onOpen={(url) => void api.openUrl(url)}
                   onAdd={() => setShowAddAddon(true)}
                 />
@@ -546,20 +546,22 @@ export default function App() {
         />
       ) : null}
 
-      {transfer === "export" && selected ? (
-        <ExportListDialog server={selected} onClose={() => setTransfer(null)} />
-      ) : null}
-
-      {transfer === "existing" && selected ? (
-        <ImportExistingDialog
+      {adopting && selected ? (
+        <AdoptDialog
           server={selected}
-          onClose={async () => {
-            setTransfer(null);
+          found={adopting}
+          onClose={() => setAdopting(null)}
+          onAdopted={async (folder) => {
+            setAdopting(null);
+            notify("success", `Now managing ${folder}`);
             await refreshAddons();
             void refreshServers();
           }}
-          onAdopted={(folder) => notify("success", `Now managing ${folder}`)}
         />
+      ) : null}
+
+      {transfer === "export" && selected ? (
+        <ExportListDialog server={selected} onClose={() => setTransfer(null)} />
       ) : null}
 
       {confirming ? (

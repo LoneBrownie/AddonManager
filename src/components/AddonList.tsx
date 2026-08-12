@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { Addon, Server } from "../api";
+import type { Addon, FoundAddon, Server } from "../api";
 
 type Sort = "name" | "updates" | "version";
 type Filter = "all" | "updatable" | "pinned";
@@ -97,6 +97,8 @@ export function AddonList({
   onOpen,
   onAdd,
   onRecheck,
+  unmanaged,
+  onAdopt,
 }: {
   server: Server;
   addons: Addon[];
@@ -108,6 +110,8 @@ export function AddonList({
   onOpen: (url: string) => void;
   onAdd: () => void;
   onRecheck: () => void;
+  unmanaged: FoundAddon[];
+  onAdopt: (found: FoundAddon) => void;
 }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<Sort>("name");
@@ -149,7 +153,7 @@ export function AddonList({
     />
   );
 
-  if (addons.length === 0) {
+  if (addons.length === 0 && unmanaged.length === 0) {
     return (
       <>
       {banner}
@@ -230,6 +234,63 @@ export function AddonList({
           ))}
         </div>
       )}
+
+      {unmanaged.length > 0 ? (
+        <>
+          <h3 className="list-divider">
+            Not managed by this app
+            <span className="hint">
+              Already in this folder. Give each one its repository URL and it
+              joins the list above, updates included.
+            </span>
+          </h3>
+          <div className="rows">
+            {unmanaged.map((item) => (
+              <div className="row unmanaged" key={item.folder}>
+                <div className="row-main">
+                  <div className="row-title">
+                    <strong>{item.title ?? item.folder}</strong>
+                    <span className="tag">unmanaged</span>
+                    {item.related.length > 0 ? (
+                      <span className="tag">
+                        +{item.related.length} folder
+                        {item.related.length === 1 ? "" : "s"}
+                      </span>
+                    ) : null}
+                    {!item.versionMatches ? (
+                      <span
+                        className="tag error"
+                        title="Its .toc declares a different game version than this server"
+                      >
+                        built for another version
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="row-sub" title={item.folder}>
+                    {item.folder}
+                    {item.version ? ` · ${item.version}` : ""}
+                    {item.author ? ` · by ${item.author}` : ""}
+                  </div>
+                </div>
+                <div className="row-actions">
+                  <button
+                    type="button"
+                    className="btn small"
+                    onClick={() => onAdopt(item)}
+                    disabled={Boolean(installBlockedBecause(server))}
+                    title={
+                      installBlockedBecause(server) ??
+                      "Give this folder a repository URL so it can be updated"
+                    }
+                  >
+                    Manage
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
     </>
   );
 }
