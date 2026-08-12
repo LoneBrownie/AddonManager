@@ -15,6 +15,25 @@ type Filter = "all" | "updatable" | "pinned";
  * moved — but it still needs a button, and without one the app said "update it
  * to switch over" while offering nothing to press.
  */
+/**
+ * Why nothing can be written to this server, or null when it can.
+ *
+ * Every control that a read-only or missing folder disables says the same
+ * thing, and says it rather than just greying out — a disabled button with no
+ * reason reads as a broken app, and letting the click through instead ends in
+ * a permission error from somewhere deep in the install.
+ */
+export function installBlockedBecause(server: Server | null): string | null {
+  if (!server) return "Add a server first";
+  if (server.availability === "unavailable") {
+    return `${server.name} is offline — reconnect its drive to install or update addons`;
+  }
+  if (!server.canInstall) {
+    return `${server.name} is read-only — no addons can be installed or updated here`;
+  }
+  return null;
+}
+
 export function actionable(addon: Addon): boolean {
   if (addon.pinned) return false;
   return addon.needsUpdate || addon.channelPending;
@@ -126,6 +145,13 @@ export function AddonList({
         </select>
       </div>
 
+      {installBlockedBecause(server) ? (
+        <div className="banner">
+          <strong>Read-only.</strong> {installBlockedBecause(server)}. Existing
+          addons are listed, but they can’t be changed.
+        </div>
+      ) : null}
+
       {visible.length === 0 ? (
         <div className="empty">
           <h3>Nothing matches</h3>
@@ -143,6 +169,7 @@ export function AddonList({
               onTogglePin={() => onTogglePin(addon)}
               onToggleChannel={() => onToggleChannel(addon)}
               onOpen={() => onOpen(addon.sourceUrl)}
+              blocked={installBlockedBecause(server)}
             />
           ))}
         </div>
@@ -159,6 +186,7 @@ function AddonRow({
   onTogglePin,
   onToggleChannel,
   onOpen,
+  blocked,
 }: {
   addon: Addon;
   busy: boolean;
@@ -167,6 +195,7 @@ function AddonRow({
   onTogglePin: () => void;
   onToggleChannel: () => void;
   onOpen: () => void;
+  blocked: string | null;
 }) {
   return (
     <div className={`row${actionable(addon) ? " updatable" : ""}`}>
@@ -210,11 +239,12 @@ function AddonRow({
             type="button"
             className="btn primary small"
             onClick={onUpdate}
-            disabled={busy}
+            disabled={busy || blocked !== null}
             title={
-              addon.needsUpdate
+              blocked ??
+              (addon.needsUpdate
                 ? "Install the newer version"
-                : `Fetch this addon from its ${addon.channel === "source" ? "default branch" : "latest release"}`
+                : `Fetch this addon from its ${addon.channel === "source" ? "default branch" : "latest release"}`)
             }
           >
             {addon.needsUpdate ? "Update" : "Switch"}

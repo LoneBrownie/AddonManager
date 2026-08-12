@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import logo from "./img/Logo.png";
 import * as api from "./api";
 import type { Addon, CatalogEntry, Server } from "./api";
-import { AddonList, actionable } from "./components/AddonList";
+import { AddonList, actionable, installBlockedBecause } from "./components/AddonList";
 import { AppUpdate } from "./components/AppUpdate";
 import { ServerSwitcher } from "./components/ServerSwitcher";
 import { AddAddonDialog, AddServerDialog, ConfirmDialog } from "./components/dialogs";
@@ -354,7 +354,10 @@ export default function App() {
                     className="btn"
                     onClick={() => setTransfer("existing")}
                     disabled={!selected.canInstall}
-                    title="Take over addon folders already in this game directory"
+                    title={
+                      installBlockedBecause(selected) ??
+                      "Take over addon folders already in this game directory"
+                    }
                   >
                     Import existing
                   </button>
@@ -363,7 +366,10 @@ export default function App() {
                     className="btn"
                     onClick={() => setTransfer("import")}
                     disabled={!selected.canInstall}
-                    title="Paste an addon list — the way to bring a collection over from V1"
+                    title={
+                      installBlockedBecause(selected) ??
+                      "Paste an addon list — the way to bring a collection over from V1"
+                    }
                   >
                     Import list
                   </button>
@@ -380,6 +386,9 @@ export default function App() {
                     className="btn primary"
                     onClick={() => setShowAddAddon(true)}
                     disabled={!selected.canInstall}
+                    title={
+                      installBlockedBecause(selected) ?? "Install an addon from a repository URL"
+                    }
                   >
                     Add addon
                   </button>
@@ -662,6 +671,13 @@ function BrowsePage({
               </select>
             </div>
 
+            {installBlockedBecause(server) ? (
+              <div className="banner">
+                <strong>Read-only.</strong> {installBlockedBecause(server)}. The
+                list is shown so you can see what is available.
+              </div>
+            ) : null}
+
             {shown.length === 0 ? (
               <div className="empty">
                 <h3>Nothing matches</h3>
@@ -680,6 +696,12 @@ function BrowsePage({
                         className="btn small primary"
                         disabled={
                           !server?.canInstall || entry.installed || installing !== null
+                        }
+                        title={
+                          installBlockedBecause(server) ??
+                          (entry.installed
+                            ? "Already installed on this server"
+                            : `Install ${entry.name}`)
                         }
                         onClick={async () => {
                           // Held across the whole thing: an install is several
