@@ -243,6 +243,15 @@ pub struct CatalogEntryDto {
     pub category: String,
     #[serde(default)]
     pub dependencies: Vec<String>,
+    /// Which channel to install this entry on, when it is not the usual one.
+    ///
+    /// Plenty of 3.3.5a addons never cut a release and are only ever the head
+    /// of their default branch. Installing those on the release channel fails
+    /// outright — deliberately, since silently switching channel would hide a
+    /// mistyped URL — so the list has to say which ones they are. Absent means
+    /// releases, which is right for most entries.
+    #[serde(default)]
+    pub channel: Option<Channel>,
     #[serde(default)]
     pub installed: bool,
 }
@@ -251,6 +260,25 @@ pub struct CatalogEntryDto {
 mod tests {
     use super::*;
     use bam_core::version::Ref;
+
+    #[test]
+    fn a_catalogue_entry_without_a_channel_means_releases() {
+        let entry: CatalogEntryDto =
+            serde_json::from_str(r#"{"id":"a","name":"A","repoUrl":"https://github.com/o/r"}"#)
+                .expect("the common case has no channel field at all");
+        assert_eq!(entry.channel, None);
+    }
+
+    /// The whole point of the field: addons that never cut a release install
+    /// from the branch instead of failing.
+    #[test]
+    fn a_catalogue_entry_can_ask_for_the_source_channel() {
+        let entry: CatalogEntryDto = serde_json::from_str(
+            r#"{"id":"a","name":"A","repoUrl":"https://github.com/o/r","channel":"source"}"#,
+        )
+        .expect("channel is lowercase in the list, matching Channel's serde");
+        assert_eq!(entry.channel, Some(Channel::Source));
+    }
 
     #[test]
     fn status_labels_are_stable_strings_for_the_ui() {

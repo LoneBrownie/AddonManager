@@ -67,6 +67,8 @@ export interface CatalogEntry {
   repoUrl: string;
   category: string;
   dependencies: string[];
+  /** Absent for the usual case — tagged releases. */
+  channel?: Channel;
   installed: boolean;
 }
 

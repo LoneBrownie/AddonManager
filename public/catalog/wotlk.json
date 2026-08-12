@@ -93,7 +93,8 @@
     "name": "Bagnon",
     "description": "All-in-one bag replacement addon that merges all your bags into one frame.",
     "repoUrl": "https://github.com/RichSteini/Bagnon-3.3.5",
-    "category": "Interface"
+    "category": "Interface",
+    "channel": "source"
   },
   {
     "id": "notplater",
@@ -115,14 +116,16 @@
     "name": "Auctionator",
     "description": "Comprehensive auction house management addon.",
     "repoUrl": "https://github.com/thierbig/Auctionator-3.3.5-Fixed",
-    "category": "Interface"
+    "category": "Interface",
+    "channel": "source"
   },
   {
     "id": "PallyPower",
     "name": "Pally Power",
     "description": "Paladin blessings management addon.",
     "repoUrl": "https://github.com/NoM0Re/PallyPower-Improved-3.3.5",
-    "category": "Interface"
+    "category": "Interface",
+    "channel": "source"
   },
   {
     "id": "Details Damage Meter",

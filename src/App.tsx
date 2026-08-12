@@ -404,7 +404,9 @@ export default function App() {
                   );
                 }
                 for (const step of queue) {
-                  await api.installAddon(selectedId, step.repoUrl);
+                  // The list says which entries only ever exist as a branch;
+                  // without that they install on the release channel and fail.
+                  await api.installAddon(selectedId, step.repoUrl, step.channel);
                 }
                 notify("success", `Installed ${entry.name}`);
                 setAddons(await api.listAddons(selectedId));
