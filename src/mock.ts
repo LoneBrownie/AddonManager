@@ -269,11 +269,20 @@ export async function mockInvoke<T>(
       const rows = (serverId && addons[serverId]) || [];
       const found = rows.find((a) => a.addonId === args?.["addonId"]);
       if (found) {
-        found.installedVersion = found.latestVersion ?? found.installedVersion;
+        // Reinstalling on the tracked channel changes *what* is installed, so
+        // a pending switch is settled by it. The engine rebuilds the row from
+        // the new install; without doing the same here the Switch button would
+        // stay up forever in the browser build.
+        found.installedVersion =
+          found.channel === "source"
+            ? `master@${Math.random().toString(16).slice(2, 9)}`
+            : found.latestVersion ?? found.installedVersion;
+        found.latestVersion = found.installedVersion;
+        found.channelPending = false;
         found.needsUpdate = false;
         found.updateStatus = "upToDate";
       }
-      return (found ?? rows[0]) as T;
+      return { ...(found ?? rows[0]) } as T;
     }
 
     case "remove_addon": {
