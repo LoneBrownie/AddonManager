@@ -26,37 +26,6 @@ across as many game folders as you run.**
 
 ---
 
-## Moving over from V1
-
-> [!IMPORTANT]
-> **V2 installs alongside V1, not over the top.** It is a separate application
-> with its own settings, so V1 keeps working and nothing is changed or migrated
-> automatically. If you dislike V2, carry on using V1.
-
-Bringing your addons across takes about a minute:
-
-| | Step |
-|---|---|
-| **1** | In **V1**, open **My Addons → Export Addon List** and copy the text. |
-| **2** | In **V2**, add your game folder as a server (Browse to it, pick the game version, name it). |
-| **3** | Click **Import list**, paste, and press **Install**. |
-
-<div align="center">
-  <img src="docs/v2/images/09-import-list.png" alt="Importing an addon list exported from V1" width="760" />
-</div>
-
-**Why the export rather than a folder scan?** V1 records the repository URL for
-every addon it manages, so its export is the only reliable record of where your
-addons actually came from. Most 3.3.5a addons are backports and forks, which
-means a folder on disk cannot tell you which repository it was installed from —
-an addon's own metadata usually names the *upstream* project, not the fork you
-are running. Guessing would point updates at the wrong repository.
-
-For addons V1 never managed, **Import existing** lists the unmanaged folders in
-your game directory and lets you supply each URL yourself.
-
----
-
 ## What it does
 
 ### Several servers, side by side
@@ -143,6 +112,37 @@ asking first.
 If a folder is not writable — which usually means the game is installed under
 `Program Files` — the app tells you rather than asking to restart as
 Administrator.
+
+---
+
+## Moving over from V1
+
+> [!IMPORTANT]
+> **V2 installs alongside V1, not over the top.** It is a separate application
+> with its own settings, so V1 keeps working and nothing is changed or migrated
+> automatically. If you dislike V2, carry on using V1.
+
+Bringing your addons across takes about a minute:
+
+| | Step |
+|---|---|
+| **1** | In **V1**, open **My Addons → Export Addon List** and copy the text. |
+| **2** | In **V2**, add your game folder as a server (Browse to it, pick the game version, name it). |
+| **3** | Click **Import list**, paste, and press **Install**. |
+
+<div align="center">
+  <img src="docs/v2/images/09-import-list.png" alt="Importing an addon list exported from V1" width="760" />
+</div>
+
+**Why the export rather than a folder scan?** V1 records the repository URL for
+every addon it manages, so its export is the only reliable record of where your
+addons actually came from. Most 3.3.5a addons are backports and forks, which
+means a folder on disk cannot tell you which repository it was installed from —
+an addon's own metadata usually names the *upstream* project, not the fork you
+are running. Guessing would point updates at the wrong repository.
+
+For addons V1 never managed, **Import existing** lists the unmanaged folders in
+your game directory and lets you supply each URL yourself.
 
 ---
 
