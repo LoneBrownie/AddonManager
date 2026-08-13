@@ -589,6 +589,13 @@ export async function mockInvoke<T>(
       // the fixture. A static `installed` would make the interface look
       // broken here after an install even when it is not — the real backend
       // derives this by comparing the list against the server's addons.
+      // The fixture list is a 3.3.5a one, so a server on any other version
+      // gets the answer the real backend gives: there is no list for it yet.
+      // Without this the empty state was unreachable here and so never seen.
+      const on = servers.find((s) => s.id === serverId);
+      if (on && on.version !== "wotlk") {
+        return { status: "noListForVersion", entries: [] } as T;
+      }
       const here = (serverId && addons[serverId]) || [];
       const entries = catalog.map((entry) => ({
         ...entry,

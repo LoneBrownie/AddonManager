@@ -924,10 +924,12 @@ function EmptyCatalog({
   return (
     <div className="empty">
       <h3>No curated list for {server?.versionLabel ?? "this version"} yet</h3>
-      <p>
-        The curated list currently covers WotLK 3.3.5a. You can still add any
-        addon by pasting its GitHub or GitLab URL.
-      </p>
+      {/* No mention of which versions *are* covered. That sentence named one
+          game version in a string, so it went stale the moment a list was
+          added for another — and it was addressed to somebody looking at the
+          page for a version it did not cover, which is precisely who it was
+          wrong for. */}
+      <p>You can still add any addon by pasting its GitHub or GitLab URL.</p>
     </div>
   );
 }
