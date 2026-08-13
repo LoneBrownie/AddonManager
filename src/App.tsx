@@ -8,7 +8,7 @@ import {
   actionable,
   installBlockedBecause,
 } from "./components/AddonList";
-import { AppUpdate } from "./components/AppUpdate";
+import { AppUpdate, UpdateChannel } from "./components/AppUpdate";
 import { ServerSwitcher } from "./components/ServerSwitcher";
 import { AddAddonDialog, AddServerDialog, ConfirmDialog } from "./components/dialogs";
 import { ManageServers } from "./components/ManageServers";
@@ -1032,6 +1032,8 @@ function SettingsPage({
         </div>
 
         <AppUpdate notify={notify} />
+
+        <UpdateChannel notify={notify} />
 
         <div className="field" style={{ maxWidth: 520, marginTop: 28 }}>
           <label>Diagnostics</label>

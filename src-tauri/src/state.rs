@@ -24,6 +24,13 @@ pub struct Preferences {
     pub selected_server_id: Option<String>,
     #[serde(default)]
     pub theme: Option<String>,
+    /// Whether this installation takes beta releases.
+    ///
+    /// One-way: nothing sets it back to false, because coming back would be a
+    /// downgrade and the store refuses a schema from the future. Reinstalling
+    /// the stable build is the way back, and Settings says so before you opt in.
+    #[serde(default)]
+    pub beta_channel: bool,
     /// The version that was running last time the app started.
     ///
     /// How "you have just updated" is known, which is the only way to show the
@@ -210,6 +217,7 @@ mod tests {
                 selected_server_id: Some("srv_1".into()),
                 theme: Some("dark".into()),
                 last_seen_version: None,
+                beta_channel: true,
             })
             .unwrap_or_else(|e| panic!("{e}"));
         }
@@ -218,6 +226,13 @@ mod tests {
         assert_eq!(
             reopened.prefs().ok().and_then(|p| p.selected_server_id),
             Some("srv_1".into())
+        );
+        // The channel has to survive a restart, or opting in would last until
+        // the app was next closed.
+        assert_eq!(
+            reopened.prefs().ok().map(|p| p.beta_channel),
+            Some(true),
+            "the update channel must persist"
         );
     }
 

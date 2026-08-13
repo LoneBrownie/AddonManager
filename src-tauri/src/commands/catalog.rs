@@ -229,6 +229,7 @@ pub fn get_preferences(state: State<'_, AppState>) -> CommandResult<PreferencesD
     Ok(PreferencesDto {
         theme: prefs.theme,
         selected_server_id: prefs.selected_server_id,
+        beta_channel: prefs.beta_channel,
     })
 }
 

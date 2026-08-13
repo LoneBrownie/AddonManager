@@ -121,6 +121,11 @@ pub fn run() {
             commands::catalog::open_url,
             commands::catalog::open_logs_folder,
             commands::catalog::diagnostics,
+            // the app updating itself
+            commands::update::check_for_update,
+            commands::update::install_update,
+            commands::update::update_channel,
+            commands::update::join_beta_channel,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|error| {

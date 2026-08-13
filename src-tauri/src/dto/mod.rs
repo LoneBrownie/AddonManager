@@ -281,6 +281,8 @@ pub struct PreferencesDto {
     /// `None` means "follow the system", which is the default.
     pub theme: Option<String>,
     pub selected_server_id: Option<String>,
+    /// Whether this installation takes beta releases.
+    pub beta_channel: bool,
 }
 
 /// An addon whose declared dependencies are not all present.

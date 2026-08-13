@@ -209,15 +209,17 @@ jobs:
             gh release upload "$TAG" "${uploads[@]}" --repo "$GITHUB_REPOSITORY" --clobber
           fi
 
-      # The updater reads one fixed URL, so the manifest has to live at one.
+      # Two channels, two files. Which one a build reads is decided in Rust
+      # from a stored preference, because the updater plugin's JavaScript API
+      # cannot express the choice — see commands/update.rs.
       #
-      # The obvious choice, `releases/latest/download/latest.json`, cannot work
-      # here: GitHub defines "latest" as the newest release that is *not* a
-      # pre-release, so it would never resolve to a beta — and making betas
-      # non-pre-releases would hand `releases/latest` to V2 and break the link
-      # V1 users follow. A fixed `updater` tag sidesteps both: direct
-      # `releases/download/<tag>/` URLs serve pre-release assets happily, and
-      # this release never becomes anyone's "latest".
+      # The updater reads one fixed URL, so each manifest has to live at one.
+      #
+      # `releases/latest/download/latest.json` cannot serve both: GitHub
+      # defines "latest" as the newest release that is *not* a pre-release, so
+      # it would never resolve to a beta. Holding each manifest in a release of
+      # its own would work and would put two permanent entries on the releases
+      # page that are not downloads. They are files, so they are kept as files.
       #
       # The manifest is composed here rather than taken from tauri-action, which
       # declines to build one — "Signature not found for the updater JSON" —
@@ -271,13 +273,52 @@ jobs:
 
           cat latest.json
 
-          # Created once, reused forever. Marked as a pre-release so it stays
-          # out of `releases/latest` like everything else here.
-          gh release view updater --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
-            gh release create updater \
-              --repo "$GITHUB_REPOSITORY" \
-              --prerelease \
-              --title "Updater manifest" \
-              --notes "Not a download. This release exists so the in-app updater has a stable URL to read; the installers are on the versioned releases."
+          # Both manifests are plain files on an orphan branch. A release that
+          # exists only to hold a manifest sits on the releases page for ever
+          # pretending to be a download, and two channels would have meant two
+          # of them. The branch is named `updater-manifests` rather than
+          # `updater` so it cannot be confused with the legacy tag below —
+          # raw.githubusercontent would not know which one a bare `updater`
+          # meant.
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          gh release upload updater latest.json --repo "$GITHUB_REPOSITORY" --clobber
+          remote="https://x-access-token:${GH_TOKEN}@github.com/$GITHUB_REPOSITORY"
+          branch=$(mktemp -d)
+          git clone --depth 1 --branch updater-manifests "$remote" "$branch" 2>/dev/null || {
+            echo "updater-manifests does not exist yet; starting it"
+            git clone --depth 1 "$remote" "$branch"
+            git -C "$branch" checkout --orphan updater-manifests
+            git -C "$branch" rm -rf . >/dev/null
+          }
+
+          # The beta channel takes every tag. It has to carry stable releases
+          # too, or a tester on 2.1.0-beta.3 would never be overtaken by 2.1.0.
+          cp latest.json "$branch/beta.json"
+
+          # The stable channel takes stable tags only. A hyphen in the tag is
+          # what marks a pre-release everywhere else in this workflow, so a
+          # beta stops here and never reaches somebody who did not ask for it.
+          case "$TAG" in
+            *-*) echo "$TAG is a pre-release; the stable manifest is left alone" ;;
+            *)   cp latest.json "$branch/latest.json" ;;
+          esac
+
+          git -C "$branch" add -A
+          git -C "$branch" commit -m "Update manifests for $TAG" \
+            || echo "manifests unchanged"
+          git -C "$branch" push origin updater-manifests
+
+          # Legacy, and temporary. Every installation up to 2.0.1 has
+          # `releases/download/updater/latest.json` compiled into it, so
+          # dropping this would leave those users silently unable to update —
+          # the worst failure mode, because nothing tells them. Keep feeding it
+          # stable releases until they have all moved onto a build that reads
+          # the branch, then delete this release and this block.
+          case "$TAG" in
+            *-*) : ;;
+            *)
+              gh release view updater --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && \
+                gh release upload updater latest.json --repo "$GITHUB_REPOSITORY" --clobber
+              ;;
+          esac

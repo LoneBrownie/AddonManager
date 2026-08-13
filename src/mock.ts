@@ -225,6 +225,8 @@ let selectedFolder = "D:\\Games\\NewServer";
 let mockTheme: "dark" | "light" | null = null;
 let mockSelectedServer: string | null = "srv_epoch";
 let token: string | null = null;
+/** Whether this mock installation has opted into betas. One-way, as in the app. */
+let betaChannel = false;
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -506,7 +508,11 @@ export async function mockInvoke<T>(
       } as T;
 
     case "get_preferences":
-      return { theme: mockTheme, selectedServerId: mockSelectedServer } as T;
+      return {
+        theme: mockTheme,
+        selectedServerId: mockSelectedServer,
+        betaChannel,
+      } as T;
 
     case "set_theme":
       mockTheme = (args?.["theme"] as "dark" | "light" | null) ?? null;
@@ -688,6 +694,15 @@ export async function mockInvoke<T>(
       ].join("\n") as T;
 
     case "open_logs_folder":
+      return undefined as T;
+
+    // The app cannot update itself outside Tauri, but the channel is a stored
+    // preference like any other, so it is worth driving here.
+    case "update_channel":
+      return (betaChannel ? "beta" : "stable") as T;
+
+    case "join_beta_channel":
+      betaChannel = true;
       return undefined as T;
 
     case "has_github_token":

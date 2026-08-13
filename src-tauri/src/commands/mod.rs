@@ -10,6 +10,7 @@ pub mod addons;
 pub mod catalog;
 pub mod import;
 pub mod servers;
+pub mod update;
 
 use serde::Serialize;
 

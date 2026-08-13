@@ -1,12 +1,11 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The app's own commands, plus a folder picker and the update check with the relaunch that follows it. No filesystem, HTTP or opener permission is granted to the webview — everything goes through intent-level commands. Opening a link is one of those commands: `open_url` checks the address against the forge allowlist before handing it to the opener plugin, and the plugin's own command is deliberately not granted here, so there is no second route to it that skips the check.",
+  "description": "The app's own commands, plus a folder picker and the relaunch that follows an update. No filesystem, HTTP, opener or updater permission is granted to the webview — everything goes through intent-level commands. Opening a link is one of those commands: `open_url` checks the address against the forge allowlist before handing it to the opener plugin, and the plugin's own command is deliberately not granted here, so there is no second route to it that skips the check. Updating is the same shape: `check_for_update` and `install_update` pick the manifest for the channel this installation is on, which the plugin's own command could not do and would bypass.",
   "windows": ["main"],
   "permissions": [
     "core:default",
     "dialog:allow-open",
-    "updater:default",
     "process:allow-restart"
   ]
 }

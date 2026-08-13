@@ -119,6 +119,8 @@ export type Theme = "dark" | "light" | null;
 export interface Preferences {
   theme: Theme;
   selectedServerId: string | null;
+  /** Whether this installation takes beta releases. One-way; see `appUpdate`. */
+  betaChannel: boolean;
 }
 
 /** The changelog for the version now running. */
