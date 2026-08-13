@@ -221,7 +221,19 @@ pub fn sha256_file(path: &Path) -> Result<String> {
             None => break,
         }
     }
-    Ok(format!("{:x}", hasher.finalize()))
+    // Hex-encoded here rather than with `{:x}`. `digest` 0.11 returns a
+    // `hybrid_array::Array` instead of a `GenericArray`, and that type does not
+    // implement `LowerHex` — so the formatting shortcut stopped compiling. The
+    // output is byte-for-byte the same, and there is a test pinning it.
+    let digest = hasher.finalize();
+    let mut hex = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        use std::fmt::Write as _;
+        // Writing to a String cannot fail; the result is discarded rather than
+        // unwrapped because this crate forbids that.
+        let _ = write!(hex, "{byte:02x}");
+    }
+    Ok(hex)
 }
 
 /// Names of the `.toc` files directly inside `dir`.

@@ -862,7 +862,6 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   color: var(--ink-2);
   overflow-wrap: anywhere;
 }
-}
 
 .spinner {
   width: 13px;
