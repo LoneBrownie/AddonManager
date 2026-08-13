@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ago, asText, isProblem, type Entry } from "../activity";
 
 /**
@@ -40,6 +40,7 @@ export function ActivityDock({
   onClose: () => void;
   onClear: () => void;
 }) {
+  const dock = useRef<HTMLElement>(null);
   const [problemsOnly, setProblemsOnly] = useState(false);
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -74,6 +75,26 @@ export function ActivityDock({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
 
+  // So does anything else you press. There is no backdrop to click — the app
+  // behind stays live on purpose — so reaching for the addon list closed
+  // nothing and left the panel sitting over what you were reaching for.
+  //
+  // `pointerdown` rather than `click`: pressing a button behind the panel
+  // should both close this and do the thing, and a click handler that fires
+  // after React has re-rendered can miss the second half. The tab is excluded
+  // because it is its own toggle — closing here as well would leave it
+  // reopening on the same press.
+  useEffect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && dock.current?.contains(target)) return;
+      onClose();
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [open, onClose]);
+
   const problems = entries.filter(isProblem).length;
   const shown = problemsOnly ? entries.filter(isProblem) : entries;
 
@@ -88,7 +109,7 @@ export function ActivityDock({
   }
 
   return (
-    <aside className="dock" data-open={open || undefined}>
+    <aside className="dock" data-open={open || undefined} ref={dock}>
       {/* The pull-tab. Always there, so the panel is discoverable without
           occupying a place in the navigation — it is not a destination — and
           small enough that it does not read as a second sidebar. It sits to
