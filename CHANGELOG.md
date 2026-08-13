@@ -9,6 +9,14 @@ people are actually running.
 
 ## Unreleased
 
+### Fixed
+- **Installing a beta by hand now puts you on the beta channel.** It did not,
+  and the result was an app that went quiet: a beta build reading the stable
+  manifest finds a version older than itself, so *Check for updates* had nothing
+  to offer until stable caught up. Running a beta is now the opt-in, whether or
+  not you also pressed the button in Settings. It still ends the same way, when
+  a stable release overtakes the beta you are running.
+
 ### Changed
 - **Linux ships an AppImage and nothing else.** The `.deb` and `.rpm` were
   offered as convenience downloads, and the convenience was a lie: *Check for

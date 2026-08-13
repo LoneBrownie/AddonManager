@@ -141,10 +141,12 @@ export function UpdateChannel({ notify }: { notify: Notify }) {
           </div>
           <span className="hint" style={{ marginTop: 6 }}>
             You receive beta releases as soon as they are published, and stable
-            releases as well. When a stable release overtakes the beta you are
-            running, this goes back to stable on its own and you would opt in
-            again for the next one. To leave before then, reinstall the stable
-            build.
+            releases as well. Running a beta build puts you here whether or not
+            you pressed the button — reading the stable channel while running a
+            beta would find nothing, and the app would go quiet. When a stable
+            release overtakes the beta you are running, this goes back to stable
+            on its own and you would opt in again for the next one. To leave
+            before then, reinstall the stable build.
           </span>
         </>
       ) : (
