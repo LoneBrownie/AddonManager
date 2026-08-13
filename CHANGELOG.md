@@ -12,10 +12,10 @@ people are actually running.
 ### Added
 - **A beta channel**, under *Settings → Update channel*. Betas are published for
   testing before a stable release and are not offered to anyone who has not
-  asked for them. Joining is **one-way**: nothing in the app puts you back, and
-  the way out is to reinstall the stable build or wait for the next stable
-  release to overtake the beta you are running. You are told that before you
-  opt in.
+  asked for them. It lasts one beta at a time: nothing in Settings turns it off,
+  but the opt-in ends by itself as soon as a stable release overtakes the beta
+  you are running, and you join again for the next one. To leave before that,
+  reinstall the stable build. You are told all of this before you opt in.
 - **An activity stream**, behind the *Activity* tab on the right-hand edge.
   Every message the app raises goes there and stays for the session, so a
   notification that has been and gone can still be read. It slides out over

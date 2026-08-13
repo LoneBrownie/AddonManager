@@ -118,6 +118,42 @@ pub async fn install_update(
     Ok(())
 }
 
+/// Has a stable release just replaced the beta this installation was running?
+///
+/// A pre-release is spelled with a hyphen — `2.1.0-beta.3` — which is the same
+/// rule the release workflow uses to decide whether a tag is a beta, so the two
+/// halves of the system agree by construction rather than by coincidence.
+///
+/// Only the *transition* counts. Somebody who opts in while running a stable
+/// build has not been overtaken by anything and stays opted in until a beta
+/// actually arrives and is then superseded.
+pub fn superseded_by_stable(previous: Option<&str>, current: &str) -> bool {
+    previous.is_some_and(|previous| previous.contains('-')) && !current.contains('-')
+}
+
+/// Take an installation off the beta channel once a stable release has caught
+/// up with the beta it was running.
+///
+/// Waiting it out is the way off the channel that costs nothing, so it has to
+/// actually take you off — otherwise betas resume the moment the next one is
+/// published and "wait for stable to catch up" was never an exit at all. Opting
+/// in again is one button; being quietly re-enrolled is not something anybody
+/// asked for.
+pub fn leave_beta_if_superseded(state: &AppState) -> bam_core::error::Result<bool> {
+    let mut prefs = state.prefs()?;
+    if !prefs.beta_channel
+        || !superseded_by_stable(
+            prefs.last_seen_version.as_deref(),
+            crate::changelog::VERSION,
+        )
+    {
+        return Ok(false);
+    }
+    prefs.beta_channel = false;
+    state.set_prefs(prefs)?;
+    Ok(true)
+}
+
 /// Which channel this installation is on.
 #[tauri::command]
 pub fn update_channel(state: State<'_, AppState>) -> CommandResult<String> {
@@ -135,11 +171,11 @@ pub fn update_channel(state: State<'_, AppState>) -> CommandResult<String> {
 /// nothing to offer — and downgrading means an older binary opening a store a
 /// newer one wrote, which [`bam_core::store`] refuses rather than guesses at.
 ///
-/// There are two honest ways off it, and Settings names both: reinstall the
-/// stable build, or wait for the next stable release to overtake the beta you
-/// are running, which this channel delivers too. The second leaves you on a
-/// stable version but still on the channel, so betas resume after it — which is
-/// why it is offered as patience rather than as an exit.
+/// There are two ways off it, and Settings names both: reinstall the stable
+/// build, or wait for the next stable release to overtake the beta you are
+/// running, which this channel delivers too. The second is a real exit —
+/// [`leave_beta_if_superseded`] puts the installation back on stable when that
+/// happens, so taking one beta does not enrol somebody for ever.
 #[tauri::command]
 pub fn join_beta_channel(state: State<'_, AppState>) -> CommandResult<()> {
     let mut prefs = state.prefs()?;
@@ -151,6 +187,28 @@ pub fn join_beta_channel(state: State<'_, AppState>) -> CommandResult<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_stable_release_after_a_beta_ends_the_opt_in() {
+        assert!(superseded_by_stable(Some("2.1.0-beta.3"), "2.1.0"));
+        assert!(superseded_by_stable(Some("2.1.0-beta.3"), "2.2.0"));
+    }
+
+    /// Opting in while on a stable build must not immediately undo itself:
+    /// nothing has superseded anything, the user is simply waiting for a beta.
+    #[test]
+    fn opting_in_from_a_stable_build_survives_a_restart() {
+        assert!(!superseded_by_stable(Some("2.0.1"), "2.0.1"));
+        assert!(!superseded_by_stable(Some("2.0.1"), "2.1.0"));
+        assert!(!superseded_by_stable(None, "2.0.1"));
+    }
+
+    /// One beta following another is not a supersession.
+    #[test]
+    fn a_further_beta_keeps_the_opt_in() {
+        assert!(!superseded_by_stable(Some("2.1.0-beta.1"), "2.1.0-beta.2"));
+        assert!(!superseded_by_stable(None, "2.1.0-beta.1"));
+    }
 
     /// The channels must not collapse into one, and neither may be fetched
     /// over a transport somebody on the same network can rewrite — an update

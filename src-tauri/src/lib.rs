@@ -73,6 +73,16 @@ pub fn run() {
             let client = bam_net::ReqwestClient::new()?;
             let state = AppState::new(dir, Box::new(client))?;
 
+            // A stable release overtaking a beta ends the opt-in, so somebody
+            // who took one beta is not enrolled for the rest of time. Done
+            // before `whats_new` runs, which is what advances the recorded
+            // version this compares against.
+            match commands::update::leave_beta_if_superseded(&state) {
+                Ok(true) => tracing::info!("a stable release superseded the beta; back on stable"),
+                Ok(false) => {}
+                Err(error) => tracing::warn!(%error, "could not settle the update channel"),
+            }
+
             use tauri::Manager;
             app.manage(state);
             Ok(())

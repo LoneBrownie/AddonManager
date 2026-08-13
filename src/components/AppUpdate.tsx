@@ -141,9 +141,10 @@ export function UpdateChannel({ notify }: { notify: Notify }) {
           </div>
           <span className="hint" style={{ marginTop: 6 }}>
             You receive beta releases as soon as they are published, and stable
-            releases as well. To go back to stable only, reinstall the stable
-            build — or wait for the next stable release to overtake the beta you
-            are on, though betas will keep arriving after it.
+            releases as well. When a stable release overtakes the beta you are
+            running, this goes back to stable on its own and you would opt in
+            again for the next one. To leave before then, reinstall the stable
+            build.
           </span>
         </>
       ) : (
@@ -159,9 +160,9 @@ export function UpdateChannel({ notify }: { notify: Notify }) {
             </button>
           </div>
           <span className="hint" style={{ marginTop: 8 }}>
-            <strong>This cannot be undone from inside the app.</strong> Going
-            back means reinstalling the stable build, or waiting for the next
-            stable release to catch up with the beta you are running.
+            <strong>This cannot be undone from inside the app.</strong> It ends
+            on its own when a stable release overtakes the beta you are running;
+            to leave before that, reinstall the stable build.
           </span>
         </>
       )}
@@ -172,10 +173,10 @@ export function UpdateChannel({ notify }: { notify: Notify }) {
           message={
             "Beta releases are published for testing before a stable release. " +
             "They can be broken in ways a stable release is not.\n\n" +
-            "There is no way back from inside the app. To return to stable you " +
-            "would either reinstall the stable build, or wait for the next " +
-            "stable release to overtake the beta you are running — this channel " +
-            "delivers stable releases too, but betas resume after it.\n\n" +
+            "Nothing in Settings puts you back. It ends by itself once a " +
+            "stable release overtakes the beta you are running — this channel " +
+            "delivers those too — and you would join again for the next beta. " +
+            "To leave before that happens, reinstall the stable build.\n\n" +
             "Your servers and addons are not affected either way."
           }
           confirmLabel="Join the beta channel"
