@@ -139,15 +139,16 @@ export function UpdateChannel({ notify }: { notify: Notify }) {
             <strong>Beta</strong>
             <span className="tag source">opted in</span>
           </div>
-          {/* Three sentences, in the order they get asked about: what you
-              get, why you might be here without having pressed anything, and
-              how it ends. The reasoning behind each — that a beta build
+          {/* What you get, then the two things nobody presses a button for:
+              arriving here by installing a beta, and leaving when stable
+              catches up. The reasoning behind either — that a beta build
               reading the stable channel would find nothing — belongs in the
               code, not on the settings page. */}
           <span className="hint" style={{ marginTop: 6 }}>
             You get betas as soon as they are published. Installing a beta puts
-            you here on its own. It ends when a stable release overtakes the
-            beta you are running; to leave sooner, reinstall the stable build.
+            you here on its own and automatically ends when a stable release
+            overtakes the beta you are running; to leave sooner, reinstall the
+            stable build.
           </span>
         </>
       ) : (
