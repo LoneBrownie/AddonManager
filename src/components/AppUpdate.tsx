@@ -145,10 +145,9 @@ export function UpdateChannel({ notify }: { notify: Notify }) {
               reading the stable channel would find nothing — belongs in the
               code, not on the settings page. */}
           <span className="hint" style={{ marginTop: 6 }}>
-            You get betas as soon as they are published, and stable releases
-            too. Installing a beta puts you here on its own. It ends when a
-            stable release overtakes the beta you are running; to leave sooner,
-            reinstall the stable build.
+            You get betas as soon as they are published. Installing a beta puts
+            you here on its own. It ends when a stable release overtakes the
+            beta you are running; to leave sooner, reinstall the stable build.
           </span>
         </>
       ) : (
