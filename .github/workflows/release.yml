@@ -43,10 +43,6 @@ jobs:
             args: --bundles nsis
           - os: ubuntu-22.04
             label: Linux
-            # AppImage is the only Linux artifact that can self-update; deb and
-            # rpm are convenience downloads owned by the package manager
-            # (V2-PLAN.md 9.1).
-            #
             # AppImage only. deb and rpm were published as convenience
             # downloads, and the convenience was a lie: the updater picks its
             # download by searching the manifest for `linux-x86_64-<installer>`
