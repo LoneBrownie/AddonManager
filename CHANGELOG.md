@@ -16,6 +16,10 @@ people are actually running.
   to offer until stable caught up. Running a beta is now the opt-in, whether or
   not you also pressed the button in Settings. It still ends the same way, when
   a stable release overtakes the beta you are running.
+- **The activity stream's *Problems* filter can be pressed when there are
+  none.** It was disabled instead, which left you unable to tell a filter with
+  nothing to show from one that had not registered the press — and the answer
+  it was declining to give, that nothing has failed, is the one worth having.
 - **The activity panel closes when you click away from it.** It stays open on
   purpose while you work, but reaching for the addon list behind it used to
   leave it sitting over what you were reaching for.

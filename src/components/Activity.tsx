@@ -163,11 +163,15 @@ export function ActivityDock({
                 >
                   All
                 </button>
+                {/* Not disabled when the count is zero. A filter that refuses
+                    to be pressed leaves you unable to tell a filter with no
+                    matches from one that did not register the press — and the
+                    answer it declines to give, "nothing has failed", is the
+                    one worth having. */}
                 <button
                   type="button"
                   aria-pressed={problemsOnly}
                   onClick={() => setProblemsOnly(true)}
-                  disabled={problems === 0}
                 >
                   Problems{problems > 0 ? ` (${problems})` : ""}
                 </button>
