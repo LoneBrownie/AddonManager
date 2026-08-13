@@ -299,10 +299,18 @@ jobs:
               stable=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name 2>/dev/null || true)
               if [ -n "$stable" ]; then
                 gh release download "$stable" --repo "$GITHUB_REPOSITORY" \
-                  --pattern latest.json --dir site \
-                  || echo "$stable has no manifest asset; the stable channel will be empty"
-              else
-                echo "no stable release yet; the stable channel will be empty"
+                  --pattern latest.json --dir site 2>/dev/null \
+                  || echo "$stable predates per-release manifests"
+              fi
+              # Releases up to 2.0.1 have no manifest asset of their own, so if
+              # a pre-release is the first tag to deploy Pages there would be
+              # nothing to carry forward and the stable channel would 404. The
+              # legacy release holds exactly that manifest, so it is the answer
+              # until a stable release has published one.
+              if [ ! -f site/latest.json ]; then
+                gh release download updater --repo "$GITHUB_REPOSITORY" \
+                  --pattern latest.json --dir site 2>/dev/null \
+                  || echo "no stable manifest anywhere yet; the stable channel starts empty"
               fi
               ;;
             *)
