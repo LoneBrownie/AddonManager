@@ -18,23 +18,22 @@ use tauri_plugin_updater::UpdaterExt;
 use super::{CommandError, CommandResult};
 use crate::state::AppState;
 
-/// The two manifests live on an orphan branch rather than on releases.
+/// Both manifests are served from GitHub Pages.
 ///
-/// A manifest is a file, and a release that exists only to hold one shows up
-/// on the releases page forever pretending to be a download. `releases/latest`
-/// cannot serve the beta channel either — GitHub resolves it to the newest
-/// *non*-pre-release — so releases would have meant one phantom entry per
-/// channel. A branch nobody has to look at costs nothing and holds both.
-const STABLE_MANIFEST: &str =
-    "https://raw.githubusercontent.com/LoneBrownie/AddonManager/updater-manifests/latest.json";
+/// A manifest is a file, and it needs an address that never moves. A release
+/// that exists only to hold one shows up on the releases page for ever
+/// pretending to be a download, and `releases/latest` cannot serve the beta
+/// channel at all — GitHub resolves it to the newest *non*-pre-release. Pages
+/// deployed from a workflow artifact needs neither a release nor a branch: the
+/// files exist only as a deployment.
+const STABLE_MANIFEST: &str = "https://lonebrownie.github.io/AddonManager/latest.json";
 
 /// Beta: the newest release of *either* kind.
 ///
 /// It has to include stable releases too, or somebody on `2.1.0-beta.3` would
 /// never be offered `2.1.0` when it ships — the channel would be a dead end
 /// rather than a fast lane.
-const BETA_MANIFEST: &str =
-    "https://raw.githubusercontent.com/LoneBrownie/AddonManager/updater-manifests/beta.json";
+const BETA_MANIFEST: &str = "https://lonebrownie.github.io/AddonManager/beta.json";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -165,8 +164,8 @@ mod tests {
                 "an update manifest must not be fetched over plain HTTP"
             );
             assert!(
-                endpoint.contains("/updater-manifests/"),
-                "both live on the orphan branch the release workflow writes"
+                endpoint.starts_with("https://lonebrownie.github.io/AddonManager/"),
+                "both are served from the Pages site the release workflow deploys"
             );
         }
     }

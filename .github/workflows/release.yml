@@ -16,6 +16,8 @@ on:
 permissions:
   contents: write
   id-token: write
+  # Deploying the update manifests to Pages.
+  pages: write
 
 jobs:
   # The same rules CI enforces, enforced here too. Without this the release
@@ -169,6 +171,10 @@ jobs:
     name: Sign artifacts
     needs: build
     runs-on: ubuntu-latest
+    # This job also deploys the update manifests, and `deploy-pages` refuses to
+    # run outside the environment Pages owns.
+    environment:
+      name: github-pages
     steps:
       - uses: actions/checkout@v7
 
@@ -219,7 +225,9 @@ jobs:
       # defines "latest" as the newest release that is *not* a pre-release, so
       # it would never resolve to a beta. Holding each manifest in a release of
       # its own would work and would put two permanent entries on the releases
-      # page that are not downloads. They are files, so they are kept as files.
+      # page that are not downloads. Pages costs neither: deployed from an
+      # artifact, the files exist as a deployment rather than as a branch or a
+      # release, and the site is two JSON documents.
       #
       # The manifest is composed here rather than taken from tauri-action, which
       # declines to build one — "Signature not found for the updater JSON" —
@@ -273,48 +281,46 @@ jobs:
 
           cat latest.json
 
-          # Both manifests are plain files on an orphan branch. A release that
-          # exists only to hold a manifest sits on the releases page for ever
-          # pretending to be a download, and two channels would have meant two
-          # of them. The branch is named `updater-manifests` rather than
-          # `updater` so it cannot be confused with the legacy tag below —
-          # raw.githubusercontent would not know which one a bare `updater`
-          # meant.
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # The site is exactly two files. Pages replaces the whole thing on
+          # every deploy, so the manifest this tag does *not* change has to be
+          # carried forward rather than left out.
+          mkdir -p site
 
-          remote="https://x-access-token:${GH_TOKEN}@github.com/$GITHUB_REPOSITORY"
-          branch=$(mktemp -d)
-          git clone --depth 1 --branch updater-manifests "$remote" "$branch" 2>/dev/null || {
-            echo "updater-manifests does not exist yet; starting it"
-            git clone --depth 1 "$remote" "$branch"
-            git -C "$branch" checkout --orphan updater-manifests
-            git -C "$branch" rm -rf . >/dev/null
-          }
+          # The beta channel takes every tag. It carries stable releases too,
+          # or a tester on 2.1.0-beta.3 would never be overtaken by 2.1.0.
+          cp latest.json site/beta.json
 
-          # The beta channel takes every tag. It has to carry stable releases
-          # too, or a tester on 2.1.0-beta.3 would never be overtaken by 2.1.0.
-          cp latest.json "$branch/beta.json"
-
-          # The stable channel takes stable tags only. A hyphen in the tag is
-          # what marks a pre-release everywhere else in this workflow, so a
-          # beta stops here and never reaches somebody who did not ask for it.
           case "$TAG" in
-            *-*) echo "$TAG is a pre-release; the stable manifest is left alone" ;;
-            *)   cp latest.json "$branch/latest.json" ;;
+            *-*)
+              # A pre-release must not disturb the stable channel. The current
+              # stable manifest is taken from the newest stable release's own
+              # asset rather than from the live site, which is behind a
+              # ten-minute CDN cache and could hand back a stale answer.
+              stable=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name 2>/dev/null || true)
+              if [ -n "$stable" ]; then
+                gh release download "$stable" --repo "$GITHUB_REPOSITORY" \
+                  --pattern latest.json --dir site \
+                  || echo "$stable has no manifest asset; the stable channel will be empty"
+              else
+                echo "no stable release yet; the stable channel will be empty"
+              fi
+              ;;
+            *)
+              cp latest.json site/latest.json
+              # On the release itself, not a phantom one. This is what the next
+              # pre-release reads back to preserve the stable channel.
+              gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
+              ;;
           esac
 
-          git -C "$branch" add -A
-          git -C "$branch" commit -m "Update manifests for $TAG" \
-            || echo "manifests unchanged"
-          git -C "$branch" push origin updater-manifests
+          ls -l site
 
           # Legacy, and temporary. Every installation up to 2.0.1 has
           # `releases/download/updater/latest.json` compiled into it, so
-          # dropping this would leave those users silently unable to update —
-          # the worst failure mode, because nothing tells them. Keep feeding it
-          # stable releases until they have all moved onto a build that reads
-          # the branch, then delete this release and this block.
+          # dropping this would leave those users unable to update with nothing
+          # to tell them so. Keep feeding it stable releases until they have all
+          # moved onto a build that reads Pages, then delete that release and
+          # this block.
           case "$TAG" in
             *-*) : ;;
             *)
@@ -322,3 +328,9 @@ jobs:
                 gh release upload updater latest.json --repo "$GITHUB_REPOSITORY" --clobber
               ;;
           esac
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: manifest/site
+      - uses: actions/deploy-pages@v4

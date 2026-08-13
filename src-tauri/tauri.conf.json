@@ -46,7 +46,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://raw.githubusercontent.com/LoneBrownie/AddonManager/updater-manifests/latest.json"
+        "https://lonebrownie.github.io/AddonManager/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM1MEQxRTMyNkU5NDYwMjUKUldRbFlKUnVNaDROTmM5bDIvWWZlVGl0eHZqMGVKbHZFVTR0YU5RdEcvOXlzQ1JPRUFlYzlXRGoK",
       "windows": {
