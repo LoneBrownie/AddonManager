@@ -226,15 +226,18 @@ jobs:
       # artifact, the files exist as a deployment rather than as a branch or a
       # release, and the site is two JSON documents.
       #
-      # The manifest is composed here rather than taken from tauri-action, which
-      # declines to build one — "Signature not found for the updater JSON" —
-      # because the matrix splits the platforms across two jobs and neither sees
-      # a complete set. The inputs are simple and already on the release, so
-      # assembling it here is both shorter and predictable.
+      # The manifest is tauri-action's own, downloaded rather than rebuilt.
+      # v0 declined to produce one — "Signature not found for the updater JSON"
+      # — because the matrix splits the platforms across two jobs and neither
+      # saw a complete set, so this composed one by hand from the signatures and
+      # the asset names. v1 merges the jobs' contributions and publishes a
+      # `latest.json` that is strictly better than the hand-built one: it also
+      # carries the per-installer keys, `linux-x86_64-appimage` and
+      # `windows-x86_64-nsis`, which are the first thing the updater looks for.
       #
-      # Asset *names* are read back from the release rather than reused from the
-      # build, because GitHub rewrites them on upload: apostrophes and spaces
-      # become dots, so the local filename is not the download filename.
+      # The notes are still ours. tauri-action writes the whole release body in
+      # there, headings and download instructions included, where the updater
+      # wants the changelog entry and nothing else.
       - name: Publish the updater manifest
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -243,17 +246,7 @@ jobs:
           set -euo pipefail
           mkdir -p manifest && cd manifest
 
-          # Tauri's minisign signatures, which survive now that cosign writes
-          # `.cosign.sig` instead of clobbering these.
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" \
-            --pattern '*-setup.exe.sig' --pattern '*.AppImage.sig'
-
-          names=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" \
-                    --json assets --jq '.assets[].name')
-          win_name=$(printf '%s\n' "$names" | grep -- '-setup\.exe$')
-          lin_name=$(printf '%s\n' "$names" | grep -- '\.AppImage$')
-
-          base="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern latest.json
 
           # The real changelog entry, not a pointer to it. The updater shows
           # this before installing, and "see the release notes" is no use to
@@ -262,19 +255,19 @@ jobs:
           notes=$(cd "$GITHUB_WORKSPACE" && node scripts/changelog.mjs \
                     --version "${TAG#v}" --section-only)
 
-          jq -n \
-            --arg version "${TAG#v}" \
-            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-            --arg notes "$notes" \
-            --arg win_sig "$(cat -- *-setup.exe.sig)" \
-            --arg win_url "$base/$win_name" \
-            --arg lin_sig "$(cat -- *.AppImage.sig)" \
-            --arg lin_url "$base/$lin_name" \
-            '{version: $version, notes: $notes, pub_date: $pub_date,
-              platforms: {
-                "windows-x86_64": {signature: $win_sig, url: $win_url},
-                "linux-x86_64":   {signature: $lin_sig, url: $lin_url}
-              }}' > latest.json
+          jq --arg notes "$notes" '.notes = $notes' latest.json > with-notes.json
+          mv with-notes.json latest.json
+
+          # Fail loudly rather than deploy a manifest missing a platform. A
+          # half-written one is worse than none: the channel it lands on stops
+          # offering updates to whichever platform fell out, silently.
+          for key in windows-x86_64 linux-x86_64; do
+            jq -e --arg k "$key" '.platforms[$k].url and .platforms[$k].signature' \
+              latest.json >/dev/null \
+              || { echo "::error::latest.json has no $key entry"; exit 1; }
+          done
+          test "$(jq -r .version latest.json)" = "${TAG#v}" \
+            || { echo "::error::latest.json version does not match $TAG"; exit 1; }
 
           cat latest.json
 
