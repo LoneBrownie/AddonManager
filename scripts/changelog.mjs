@@ -70,16 +70,10 @@ List**), add your game folder here as a server, then **Import list**.
 
 ### Downloads
 **Windows** — the \`.exe\` installer.
-**Linux** — the **AppImage** unless you have a reason not to: it is the only
-Linux build that can update itself.${
-  beta
-    ? " A \`.deb\` is also published; your package\nmanager owns updates for it. There is no \`.rpm\` during the beta — RPM refuses\na version like `2.0.0-beta.1` — so on Fedora or openSUSE, take the AppImage."
-    : " A \`.deb\` and an \`.rpm\` are also published;\nyour package manager owns updates for those."
-}
+**Linux** — the **AppImage**. Make it executable and run it.
 
 ### Updating
-**Settings → Check for updates** finds the next release and installs it. On
-Linux that works for the AppImage only.
+**Settings → Check for updates** finds the next release and installs it.
 `;
 
 process.stdout.write(`${preamble}${preamble ? "\n" : ""}## What changed\n\n${changes}\n${footer}`);
