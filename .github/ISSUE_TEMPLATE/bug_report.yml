@@ -1,0 +1,102 @@
+name: Bug report
+description: Something the app does that it should not, or does not do that it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Two fields below do most of the work — **Diagnostics** and **Activity**.
+        Both are one button in the app and both are already redacted, so please
+        paste them if you can. Everything else is worth filling in but none of
+        it is worth abandoning the report over.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: At the foot of **Settings**, under the app's name.
+      placeholder: "2.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows
+        - Linux (AppImage)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what the app did in return.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to reproduce it
+      description: >-
+        From opening the app onwards. If it only happens sometimes, say what
+        was different the times it did.
+      placeholder: |
+        1. Select the server "…"
+        2. Press …
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: >-
+        **Settings → Copy diagnostics**, then paste here. It lists your servers
+        and addons with paths shortened, and never includes your GitHub token.
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: activity
+    attributes:
+      label: Activity
+      description: >-
+        Open the **Activity** tab on the right-hand edge and press **Copy**.
+        This is the session's messages, including any that came and went before
+        you thought to look.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: addon
+    attributes:
+      label: Which addon, if it is about one
+      description: >-
+        The repository URL, not just the name. Most 3.3.5a addons are forks, so
+        the name alone does not identify which one you have.
+      placeholder: "https://github.com/owner/repo"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues for this.
+          required: true

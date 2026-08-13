@@ -1,0 +1,59 @@
+name: Feature request
+description: Something the app should do and does not.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The most useful thing you can write here is the *problem*, not the
+        solution. A described problem can be solved several ways, one of which
+        may be better than the one either of us thought of first.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is the problem
+      description: >-
+        What are you trying to do, and what makes it awkward today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do about it now
+      description: >-
+        The workaround, however ugly — including "I gave up". It usually says
+        more about what is needed than a feature name does.
+    validations:
+      required: false
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like instead
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app
+      options:
+        - My addons — the list, updating, pinning, channels
+        - Servers — adding, switching, copying between them
+        - Browse — the curated list
+        - Importing and exporting addon lists
+        - Updating the app itself
+        - Settings
+        - Somewhere else, or more than one
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched the existing issues for this.
+          required: true

@@ -7,6 +7,16 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
+## Unreleased
+
+### Changed
+- **Linux ships an AppImage and nothing else.** The `.deb` and `.rpm` were
+  offered as convenience downloads, and the convenience was a lie: *Check for
+  updates* on either of them found an update, downloaded the AppImage and failed
+  to install it. A button that cannot work is worse than one package fewer. The
+  AppImage updates itself from inside the app, which is what the other two never
+  could.
+
 ## 2.1.0-beta.1 — 2026-08-13
 
 ### Added

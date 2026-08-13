@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Brownie’s Addon Manager",
+  "productName": "Brownie\u2019s Addon Manager",
   "version": "2.1.0-beta.1",
   "identifier": "com.lonebrownie.browniesaddonmanager.v2",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Brownie’s Addon Manager",
+        "title": "Brownie\u2019s Addon Manager",
         "width": 1180,
         "height": 800,
         "minWidth": 900,
@@ -28,9 +28,7 @@
     "active": true,
     "targets": [
       "nsis",
-      "deb",
-      "appimage",
-      "rpm"
+      "appimage"
     ],
     "icon": [
       "icons/32x32.png",

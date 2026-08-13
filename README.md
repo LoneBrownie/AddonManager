@@ -98,17 +98,14 @@ Take the [latest release](https://github.com/LoneBrownie/AddonManager/releases/l
 
 **Windows** — download and run the `.exe` installer.
 
-**Linux** — take the **AppImage** unless you have a reason not to: it is the
-only Linux build that can update itself. A `.deb` and an `.rpm` are also
-published; your package manager owns updates for those.
+**Linux** — an **AppImage**. Make it executable and run it; it updates itself
+from inside the app.
 
 macOS is not supported.
 
 **Updating.** **Settings → Check for updates** finds the next release and
 installs it, and nothing is downloaded until you ask for it. What changed is
-shown when the app restarts. On Linux updating in place works for the
-**AppImage only** — your package manager owns the `.deb` and `.rpm`, so
-upgrading those means re-downloading.
+shown when the app restarts.
 
 ### Where your addons go
 

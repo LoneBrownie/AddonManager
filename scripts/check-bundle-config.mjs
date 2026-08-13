@@ -69,26 +69,33 @@ if (tauri.productName.includes("'")) {
   );
 }
 
-// 4. The release workflow must not build an rpm for a prerelease.
+// 4. AppImage is the only Linux package the release may build.
 //
-// RPM forbids a hyphen in its Version field and Tauri writes the config version
-// there verbatim, so a 2.0.0-beta.1 build produces a package whose NEVRA cannot
-// be parsed. It bundles without complaint — the damage only shows up on the
-// user's machine.
+// The updater chooses its download by searching the manifest for
+// `linux-x86_64-<installer>` and falling back to `linux-x86_64`. The workflow
+// writes only the second, naming the AppImage — so a .deb installation is
+// offered an update, downloads an AppImage and hands it to `install_deb`.
+// Publishing a package whose update button cannot work is worse than not
+// publishing it, and rpm could not express a hyphenated version either.
 //
 // The workflow rather than `bundle.targets`, because `--bundles` on the command
-// line overrides the config: a check that only read the config would pass while
-// the release built the broken package anyway. rpm may appear in that file only
-// inside an expression that excludes it for a hyphenated tag.
+// line overrides the config: a check reading only the config would pass while
+// the release built the package anyway.
 try {
   const workflow = readFileSync(".github/workflows/release.yml", "utf8");
-  const unconditional = /args:\s*-{2}bundles[^\n]*\brpm\b/.exec(workflow);
-  if (unconditional) {
-    problems.push(
-      `.github/workflows/release.yml passes rpm unconditionally ` +
-        `(${unconditional[0].trim()}). A prerelease build must not produce ` +
-        "one: RPM does not allow a hyphen in its Version field.",
-    );
+  for (const line of workflow.split("\n")) {
+    const bundles = /args:\s*-{2}bundles\s+(\S+)/.exec(line);
+    if (!bundles) continue;
+    const offending = bundles[1]
+      .split(",")
+      .filter((target) => target === "deb" || target === "rpm");
+    if (offending.length) {
+      problems.push(
+        `.github/workflows/release.yml builds ${offending.join(" and ")} ` +
+          `(${line.trim()}). Only appimage can be updated in place, because ` +
+          "the manifest carries one Linux entry and it names the AppImage.",
+      );
+    }
   }
 } catch {
   problems.push(".github/workflows/release.yml is missing.");

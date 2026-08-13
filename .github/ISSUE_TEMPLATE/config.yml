@@ -1,0 +1,8 @@
+# A blank issue is almost always a bug report with the useful half missing, so
+# the templates are the way in. The catalogue is the one thing better raised as
+# a pull request than an issue: the entry itself is the whole change.
+blank_issues_enabled: false
+contact_links:
+  - name: Add an addon to the curated list
+    url: https://github.com/LoneBrownie/AddonManager/blob/main/public/catalog/README.md
+    about: One file per game version, one entry per addon. A small pull request is quicker than an issue.
