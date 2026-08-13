@@ -139,14 +139,16 @@ export function UpdateChannel({ notify }: { notify: Notify }) {
             <strong>Beta</strong>
             <span className="tag source">opted in</span>
           </div>
+          {/* Three sentences, in the order they get asked about: what you
+              get, why you might be here without having pressed anything, and
+              how it ends. The reasoning behind each — that a beta build
+              reading the stable channel would find nothing — belongs in the
+              code, not on the settings page. */}
           <span className="hint" style={{ marginTop: 6 }}>
-            You receive beta releases as soon as they are published, and stable
-            releases as well. Running a beta build puts you here whether or not
-            you pressed the button — reading the stable channel while running a
-            beta would find nothing, and the app would go quiet. When a stable
-            release overtakes the beta you are running, this goes back to stable
-            on its own and you would opt in again for the next one. To leave
-            before then, reinstall the stable build.
+            You get betas as soon as they are published, and stable releases
+            too. Installing a beta puts you here on its own. It ends when a
+            stable release overtakes the beta you are running; to leave sooner,
+            reinstall the stable build.
           </span>
         </>
       ) : (
@@ -163,8 +165,8 @@ export function UpdateChannel({ notify }: { notify: Notify }) {
           </div>
           <span className="hint" style={{ marginTop: 8 }}>
             <strong>This cannot be undone from inside the app.</strong> It ends
-            on its own when a stable release overtakes the beta you are running;
-            to leave before that, reinstall the stable build.
+            when a stable release overtakes the beta you are running; to leave
+            sooner, reinstall the stable build.
           </span>
         </>
       )}
@@ -173,13 +175,13 @@ export function UpdateChannel({ notify }: { notify: Notify }) {
         <ConfirmDialog
           title="Join the beta channel?"
           message={
-            "Beta releases are published for testing before a stable release. " +
-            "They can be broken in ways a stable release is not.\n\n" +
-            "Nothing in Settings puts you back. It ends by itself once a " +
-            "stable release overtakes the beta you are running — this channel " +
-            "delivers those too — and you would join again for the next beta. " +
-            "To leave before that happens, reinstall the stable build.\n\n" +
-            "Your servers and addons are not affected either way."
+            "Betas are published for testing before a stable release and can " +
+            "be broken in ways a stable release is not.\n\n" +
+            "Nothing in Settings puts you back. It ends when a stable release " +
+            "overtakes the beta you are running — this channel delivers those " +
+            "too — and you would join again for the next beta. To leave " +
+            "sooner, reinstall the stable build.\n\n" +
+            "Your servers and addons are not affected."
           }
           confirmLabel="Join the beta channel"
           onCancel={() => setConfirming(false)}
