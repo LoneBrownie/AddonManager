@@ -47,14 +47,17 @@ jobs:
             # rpm are convenience downloads owned by the package manager
             # (V2-PLAN.md 9.1).
             #
-            # rpm was dropped throughout the beta: RPM forbids a hyphen in its
-            # Version field and Tauri's bundler writes the config version there
-            # verbatim, so a 2.0.0-beta.1 build produced an .rpm whose NEVRA
-            # could not be parsed. Verified by reading the header out of a real
-            # bundle. A plain 2.0.0 has no such problem, and
-            # check-bundle-config.mjs fails the build if a prerelease version
-            # ever ships with this target enabled again.
-            args: --bundles appimage,deb,rpm
+            # rpm is out for a pre-release, decided by the tag rather than by
+            # remembering. RPM forbids a hyphen in its Version field and Tauri's
+            # bundler writes the config version there verbatim, so a
+            # 2.0.0-beta.1 build produced an .rpm whose NEVRA could not be
+            # parsed — verified by reading the header out of a real bundle. It
+            # was dropped by hand throughout the first beta series and put back
+            # by hand at 2.0.0, which is a step to forget exactly once.
+            args: >-
+              ${{ contains(github.event.inputs.tag || github.ref_name, '-')
+                  && '--bundles appimage,deb'
+                  || '--bundles appimage,deb,rpm' }}
 
     steps:
       - uses: actions/checkout@v7

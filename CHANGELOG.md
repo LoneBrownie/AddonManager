@@ -7,7 +7,7 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
-## Unreleased
+## 2.1.0-beta.1 — 2026-08-13
 
 ### Added
 - **A beta channel**, under *Settings → Update channel*. Betas are published for

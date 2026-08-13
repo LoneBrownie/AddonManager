@@ -69,17 +69,29 @@ if (tauri.productName.includes("'")) {
   );
 }
 
-// 4. No rpm target while the version is a prerelease.
+// 4. The release workflow must not build an rpm for a prerelease.
 //
 // RPM forbids a hyphen in its Version field and Tauri writes the config version
 // there verbatim, so a 2.0.0-beta.1 build produces a package whose NEVRA cannot
 // be parsed. It bundles without complaint — the damage only shows up on the
 // user's machine.
-if (version?.includes("-") && (tauri.bundle?.targets || []).includes("rpm")) {
-  problems.push(
-    `version ${version} is a prerelease, so the rpm target must stay out of ` +
-      "bundle.targets: RPM does not allow a hyphen in its Version field.",
-  );
+//
+// The workflow rather than `bundle.targets`, because `--bundles` on the command
+// line overrides the config: a check that only read the config would pass while
+// the release built the broken package anyway. rpm may appear in that file only
+// inside an expression that excludes it for a hyphenated tag.
+try {
+  const workflow = readFileSync(".github/workflows/release.yml", "utf8");
+  const unconditional = /args:\s*-{2}bundles[^\n]*\brpm\b/.exec(workflow);
+  if (unconditional) {
+    problems.push(
+      `.github/workflows/release.yml passes rpm unconditionally ` +
+        `(${unconditional[0].trim()}). A prerelease build must not produce ` +
+        "one: RPM does not allow a hyphen in its Version field.",
+    );
+  }
+} catch {
+  problems.push(".github/workflows/release.yml is missing.");
 }
 
 // 5. The declared version has release notes.
