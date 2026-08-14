@@ -7,7 +7,7 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
-## Unreleased
+## 2.1.0-beta.3 — 2026-08-14
 
 ### Changed
 - **Installing only offers servers on the same game version.** *Install to*
