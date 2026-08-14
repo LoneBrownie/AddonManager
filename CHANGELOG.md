@@ -7,23 +7,75 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
-## Unreleased
+## 2.1.0 — 2026-08-14
+
+Three betas of real use went into this. If you have been running one, you have
+seen most of it already; the entries below are what changed since **2.0.1**,
+which is where nearly everybody is coming from.
 
 ### Added
-- **The app says once, on opening, if a new version is out.** One check at
-  startup, one notification if there is something, and a button on it that takes
-  you to *Settings → App updates*. It does not install anything — that stays the
-  two presses it always was — and it says nothing at all if the check fails,
-  because being offline is not news. Like every other message it is still in the
-  activity stream afterwards.
+- **An activity stream**, behind the *Activity* tab on the right-hand edge.
+  Every message the app raises goes there and stays for the session, so a
+  notification that has been and gone can still be read. It slides out over what
+  you are working on and closes when you click away, filters down to just the
+  problems, says which server each message is about, and copies out as text for
+  a bug report.
+- **A beta channel**, under *Settings → Update channel*. Betas are published for
+  testing before a stable release and are never offered to anyone who has not
+  asked for them. Installing a beta by hand puts you on it too — running one is
+  the only opt-in that matters. It lasts one beta at a time: the opt-in ends by
+  itself as soon as a stable release overtakes the beta you are running, and you
+  join again for the next one. To leave before that, reinstall the stable build.
+  You are told all of this before you opt in.
+- **A notice when a new version is out.** One check when the app opens, one
+  message if there is something, and a button on it that takes you to the
+  update. Nothing installs itself — that stays the two presses it always was —
+  and it says nothing at all if the check fails, because being offline is not
+  news.
 
 ### Changed
+- **Only failures interrupt you now.** An install that worked is already visible
+  in the list it changed, so a card over that list saying so again was noise on
+  top of the evidence. Successes light up the *Activity* tab and put its count
+  up; the message is in the panel if you want it. Failures still appear as
+  before — that is the case where nothing else on screen tells you what
+  happened. Nothing waits to be dismissed any more, errors included, and no more
+  than three are ever stacked at once.
+- **Anything that acts on many addons at once says so once.** Importing a list
+  of thirty with a dozen bad URLs used to put a dozen separate messages on
+  screen, each needing its own dismissal; the same was true of *Update all* and
+  of installing to several servers. Each is now a single line — "6 imported, 4
+  failed" — with the individual failures folded underneath it.
+- **Installing only offers servers on the same game version.** *Install to*
+  listed every folder you manage, so a 3.3.5a addon could be sent to a 2.4.3 or
+  1.12 one with a single click — where undoing it is an uninstall. Copying an
+  addon set between servers is limited the same way, and for a stronger reason:
+  it copies the files straight across, so nothing downstream would catch it.
+- **Taking over an addon's neighbouring folders is a choice per folder.** It was
+  one tick over the whole set, which is only the right shape when the guess is
+  right about all of them — and the guess is a shared name prefix, so four
+  folders can easily be three parts of one addon and one separate thing.
 - **Windows: updating no longer opens an installer window.** The update
   downloads, the app closes and it reopens on the new version. That window only
-  ever showed a progress bar for a step you had already agreed to by pressing
-  *Install and restart*, over an app that was reporting the download itself.
-  Nothing about what is installed changes, and there is still no elevation
-  prompt. Linux never showed anything.
+  ever showed a progress bar for a step you had already agreed to. Nothing about
+  what is installed changes, and there is still no elevation prompt.
+- **Linux ships an AppImage and nothing else.** The `.deb` and `.rpm` were
+  offered as convenience downloads, and the convenience was a lie: *Check for
+  updates* on either of them found an update, downloaded the AppImage and failed
+  to install it. A button that cannot work is worse than one package fewer.
+- **Addon rows light up under the cursor**, the way the browse cards and the
+  server rows already did, and the servers an install can go to are switches
+  rather than tick boxes.
+
+### Fixed
+- **Windows: a server's folder is shown as you would write it.** It appeared as
+  `\\?\C:\Program Files (x86)\World of Warcraft` — Windows' internal spelling,
+  which the app was storing without meaning to. Servers already registered are
+  corrected the next time the app starts; nothing needs re-adding.
+- **Updating an addon no longer overwrites folders it does not own.** It could,
+  unconditionally, which was only ever meant to cover the first update after
+  adopting an addon that was already in the game folder — before the app has
+  recorded the rest of its folders. It is now limited to exactly that.
 
 ## 2.1.0-beta.3 — 2026-08-14
 
