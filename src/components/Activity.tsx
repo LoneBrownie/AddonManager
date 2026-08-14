@@ -261,6 +261,16 @@ function Card({ entry, now }: { entry: Entry; now: number }) {
       {entry.server === null ? null : (
         <span className="activity-where">{entry.server}</span>
       )}
+      {entry.action ? (
+        <button
+          type="button"
+          className="btn small"
+          style={{ marginTop: 8 }}
+          onClick={entry.action.run}
+        >
+          {entry.action.label}
+        </button>
+      ) : null}
       {entry.detail.length > 0 ? (
         <details>
           <summary>
@@ -323,6 +333,14 @@ export function ToastStack({
             {entry.detail.length > 0 ? (
               <button type="button" className="linkish" onClick={onReview}>
                 See what failed
+              </button>
+            ) : null}
+            {/* Somewhere to go, for a message that is an invitation. It does
+                not do the thing — it takes you to where the thing is asked
+                for, which stays a decision made deliberately in Settings. */}
+            {entry.action ? (
+              <button type="button" className="linkish" onClick={entry.action.run}>
+                {entry.action.label}
               </button>
             ) : null}
           </span>

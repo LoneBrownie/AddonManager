@@ -20,6 +20,7 @@ import {
 import { WhatsNewDialog } from "./components/WhatsNew";
 import { ActivityDock, ToastStack } from "./components/Activity";
 import { useActivity, type Notify } from "./activity";
+import * as appUpdate from "./appUpdate";
 import * as theme from "./theme";
 
 type Page = "addons" | "browse" | "servers" | "settings";
@@ -52,7 +53,7 @@ export default function App() {
   // with a toast; everything else only makes the activity tab flash and its
   // count go up. All of it is readable in the panel afterwards either way.
   const activity = useActivity();
-  const { notify, notifyFor, markRead } = activity;
+  const { notify, notifyFor, announce, markRead } = activity;
 
   // Anything acting on the server you are looking at says so. Which one that
   // was is not recoverable afterwards — the switcher shows the current server,
@@ -119,6 +120,33 @@ export default function App() {
   useEffect(() => {
     api.whatsNew().then(setWhatsNew).catch(() => setWhatsNew(null));
   }, []);
+
+  // One check, on the launch after which nothing checks again.
+  //
+  // Telling somebody a new version exists is worth an interruption; installing
+  // it without being asked is not. So this raises a toast with a way to get to
+  // the button, and never touches the update itself — the two presses in
+  // Settings stay the only thing that installs anything.
+  //
+  // Failure is silent on purpose. Being offline is not news, and a launch that
+  // opens with "could not reach GitHub" over a check nobody asked for would be
+  // an error message for the app's benefit rather than the user's.
+  useEffect(() => {
+    let cancelled = false;
+    appUpdate
+      .check()
+      .then((found) => {
+        if (cancelled || !found) return;
+        announce(`Version ${found.version} is available.`, {
+          label: "Update",
+          run: () => setPage("settings"),
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [announce]);
 
   // Availability is worked out when the server list is read, so a drive that
   // came back stayed "offline" until something else happened to reload it —

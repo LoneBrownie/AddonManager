@@ -39,23 +39,48 @@ export type Entry = {
    * in their own detail.
    */
   server: string | null;
+  /**
+   * Somewhere to go about it, for the few messages that are an invitation
+   * rather than a report. Kept out of the text: "Settings → App updates" reads
+   * as instructions to follow, where a button is the thing itself.
+   */
+  action: EntryAction | null;
   /** Consecutive arrivals of the identical message, collapsed into one row. */
   repeats: number;
   seen: boolean;
 };
+
+export type EntryAction = { label: string; run: () => void };
 
 export type Notify = (kind: Kind, text: string, detail?: string[]) => void;
 
 /** A [`Notify`] bound to the server its messages happened on. */
 export type NotifyFor = (server: string | null | undefined) => Notify;
 
+/**
+ * Raise a message that interrupts whatever its kind would otherwise say.
+ *
+ * One caller, and it should stay that way: an update being available is the
+ * only thing the app has to say that is neither a failure nor a report of
+ * something you just did. Nothing on screen shows it, so nothing but a toast
+ * would carry it — and it is worth exactly one, once, at startup.
+ */
+export type Announce = (text: string, action: EntryAction) => void;
+
 /** Oldest entries fall off the end. Long enough for any one session's work. */
 const LIMIT = 200;
 
-/** How long a toast stays up. Errors get longer — they are worth reading. */
+/**
+ * How long a toast stays up. Errors get longer — they are worth reading.
+ *
+ * `info` is as long as an error because the only info that toasts is the
+ * update notice, and it arrives during the second or two when the window is
+ * still filling in — the moment somebody is least likely to be reading the
+ * corner of it.
+ */
 const LINGER: Record<Kind, number> = {
   success: 4_000,
-  info: 5_500,
+  info: 10_000,
   warn: 8_000,
   error: 10_000,
 };
@@ -97,6 +122,9 @@ type Action =
       text: string;
       detail: string[];
       server: string | null;
+      action: EntryAction | null;
+      /** Overrides [`toastworthy`], for the message that has nowhere else. */
+      toast: boolean;
       now: number;
     }
   | { type: "tick"; now: number }
@@ -135,7 +163,7 @@ function reducer(state: State, action: Action): State {
         };
         return {
           entries: [merged, ...state.entries.slice(1)],
-          toasts: toastworthy(action.kind)
+          toasts: action.toast
             ? [
                 { ...toast, id: merged.id },
                 ...state.toasts.filter((item) => item.id !== merged.id),
@@ -151,13 +179,14 @@ function reducer(state: State, action: Action): State {
         text: action.text,
         detail: action.detail,
         server: action.server,
+        action: action.action,
         at: action.now,
         repeats: 1,
         seen: false,
       };
       return {
         entries: [entry, ...state.entries].slice(0, LIMIT),
-        toasts: toastworthy(action.kind)
+        toasts: action.toast
           ? [{ ...toast, id: entry.id }, ...state.toasts]
           : state.toasts,
         pulse,
@@ -205,23 +234,43 @@ export function useActivity() {
   // server, so a caller that knows which one it is acting on says so once —
   // at the point where it holds that fact — rather than every message being
   // rewritten to carry an extra argument through.
-  const notifyFor = useCallback<NotifyFor>(
-    (server) => (kind, text, detail) => {
+  const raise = useCallback(
+    (
+      kind: Kind,
+      text: string,
+      detail: string[],
+      server: string | null,
+      action: EntryAction | null,
+      toast: boolean,
+    ) => {
       nextId += 1;
       dispatch({
         type: "notify",
         id: nextId,
         kind,
         text,
-        detail: detail ?? [],
-        server: server ?? null,
+        detail,
+        server,
+        action,
+        toast,
         now: Date.now(),
       });
     },
     [],
   );
 
+  const notifyFor = useCallback<NotifyFor>(
+    (server) => (kind, text, detail) =>
+      raise(kind, text, detail ?? [], server ?? null, null, toastworthy(kind)),
+    [raise],
+  );
+
   const notify = useMemo(() => notifyFor(null), [notifyFor]);
+
+  const announce = useCallback<Announce>(
+    (text, action) => raise("info", text, [], null, action, true),
+    [raise],
+  );
 
   // One timer for the whole stack rather than one per toast, so a burst of
   // thirty messages does not schedule thirty timeouts — and so a toast's life
@@ -260,6 +309,7 @@ export function useActivity() {
     entries: state.entries,
     notify,
     notifyFor,
+    announce,
     unread,
     unreadProblems,
     /** Changes on every message. The tab watches it and flashes. */

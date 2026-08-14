@@ -9,6 +9,14 @@ people are actually running.
 
 ## Unreleased
 
+### Added
+- **The app says once, on opening, if a new version is out.** One check at
+  startup, one notification if there is something, and a button on it that takes
+  you to *Settings → App updates*. It does not install anything — that stays the
+  two presses it always was — and it says nothing at all if the check fails,
+  because being offline is not news. Like every other message it is still in the
+  activity stream afterwards.
+
 ### Changed
 - **Windows: updating no longer opens an installer window.** The update
   downloads, the app closes and it reopens on the new version. That window only
