@@ -639,6 +639,15 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 .toast.error { border-left-color: var(--bad); }
 .toast.warn { border-left-color: var(--warn); }
 .toast.success { border-left-color: var(--good); }
+/* The server, inline ahead of the message — a toast is one line and cannot
+   afford a second. Set apart by weight and colour rather than by punctuation,
+   so it reads as a label on the sentence and not as its first word. */
+.toast-where {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-right: 6px;
+}
 .toast button { background: none; border: 0; color: var(--ink-3); padding: 0 2px; }
 
 /* The stack is capped, so this is what the rest of a burst looks like. */
@@ -874,6 +883,16 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 .activity-text .tag { margin-left: 6px; }
 .activity-time {
   flex: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+/* Which server a message is about. Quiet, and in the same monospace as the
+   timestamp: both are the circumstances of the message rather than the message,
+   and they read as one line of context when they sit in the same voice. */
+.activity-where {
+  display: block;
+  margin-top: 3px;
   font-family: var(--mono);
   font-size: 11px;
   color: var(--ink-3);

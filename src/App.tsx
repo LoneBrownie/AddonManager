@@ -52,7 +52,14 @@ export default function App() {
   // with a toast; everything else only makes the activity tab flash and its
   // count go up. All of it is readable in the panel afterwards either way.
   const activity = useActivity();
-  const { notify, markRead } = activity;
+  const { notify, notifyFor, markRead } = activity;
+
+  // Anything acting on the server you are looking at says so. Which one that
+  // was is not recoverable afterwards — the switcher shows the current server,
+  // not the one that was current when the message arrived — so "Updated 3
+  // addons" was unanswerable the moment you changed folders. `notify` stays for
+  // the messages that are genuinely about no server at all.
+  const say = useMemo(() => notifyFor(selected?.name), [notifyFor, selected]);
 
   // Opening the panel *is* reading them, so any toasts go with it — leaving
   // them up would show the same messages twice, one stack over the other.
@@ -148,7 +155,7 @@ export default function App() {
     try {
       setAddons(await api.listAddons(selectedId));
     } catch (error) {
-      notify("error", api.errorMessage(error));
+      say("error", api.errorMessage(error));
     }
     await refreshUnmet();
     // Folders on disk this app does not track. Read with the rest of the
@@ -158,7 +165,7 @@ export default function App() {
       .scanExistingAddons(selectedId)
       .then(setUnmanaged)
       .catch(() => setUnmanaged([]));
-  }, [selectedId, notify, refreshUnmet]);
+  }, [selectedId, say, refreshUnmet]);
 
   useEffect(() => {
     void refreshAddons();
@@ -191,12 +198,12 @@ export default function App() {
           ? `${switches} waiting to switch channel`
           : null,
       ].filter(Boolean);
-      notify(
+      say(
         parts.length > 0 ? "info" : "success",
         parts.length > 0 ? parts.join(", ") : "Everything is up to date",
       );
     } catch (error) {
-      notify("error", api.errorMessage(error));
+      say("error", api.errorMessage(error));
     } finally {
       setChecking(false);
     }
@@ -227,8 +234,8 @@ export default function App() {
     const addon = addons.find((row) => row.addonId === addonId);
     if (!addon) return;
     const result = await updateOne(addon);
-    if (result.error) notify("error", `${result.name}: ${result.error}`);
-    else notify("success", `${result.name} updated to ${result.version}`);
+    if (result.error) say("error", `${result.name}: ${result.error}`);
+    else say("success", `${result.name} updated to ${result.version}`);
   }
 
   /**
@@ -249,7 +256,7 @@ export default function App() {
     }
 
     const failed = results.filter((result) => result.error);
-    notify(
+    say(
       failed.length === 0 ? "success" : "warn",
       failed.length === 0
         ? `Updated ${queue.length} addon${queue.length === 1 ? "" : "s"}`
@@ -267,9 +274,9 @@ export default function App() {
       setAddons((current) => current.filter((row) => row.addonId !== addon.addonId));
       void refreshServers();
       void refreshUnmet();
-      notify("success", `Removed ${addon.name} (${folders.length} folder${folders.length === 1 ? "" : "s"})`);
+      say("success", `Removed ${addon.name} (${folders.length} folder${folders.length === 1 ? "" : "s"})`);
     } catch (error) {
-      notify("error", api.errorMessage(error));
+      say("error", api.errorMessage(error));
     } finally {
       markBusy(addon.addonId, false);
     }
@@ -288,7 +295,7 @@ export default function App() {
         ),
       );
     } catch (error) {
-      notify("error", api.errorMessage(error));
+      say("error", api.errorMessage(error));
     }
   }
 
@@ -307,14 +314,14 @@ export default function App() {
         ),
       );
       const tracks = channel === "source" ? "source builds" : "tagged releases";
-      notify(
+      say(
         "info",
         updated.channelPending
           ? `${addon.name} now tracks ${tracks}. Press Switch on its row to fetch it.`
           : `${addon.name} now tracks ${tracks}, which is what is already installed.`,
       );
     } catch (error) {
-      notify("error", api.errorMessage(error));
+      say("error", api.errorMessage(error));
     }
   }
 
@@ -324,11 +331,17 @@ export default function App() {
     channel: "release" | "source",
   ) {
     if (serverIds.length === 1 && serverIds[0]) {
-      const installed = await api.installAddon(serverIds[0], url, channel);
-      notify("success", `Installed ${installed.name} ${installed.installedVersion}`);
+      const target = serverIds[0];
+      const installed = await api.installAddon(target, url, channel);
+      // Not necessarily the server on screen — this dialog can install to any
+      // of them — so the name comes from the one that was picked.
+      const to = servers.find((server) => server.id === target)?.name;
+      notifyFor(to)("success", `Installed ${installed.name} ${installed.installedVersion}`);
     } else {
       const outcomes = await api.installAddonToMany(serverIds, url, channel);
       const ok = outcomes.filter((outcome) => outcome.ok).length;
+      // Left unstamped on purpose: this one spans servers, and the failures
+      // underneath it already say which.
       notify(
         ok === outcomes.length ? "success" : "warn",
         `Installed to ${ok} of ${outcomes.length} servers`,
@@ -445,7 +458,7 @@ export default function App() {
                       try {
                         await api.openServerFolder(selected.id);
                       } catch (error) {
-                        notify("error", api.errorMessage(error));
+                        say("error", api.errorMessage(error));
                       }
                     }}
                     disabled={selected.availability === "unavailable"}
@@ -551,7 +564,7 @@ export default function App() {
                 const plan = await api.resolveCatalogInstall(selectedId, entry.id);
                 const queue = plan.length > 0 ? plan : [entry];
                 if (queue.length > 1) {
-                  notify(
+                  say(
                     "info",
                     `${entry.name} needs ${queue.length - 1} other addon${
                       queue.length === 2 ? "" : "s"
@@ -563,11 +576,11 @@ export default function App() {
                   // without that they install on the release channel and fail.
                   await api.installAddon(selectedId, step.repoUrl, step.channel);
                 }
-                notify("success", `Installed ${entry.name}`);
+                say("success", `Installed ${entry.name}`);
                 await refreshAddons();
                 void refreshServers();
               } catch (error) {
-                notify("error", api.errorMessage(error));
+                say("error", api.errorMessage(error));
               }
             }}
           />
@@ -579,6 +592,7 @@ export default function App() {
             onChanged={refreshServers}
             onAddServer={() => setShowAddServer(true)}
             notify={notify}
+            notifyFor={notifyFor}
           />
         ) : null}
 
@@ -603,7 +617,7 @@ export default function App() {
             setShowAddServer(false);
             await refreshServers();
             setSelectedId(created.id);
-            notify("success", `Added ${created.name}`);
+            notifyFor(created.name)("success", `Added ${created.name}`);
           }}
         />
       ) : null}
@@ -624,7 +638,7 @@ export default function App() {
           onInstalled={() => void refreshAddons()}
           onDone={async (installed, failed, adopted) => {
             setTransfer(null);
-            notify(
+            say(
               failed.length === 0 ? "success" : "warn",
               `Imported ${installed} addon${installed === 1 ? "" : "s"}` +
                 // Worth saying: it is the difference between an import that
@@ -648,7 +662,7 @@ export default function App() {
           onClose={() => setAdopting(null)}
           onAdopted={async (folder) => {
             setAdopting(null);
-            notify("success", `Now managing ${folder}`);
+            say("success", `Now managing ${folder}`);
             await refreshAddons();
             void refreshServers();
           }}

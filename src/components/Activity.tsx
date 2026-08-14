@@ -255,6 +255,12 @@ function Card({ entry, now }: { entry: Entry; now: number }) {
           {ago(entry.at, now)}
         </span>
       </div>
+      {/* Which game folder this was. Below the message rather than inside it,
+          because it is not part of the sentence — and beside the timestamp,
+          since both answer "when and where", not "what". */}
+      {entry.server === null ? null : (
+        <span className="activity-where">{entry.server}</span>
+      )}
       {entry.detail.length > 0 ? (
         <details>
           <summary>
@@ -307,6 +313,12 @@ export function ToastStack({
       {showing.map((entry) => (
         <div key={entry.id} className={`toast ${entry.kind}`}>
           <span style={{ flex: 1 }}>
+            {/* A failure is worth naming the folder for even in passing: with
+                several servers, "could not write" is a different problem
+                depending on which one. */}
+            {entry.server === null ? null : (
+              <span className="toast-where">{entry.server}</span>
+            )}
             {entry.text}
             {entry.detail.length > 0 ? (
               <button type="button" className="linkish" onClick={onReview}>

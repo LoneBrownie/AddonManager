@@ -1,7 +1,7 @@
 import { useState } from "react";
 import * as api from "../api";
 import type { Server } from "../api";
-import type { Notify } from "../activity";
+import type { Notify, NotifyFor } from "../activity";
 import { Dialog } from "./Dialog";
 
 /** Colours that stay distinguishable against both themes. */
@@ -48,11 +48,14 @@ export function ManageServers({
   onChanged,
   onAddServer,
   notify,
+  notifyFor,
 }: {
   servers: Server[];
   onChanged: () => Promise<void>;
   onAddServer: () => void;
   notify: Notify;
+  /** Every message here is about one server, so each one says which. */
+  notifyFor: NotifyFor;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
@@ -71,7 +74,7 @@ export function ManageServers({
     try {
       await api.repointServer(server.id, picked);
       await onChanged();
-      notify("success", `${server.name} now points at ${picked}`);
+      notifyFor(server.name)("success", `Now points at ${picked}`);
     } catch (error) {
       // A folder that does not look like a game directory is refused; offer
       // the same override the add flow has rather than a dead end.
@@ -80,9 +83,9 @@ export function ManageServers({
         try {
           await api.repointServer(server.id, picked, true);
           await onChanged();
-          notify("success", `${server.name} now points at ${picked}`);
+          notifyFor(server.name)("success", `Now points at ${picked}`);
         } catch (retry) {
-          notify("error", api.errorMessage(retry));
+          notifyFor(server.name)("error", api.errorMessage(retry));
         }
       }
     }
@@ -96,7 +99,7 @@ export function ManageServers({
       await api.renameServer(server.id, name);
       await onChanged();
     } catch (error) {
-      notify("error", api.errorMessage(error));
+      notifyFor(server.name)("error", api.errorMessage(error));
     }
   }
 
@@ -105,7 +108,7 @@ export function ManageServers({
       await api.setServerAccent(server.id, accent);
       await onChanged();
     } catch (error) {
-      notify("error", api.errorMessage(error));
+      notifyFor(server.name)("error", api.errorMessage(error));
     }
   }
 
@@ -236,7 +239,7 @@ export function ManageServers({
                       try {
                         await api.openServerFolder(server.id);
                       } catch (error) {
-                        notify("error", api.errorMessage(error));
+                        notifyFor(server.name)("error", api.errorMessage(error));
                       }
                     }}
                     disabled={server.availability === "unavailable"}
@@ -292,9 +295,11 @@ export function ManageServers({
                   try {
                     await api.forgetServer(server.id);
                     await onChanged();
+                    // Unstamped: the server is gone, so labelling the message
+                    // with it would point at something no longer in the list.
                     notify("success", `Stopped managing ${server.name}`);
                   } catch (error) {
-                    notify("error", api.errorMessage(error));
+                    notifyFor(server.name)("error", api.errorMessage(error));
                   }
                 }}
               >
@@ -319,9 +324,12 @@ export function ManageServers({
           onDone={async (lines) => {
             setCopying(null);
             await onChanged();
-            notify("success", `Copied: ${lines.length} addon(s) processed`);
+            notifyFor(copying.name)(
+              "success",
+              `Copied: ${lines.length} addon(s) processed`,
+            );
           }}
-          notify={notify}
+          notify={notifyFor(copying.name)}
         />
       ) : null}
     </>

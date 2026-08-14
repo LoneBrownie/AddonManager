@@ -28,12 +28,26 @@ export type Entry = {
    */
   detail: string[];
   at: number;
+  /**
+   * Which server this happened on, where that is a meaningful question.
+   *
+   * "Updated 3 addons" is not answerable on its own once you have more than
+   * one game folder, and the log outlives the moment when the switcher still
+   * showed the answer. `null` is for the messages that genuinely have no
+   * server — saving a token, joining the beta channel, a failure to read the
+   * server list itself — and for the few that span several, which name them
+   * in their own detail.
+   */
+  server: string | null;
   /** Consecutive arrivals of the identical message, collapsed into one row. */
   repeats: number;
   seen: boolean;
 };
 
 export type Notify = (kind: Kind, text: string, detail?: string[]) => void;
+
+/** A [`Notify`] bound to the server its messages happened on. */
+export type NotifyFor = (server: string | null | undefined) => Notify;
 
 /** Oldest entries fall off the end. Long enough for any one session's work. */
 const LIMIT = 200;
@@ -76,7 +90,15 @@ type State = {
 };
 
 type Action =
-  | { type: "notify"; id: number; kind: Kind; text: string; detail: string[]; now: number }
+  | {
+      type: "notify";
+      id: number;
+      kind: Kind;
+      text: string;
+      detail: string[];
+      server: string | null;
+      now: number;
+    }
   | { type: "tick"; now: number }
   | { type: "dismiss"; id: number }
   | { type: "dismissAll" }
@@ -93,10 +115,14 @@ function reducer(state: State, action: Action): State {
       // "Check for updates" pressed four times running should read as one
       // line with a count, not four identical ones — but only while they are
       // adjacent, so a repeat an hour later is still its own event.
+      // The server is part of the identity: the same sentence about two game
+      // folders is two events, and merging them would lose the one thing that
+      // told them apart.
       if (
         newest &&
         newest.kind === action.kind &&
         newest.text === action.text &&
+        newest.server === action.server &&
         action.detail.length === 0 &&
         newest.detail.length === 0 &&
         action.now - newest.at < REPEAT_WINDOW
@@ -124,6 +150,7 @@ function reducer(state: State, action: Action): State {
         kind: action.kind,
         text: action.text,
         detail: action.detail,
+        server: action.server,
         at: action.now,
         repeats: 1,
         seen: false,
@@ -174,17 +201,27 @@ let nextId = 0;
 export function useActivity() {
   const [state, dispatch] = useReducer(reducer, { entries: [], toasts: [], pulse: 0 });
 
-  const notify = useCallback<Notify>((kind, text, detail) => {
-    nextId += 1;
-    dispatch({
-      type: "notify",
-      id: nextId,
-      kind,
-      text,
-      detail: detail ?? [],
-      now: Date.now(),
-    });
-  }, []);
+  // Two notifiers over one dispatch. `notifyFor` returns a fresh function per
+  // server, so a caller that knows which one it is acting on says so once —
+  // at the point where it holds that fact — rather than every message being
+  // rewritten to carry an extra argument through.
+  const notifyFor = useCallback<NotifyFor>(
+    (server) => (kind, text, detail) => {
+      nextId += 1;
+      dispatch({
+        type: "notify",
+        id: nextId,
+        kind,
+        text,
+        detail: detail ?? [],
+        server: server ?? null,
+        now: Date.now(),
+      });
+    },
+    [],
+  );
+
+  const notify = useMemo(() => notifyFor(null), [notifyFor]);
 
   // One timer for the whole stack rather than one per toast, so a burst of
   // thirty messages does not schedule thirty timeouts — and so a toast's life
@@ -222,6 +259,7 @@ export function useActivity() {
   return {
     entries: state.entries,
     notify,
+    notifyFor,
     unread,
     unreadProblems,
     /** Changes on every message. The tab watches it and flashes. */
@@ -270,8 +308,11 @@ export function asText(entries: Entry[]): string {
         second: "2-digit",
       });
       const repeats = entry.repeats > 1 ? ` (×${entry.repeats})` : "";
+      // The server goes in the pasted text too. A bug report saying "updated 3
+      // addons, one failed" is a different report depending on which folder.
+      const where = entry.server === null ? "" : `[${entry.server}] `;
       return [
-        `[${stamp}] ${entry.kind.toUpperCase()} ${entry.text}${repeats}`,
+        `[${stamp}] ${entry.kind.toUpperCase()} ${where}${entry.text}${repeats}`,
         ...entry.detail.map((line) => `    ${line}`),
       ];
     })

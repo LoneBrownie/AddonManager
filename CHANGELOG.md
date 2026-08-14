@@ -10,6 +10,13 @@ people are actually running.
 ## Unreleased
 
 ### Changed
+- **The activity stream says which server each message is about.** "Updated 3
+  addons" is not answerable once you have more than one game folder, and the
+  panel outlives the moment when the switcher still showed the answer. The
+  messages that genuinely have no server — saving a token, joining the beta
+  channel — stay unlabelled, and so does the one that installs to several at
+  once, which names them underneath itself. The server goes into the copied
+  text too.
 - **Addon rows light up under the cursor**, the way the browse cards and the
   server rows already did. Rows you have not adopted get a quieter version of
   the same thing — no lift, and the border stops short of the full accent —
