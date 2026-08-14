@@ -239,7 +239,7 @@ export function AddAddonDialog({
           Only the servers you switch on. By default that is just the one you
           have selected — and only servers on the same game version are listed.
         </span>
-        <div className="targets">
+        <div className="choices">
           {installable.map((server) => (
             <label key={server.id}>
               <input

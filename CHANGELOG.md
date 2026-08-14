@@ -17,6 +17,11 @@ people are actually running.
   reason: it copies the files straight across, so nothing downstream would
   catch it.
 - **The *Install to* servers are switches** rather than tick boxes.
+- **Taking over an addon's neighbouring folders is now a choice per folder.**
+  It was one tick over the whole set, which is only the right shape when the
+  guess is right about all of them — and the guess is a shared name prefix, so
+  four folders can easily be three parts of one addon and one separate thing.
+  All or nothing meant taking the stray or leaving three behind.
 - **The activity stream says which server each message is about.** "Updated 3
   addons" is not answerable once you have more than one game folder, and the
   panel outlives the moment when the switcher still showed the answer. The

@@ -261,7 +261,12 @@ export function AdoptDialog({
   onAdopted: (folder: string) => void;
 }) {
   const [url, setUrl] = useState("");
-  const [includeRelated, setIncludeRelated] = useState(true);
+  // Which of the neighbouring folders come too, one at a time. It was a single
+  // tick over the whole set, which is only the right shape when the guess is
+  // right about all of them — and the guess is a shared name prefix, so a set
+  // of four can easily be three parts of this addon and one separate thing.
+  // All or nothing meant taking the stray or leaving three behind.
+  const [related, setRelated] = useState<string[]>(found.related);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -269,10 +274,11 @@ export function AdoptDialog({
     setBusy(true);
     setError(null);
     try {
-      const folders =
-        includeRelated && found.related.length > 0
-          ? [found.folder, ...found.related]
-          : [found.folder];
+      // In the order they were found, not the order they were switched on.
+      const folders = [
+        found.folder,
+        ...found.related.filter((folder) => related.includes(folder)),
+      ];
       await api.adoptAddon(server.id, folders, url.trim(), found.title ?? undefined);
       onAdopted(found.folder);
     } catch (thrown) {
@@ -316,18 +322,29 @@ export function AdoptDialog({
 
       {found.related.length > 0 ? (
         <div className="field">
-          <label style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 400 }}>
-            <input
-              type="checkbox"
-              checked={includeRelated}
-              onChange={(event) => setIncludeRelated(event.target.checked)}
-            />
-            Also take over {found.related.join(", ")}
-          </label>
+          <label>Also take over</label>
           <span className="hint">
             These share a name prefix, so they are probably parts of the same
-            addon. Untick if they are separate.
+            addon. Untick any that are not.
           </span>
+          <div className="choices">
+            {found.related.map((folder) => (
+              <label key={folder}>
+                <input
+                  type="checkbox"
+                  checked={related.includes(folder)}
+                  onChange={(event) =>
+                    setRelated((current) =>
+                      event.target.checked
+                        ? [...current, folder]
+                        : current.filter((name) => name !== folder),
+                    )
+                  }
+                />
+                {folder}
+              </label>
+            ))}
+          </div>
         </div>
       ) : null}
 

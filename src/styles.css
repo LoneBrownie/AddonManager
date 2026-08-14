@@ -407,9 +407,12 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 }
 .toggle:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* The servers an install can go to. */
-.targets { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
-.targets label {
+/* A column of things to pick, each control with its label to the right: the
+   servers an install can go to, the folders an adoption takes with it. Which
+   control is a separate question — the servers are switches, the folders are
+   tick boxes — so this sets only the arrangement. */
+.choices { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.choices label {
   display: flex;
   gap: 9px;
   align-items: center;
