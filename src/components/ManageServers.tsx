@@ -349,8 +349,15 @@ function CopySetDialog({
   onDone: (lines: string[]) => Promise<void>;
   notify: Notify;
 }) {
+  // Same rule as installing: a set of 3.3.5a addons copied into a 2.4.3 folder
+  // is a folder of addons that will not load, and this one copies the files
+  // straight across rather than re-resolving them, so there is nothing
+  // downstream to catch it.
   const targets = servers.filter(
-    (server) => server.id !== from.id && server.canInstall,
+    (server) =>
+      server.id !== from.id &&
+      server.canInstall &&
+      server.version === from.version,
   );
   const [target, setTarget] = useState(targets[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
@@ -387,7 +394,9 @@ function CopySetDialog({
       }
     >
       {targets.length === 0 ? (
-        <p style={{ margin: 0 }}>There is no other server available to copy into.</p>
+        <p style={{ margin: 0 }}>
+          There is no other server on {from.versionLabel} to copy into.
+        </p>
       ) : (
         <>
           <div className="field">

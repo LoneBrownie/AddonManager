@@ -10,6 +10,13 @@ people are actually running.
 ## Unreleased
 
 ### Changed
+- **Installing only offers servers on the same game version.** *Install to*
+  listed every folder you manage, so a 3.3.5a addon could be sent to a 2.4.3 or
+  1.12 one with a single tick — where undoing it is an uninstall. Copying an
+  addon set between servers is now limited the same way, and for a stronger
+  reason: it copies the files straight across, so nothing downstream would
+  catch it.
+- **The *Install to* servers are switches** rather than tick boxes.
 - **The activity stream says which server each message is about.** "Updated 3
   addons" is not answerable once you have more than one game folder, and the
   panel outlives the moment when the switcher still showed the answer. The

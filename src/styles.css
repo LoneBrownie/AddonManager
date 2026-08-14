@@ -362,6 +362,61 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 .field label { font-size: 12px; color: var(--ink-2); font-weight: 600; }
 .field .hint { font-size: 12px; color: var(--ink-3); }
 
+/* A checkbox drawn as a switch.
+   Still a checkbox underneath — the label still toggles it, the keyboard still
+   reaches it, and the form still reads it. Only the box is replaced, which is
+   what `appearance: none` is for; building one out of a div and a click
+   handler would mean re-implementing all three by hand and getting one wrong. */
+.toggle {
+  appearance: none;
+  flex: none;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border: 1px solid var(--btn-line);
+  border-radius: 999px;
+  background: var(--surface-3);
+  position: relative;
+  cursor: pointer;
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease;
+}
+.toggle::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink-3);
+  transform: translateY(-50%);
+  transition:
+    transform 140ms ease,
+    background-color 140ms ease;
+}
+.toggle:hover:not(:disabled) { border-color: var(--btn-line-hover); }
+.toggle:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.toggle:checked::after {
+  background: var(--on-accent);
+  transform: translate(14px, -50%);
+}
+.toggle:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* The servers an install can go to. */
+.targets { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.targets label {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-weight: 400;
+  cursor: pointer;
+}
+
 .searchbar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
 .searchbar[hidden] { display: none; }
 .searchbar .input { flex: 1; min-width: 180px; }

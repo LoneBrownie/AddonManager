@@ -171,7 +171,16 @@ export function AddAddonDialog({
     }
   }
 
-  const installable = servers.filter((server) => server.canInstall);
+  // Only servers on the same game version. An addon built for 3.3.5a is not a
+  // candidate for a 1.12 folder, so offering that folder is offering a
+  // mistake — and the tick that makes it is one click, where undoing it is an
+  // uninstall. The version each one is on stays on its row: with two 3.3.5a
+  // servers listed, the label is what tells you they are both eligible rather
+  // than that the list is unfiltered.
+  const version = servers.find((server) => server.id === currentServerId)?.version;
+  const installable = servers.filter(
+    (server) => server.canInstall && server.version === version,
+  );
 
   return (
     <Dialog
@@ -227,17 +236,15 @@ export function AddAddonDialog({
       <div className="field">
         <label>Install to</label>
         <span className="hint">
-          Only the servers you tick. By default that is just the one you have
-          selected.
+          Only the servers you switch on. By default that is just the one you
+          have selected — and only servers on the same game version are listed.
         </span>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+        <div className="targets">
           {installable.map((server) => (
-            <label
-              key={server.id}
-              style={{ display: "flex", gap: 8, alignItems: "center", fontWeight: 400 }}
-            >
+            <label key={server.id}>
               <input
                 type="checkbox"
+                className="toggle"
                 checked={targets.includes(server.id)}
                 onChange={(event) =>
                   setTargets((current) =>

@@ -57,6 +57,19 @@ const servers: Server[] = [
     canInstall: true,
   },
   {
+    // A second game version, and reachable — the case that distinguishes
+    // "which servers can take this addon" from "which servers are there".
+    id: "srv_tbc",
+    name: "Endless TBC",
+    path: "D:\\Games\\TBC",
+    version: "tbc",
+    versionLabel: "TBC 2.4.3",
+    accent: "#38bdf8",
+    addonCount: 0,
+    availability: "ready",
+    canInstall: true,
+  },
+  {
     id: "srv_usb",
     name: "Turtle WoW",
     path: "E:\\wow-vanilla",
@@ -102,6 +115,7 @@ const addons: Record<string, Addon[]> = {
   // A game folder full of addons and nothing managing them: the state someone
   // is in on the day they move over from V1.
   srv_triumvirate: [],
+  srv_tbc: [],
   srv_usb: [row("github:o/Atlas", "Atlas", "v1.0.0")],
 };
 
