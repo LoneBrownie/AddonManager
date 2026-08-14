@@ -9,6 +9,16 @@
 //! A side effect worth having: `updater:default` is no longer granted to the
 //! webview, because the webview no longer talks to the plugin. Two commands
 //! that name an intention replace a permission that named a capability.
+//!
+//! On Windows the install runs silently — `installMode: "quiet"` in
+//! `tauri.conf.json`, which is `/S /R` to the NSIS installer. Passive mode drew
+//! a progress window over the app, and it had nothing to say: the download is
+//! already reported here, and pressing *Install and restart* is the consent
+//! that window was standing in for. No elevation prompt comes with it because
+//! the installer is `currentUser` scope, which is the bundler's default and
+//! what this app is built with; a per-machine installer would need admin
+//! rights, and asking for them silently is not something Windows allows.
+//! Linux has never drawn anything — the AppImage is rewritten in place.
 
 use serde::Serialize;
 use tauri::ipc::Channel;

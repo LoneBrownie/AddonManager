@@ -97,11 +97,17 @@ export function AppUpdate({
         </span>
       ) : null}
 
+      {/* The last line matters more than it looks: the installer no longer
+          draws a window of its own, so once the download finishes the app
+          simply disappears and comes back. Saying so first is the difference
+          between a restart and a crash. */}
       {state.kind === "installing" ? (
         <span className="hint" style={{ marginTop: 8 }}>
           {state.fraction === null
             ? "Downloading…"
-            : `Downloading… ${Math.round(state.fraction * 100)}%`}
+            : state.fraction >= 1
+              ? "Installing. The app will close and reopen."
+              : `Downloading… ${Math.round(state.fraction * 100)}%`}
         </span>
       ) : null}
     </div>

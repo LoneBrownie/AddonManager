@@ -7,6 +7,16 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
+## Unreleased
+
+### Changed
+- **Windows: updating no longer opens an installer window.** The update
+  downloads, the app closes and it reopens on the new version. That window only
+  ever showed a progress bar for a step you had already agreed to by pressing
+  *Install and restart*, over an app that was reporting the download itself.
+  Nothing about what is installed changes, and there is still no elevation
+  prompt. Linux never showed anything.
+
 ## 2.1.0-beta.3 — 2026-08-14
 
 ### Changed
