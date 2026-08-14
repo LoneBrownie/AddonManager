@@ -292,16 +292,11 @@ jobs:
                   --pattern latest.json --dir site 2>/dev/null \
                   || echo "$stable predates per-release manifests"
               fi
-              # Releases up to 2.0.1 have no manifest asset of their own, so if
-              # a pre-release is the first tag to deploy Pages there would be
-              # nothing to carry forward and the stable channel would 404. The
-              # legacy release holds exactly that manifest, so it is the answer
-              # until a stable release has published one.
-              if [ ! -f site/latest.json ]; then
-                gh release download updater --repo "$GITHUB_REPOSITORY" \
-                  --pattern latest.json --dir site 2>/dev/null \
-                  || echo "no stable manifest anywhere yet; the stable channel starts empty"
-              fi
+              # Every stable release from 2.1.0 on publishes a manifest of its
+              # own, so there is always one to carry forward. Before that there
+              # was not, and this fell back to a release kept alive to hold it.
+              test -f site/latest.json \
+                || { echo "::error::no stable manifest to carry forward"; exit 1; }
               ;;
             *)
               cp latest.json site/latest.json
@@ -312,20 +307,6 @@ jobs:
           esac
 
           ls -l site
-
-          # Legacy, and temporary. Every installation up to 2.0.1 has
-          # `releases/download/updater/latest.json` compiled into it, so
-          # dropping this would leave those users unable to update with nothing
-          # to tell them so. Keep feeding it stable releases until they have all
-          # moved onto a build that reads Pages, then delete that release and
-          # this block.
-          case "$TAG" in
-            *-*) : ;;
-            *)
-              gh release view updater --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && \
-                gh release upload updater latest.json --repo "$GITHUB_REPOSITORY" --clobber
-              ;;
-          esac
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

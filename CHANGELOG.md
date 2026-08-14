@@ -7,11 +7,11 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
-## 2.1.0 — 2026-08-14
+A section is its entries and nothing else: no summary paragraph above them, no
+count of the betas that led here. Somebody reading this wants to know what
+changed, and a preamble is a thing to scroll past to find out.
 
-Three betas of real use went into this. If you have been running one, you have
-seen most of it already; the entries below are what changed since **2.0.1**,
-which is where nearly everybody is coming from.
+## 2.1.0 — 2026-08-14
 
 ### Added
 - **An activity stream**, behind the *Activity* tab on the right-hand edge.
