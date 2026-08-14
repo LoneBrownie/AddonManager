@@ -43,6 +43,22 @@ with the path shown underneath.
   <img src="docs/v2/images/02-switcher.png" alt="The server switcher, showing three registered servers" width="760" />
 </div>
 
+### Every message in one place
+
+Installs, updates and anything that goes wrong go to the **Activity** tab on the
+right-hand edge, and stay there for the session — so a notification that has
+been and gone can still be read. Only failures interrupt you: an install that
+worked is already visible in the list it changed, so it lights the tab up and
+counts up rather than putting a card over that same list.
+
+Anything acting on many addons at once says so once — "6 imported, 4 failed",
+with the individual failures folded underneath — and each message names the
+server it happened on. The whole log copies out as text for a bug report.
+
+<div align="center">
+  <img src="docs/v2/images/03-activity.png" alt="The activity panel, listing this session's messages" width="760" />
+</div>
+
 ### Everything else
 
 - **GitHub and GitLab**, with a per-addon choice between tagged releases and the
@@ -61,6 +77,8 @@ with the path shown underneath.
 - **Optional GitHub token** to lift GitHub's anonymous 60-requests-an-hour API
   limit to 5,000. GitLab is asked anonymously and needs no token.
 - **Update checks run in parallel** and can be cancelled.
+- **Installing to several servers at once**, and only ever the ones on the same
+  game version — a 3.3.5a addon is never one click from a 1.12 folder.
 - **Change a server's folder** when the game moves or a drive changes letter,
   keeping its name, colour and addons.
 - **Addons deleted outside the app** are flagged rather than silently dropped,
@@ -88,6 +106,14 @@ with the path shown underneath.
 
 <img src="docs/v2/images/16-removal-warning.png" alt="A removal warning naming dependent addons" width="760" />
 
+**Installing to more than one server** — only those on the same game version.
+
+<img src="docs/v2/images/20-install-to.png" alt="The add-addon dialog, choosing which servers to install to" width="760" />
+
+**Settings**, including the update channel.
+
+<img src="docs/v2/images/21-settings.png" alt="The settings screen" width="760" />
+
 </details>
 
 ---
@@ -103,9 +129,15 @@ from inside the app.
 
 macOS is not supported.
 
-**Updating.** **Settings → Check for updates** finds the next release and
-installs it, and nothing is downloaded until you ask for it. What changed is
-shown when the app restarts.
+**Updating.** The app says once, when it opens, if a new version is out;
+nothing is downloaded until you ask for it. **Settings → App updates** is where
+you ask. It downloads, closes and reopens on the new version, with no installer
+window on the way through. What changed is shown after the restart.
+
+**Betas**, if you want them, are opt-in under **Settings → Update channel**.
+They are never offered to anyone who has not asked, the opt-in ends by itself
+once a stable release overtakes the beta you are running, and you are told all
+of this before you join.
 
 ### Where your addons go
 

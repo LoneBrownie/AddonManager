@@ -53,6 +53,19 @@ await shot("02-switcher");
 await page.keyboard.press("Escape");
 await page.waitForTimeout(200);
 
+// 03 — the activity stream, after a check and a batch update have put
+// something in it. Driven rather than staged: the panel has to be showing real
+// messages for the shot to be worth anything.
+await page.click('button:has-text("Check for updates")');
+await page.waitForTimeout(1200);
+await page.click('button:has-text("Update all")').catch(() => {});
+await page.waitForTimeout(1600);
+await page.click("aside.dock button.tab");
+await page.waitForTimeout(500);
+await shot("03-activity");
+await page.keyboard.press("Escape");
+await page.waitForTimeout(300);
+
 // 09 — importing a list exported from V1.
 await page.click('button:has-text("Import list")');
 await page.waitForSelector(".dialog");
@@ -84,6 +97,23 @@ await page.waitForSelector(".card", { timeout: 10000 });
 await page.fill('input[type="search"]', "raid").catch(() => {});
 await page.waitForTimeout(400);
 await shot("18-browse-search");
+
+// 20 — where an install can go: switches, and only the servers on this
+// server's game version.
+await page.click('.nav button:has-text("My addons")');
+await page.waitForTimeout(400);
+await page.click('button:has-text("Add addon")');
+await page.waitForSelector(".choices");
+await page.waitForTimeout(300);
+await shot("20-install-to");
+await page.keyboard.press("Escape");
+await page.waitForTimeout(300);
+
+// 21 — Settings, which is where the update channel lives.
+await page.click('.nav button:has-text("Settings")');
+await page.waitForSelector(".field");
+await page.waitForTimeout(400);
+await shot("21-settings");
 
 // 12 — managing servers.
 await page.click('.nav button:has-text("Servers")');

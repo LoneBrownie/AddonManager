@@ -591,7 +591,8 @@ export async function mockInvoke<T>(
     }
 
     case "app_version":
-      return "0.0.0-mock" as T;
+      // Defined by Vite from package.json — see vite.config.ts.
+      return __APP_VERSION__ as T;
 
     case "open_server_folder":
       // Nothing to open in a browser; the real command hands the path to the
