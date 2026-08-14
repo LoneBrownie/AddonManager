@@ -7,6 +7,15 @@ section here cannot be released.
 Add the new section *before* tagging. Betas get an entry too — they are what
 people are actually running.
 
+## Unreleased
+
+### Changed
+- **Addon rows light up under the cursor**, the way the browse cards and the
+  server rows already did. Rows you have not adopted get a quieter version of
+  the same thing — no lift, and the border stops short of the full accent —
+  because they are not yours yet, and one with an update keeps the accent wash
+  that marks it out.
+
 ## 2.1.0-beta.2 — 2026-08-13
 
 ### Fixed

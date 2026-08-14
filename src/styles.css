@@ -425,7 +425,8 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   border-style: dashed;
 }
 .row.unmanaged .row-main { opacity: 0.62; }
-.row.unmanaged:hover { border-color: var(--rule); }
+/* Reading it is the point of pointing at it, so the text comes up to nearly
+   full strength. The subdued half of the hover is below, with the rest. */
 .row.unmanaged:hover .row-main { opacity: 0.85; }
 
 /* A server whose folder is not reachable. Its addons are the last known state,
@@ -545,20 +546,22 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
   gap: 7px;
 }
 
-/* Hover highlight, shared by the browse cards and the server rows — the two
-   places that are a set of things to pick between. Declared once so they
-   cannot drift apart.
+/* Hover highlight, shared by the browse cards, the server rows and the addon
+   rows — everywhere the page is a set of things to point at. Declared once so
+   they cannot drift apart.
    Border and shadow only, no transform: something that moves under the cursor
-   makes a grid feel unsteady when scanning across it. */
+   makes a list feel unsteady when scanning down it. */
 .card,
-.server-row {
+.server-row,
+.row {
   transition:
     border-color 140ms ease,
     box-shadow 140ms ease,
     background-color 140ms ease;
 }
 .card:hover,
-.server-row:hover {
+.server-row:hover,
+.row:hover {
   border-color: var(--accent);
   background: var(--surface-2);
   /* The accent as a soft edge rather than a hard ring: the palette is already
@@ -568,15 +571,43 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
     0 6px 18px rgb(0 0 0 / 28%);
 }
 :root[data-theme="light"] .card:hover,
-:root[data-theme="light"] .server-row:hover {
+:root[data-theme="light"] .server-row:hover,
+:root[data-theme="light"] .row:hover {
   box-shadow:
     0 0 0 1px var(--accent-soft),
     0 6px 18px rgb(30 20 55 / 12%);
 }
 /* Keyboard users get the same affordance as the mouse. */
 .card:focus-within,
-.server-row:focus-within {
+.server-row:focus-within,
+.row:focus-within {
   border-color: var(--accent);
+}
+
+/* A row with an update keeps the accent wash that marks it out. The shared
+   rule sets a flat background, which would erase the one thing distinguishing
+   it from every other row at the moment the cursor is on it. */
+.row.updatable:hover {
+  background: linear-gradient(90deg, var(--accent-soft), transparent 42%), var(--surface-2);
+}
+
+/* Unmanaged folders get the same gesture at a lower volume. They are not yours
+   yet, and lighting one up as brightly as an addon you installed would say the
+   opposite. The border stops short of the full accent, and there is no lift —
+   the shadow is what makes a row feel picked up, and this one is not. */
+.row.unmanaged:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--rule));
+  background: var(--accent-soft);
+  box-shadow: none;
+}
+
+/* Nothing on an unreachable server can be acted on, so nothing there responds
+   to the cursor. Offering the affordance would be a promise the row cannot
+   keep. */
+.row.offline:hover {
+  border-color: var(--rule);
+  background: var(--surface);
+  box-shadow: none;
 }
 .card h4 { margin: 0; font-size: 14px; }
 .card p { margin: 0; font-size: 12.5px; color: var(--ink-3); flex: 1; }
