@@ -256,6 +256,6 @@ distribute a modified version, it has to stay open too.
 
 ## Acknowledgments
 
-Claude, who wrote most of V2.
+Our AI overlord Claude.
 
 My guildies for early testing.
