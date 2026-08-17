@@ -14,7 +14,7 @@ repository = "https://github.com/LoneBrownie/AddonManager"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-zip = { version = "4", default-features = false, features = ["deflate"] }
+zip = { version = "8", default-features = false, features = ["deflate"] }
 sha2 = "0.11"
 uuid = { version = "1", features = ["v4", "serde"] }
 walkdir = "2"
