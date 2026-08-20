@@ -456,6 +456,83 @@ mod tests {
         assert!(matches!(result, Err(Error::UnsafePath { .. })));
     }
 
+    /// zip 8 changed what counts as a directory, and this is the consequence.
+    ///
+    /// Its `is_dir` is `matches!(last_byte, b'/' | b'\\')`; zip 4 tested only
+    /// `/`. So an entry whose name ends in a backslash is now classified as a
+    /// directory and skipped by the pass-1 `is_dir` guard, where before it was
+    /// a file and `paths::split_relative` rejected the whole archive for it.
+    ///
+    /// Skipping is safe — a directory entry is never added to `planned`, so
+    /// nothing it carries is written — but it is quieter than this module
+    /// otherwise is, hence the test. What must hold either way is that the
+    /// entry produces no file. If a later zip flips the classification back,
+    /// the entry becomes a file again and `split_relative` rejects it, so the
+    /// archive fails instead; both outcomes satisfy the assertion below, and
+    /// the only way to fail it is for such an entry to actually land.
+    #[test]
+    fn an_entry_named_like_a_backslash_directory_writes_no_file() {
+        let bytes = zip_with(&[
+            ("MyAddon/MyAddon.toc", b"## Interface: 30300\n"),
+            ("evil\\", b"pwned"),
+        ]);
+        let (tmp, result) = extract_to_temp(bytes);
+
+        // The legitimate addon is unaffected by the entry beside it.
+        if result.is_ok() {
+            assert!(tmp.path().join("MyAddon/MyAddon.toc").exists());
+        }
+        assert!(
+            !tmp.path().join("evil").exists(),
+            "a trailing-backslash entry must never produce a file"
+        );
+    }
+
+    /// The same shape, but pointed out of the destination.
+    ///
+    /// This is the one that matters: `..\..\evil\` is skipped rather than
+    /// rejected, so the archive now succeeds where it used to fail. It must
+    /// still be true that nothing is written outside the extraction root.
+    ///
+    /// The root is nested two levels down because the payload climbs two —
+    /// checking only the immediate parent would sit *below* where a `..\..\`
+    /// escape actually lands, and the test would pass no matter what.
+    #[test]
+    fn a_traversal_shaped_backslash_directory_escapes_nothing() {
+        let outer = tempfile::tempdir().unwrap_or_else(|e| panic!("{e}"));
+        let dest = outer.path().join("nest").join("dest");
+        std::fs::create_dir_all(&dest).unwrap_or_else(|e| panic!("{e}"));
+
+        let bytes = zip_with(&[
+            ("MyAddon/MyAddon.toc", b"## Interface: 30300\n"),
+            ("..\\..\\evil\\", b"pwned"),
+        ]);
+        let _ = extract(Cursor::new(bytes), &dest, Limits::default());
+
+        assert_eq!(
+            entries_in(outer.path()),
+            vec!["nest".to_string()],
+            "nothing may be written where a `..\\..\\` entry would land"
+        );
+        assert_eq!(
+            entries_in(&outer.path().join("nest")),
+            vec!["dest".to_string()]
+        );
+        assert!(!dest.join("evil").exists());
+    }
+
+    /// The immediate children of `dir`, sorted, as plain names.
+    fn entries_in(dir: &Path) -> Vec<String> {
+        let mut names: Vec<String> = std::fs::read_dir(dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|entry| entry.file_name().to_string_lossy().into_owned())
+            .collect();
+        names.sort();
+        names
+    }
+
     #[test]
     fn rejects_windows_device_names() {
         let bytes = zip_with(&[("MyAddon/NUL.toc", b"x")]);
