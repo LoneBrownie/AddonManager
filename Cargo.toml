@@ -5,7 +5,11 @@ members = ["core", "net", "src-tauri"]
 [workspace.package]
 version = "2.1.0"
 edition = "2021"
-rust-version = "1.82"
+# The highest MSRV any dependency declares, not a preference. zip 8 asks for
+# 1.88, and several of the Tauri tree's crates (darling, plist, time,
+# serde_with) already did before it. Nothing in CI checks this — the runners
+# use stable — so it is a claim to keep honest by hand when a bump lands.
+rust-version = "1.88"
 license = "GPL-3.0-or-later"
 authors = ["LoneBrownie"]
 repository = "https://github.com/LoneBrownie/AddonManager"
