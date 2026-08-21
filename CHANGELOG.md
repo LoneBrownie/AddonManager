@@ -11,6 +11,21 @@ A section is its entries and nothing else: no summary paragraph above them, no
 count of the betas that led here. Somebody reading this wants to know what
 changed, and a preamble is a thing to scroll past to find out.
 
+## 2.1.1 — 2026-08-21
+
+### Fixed
+- **An update you have already found stays found.** *Check for updates* put its
+  answer on the rows and nothing kept it there: going anywhere else and coming
+  back to the window — pressing *Open page*, opening the addons folder, or
+  alt-tabbing to something else — cleared every "update available" tag, and
+  checking again was the only way to see them. The answer now survives the
+  window losing focus, and a row keeps it for as long as it is still an answer
+  about the version that is installed.
+- **The engine's zip reader and HTTP client are on their current versions.** An
+  advisory published against the HTTP/2 library underneath every request to
+  GitHub and GitLab let the far end hold a connection open by sending empty
+  frames indefinitely. Nothing about what the app does changes.
+
 ## 2.1.0 — 2026-08-14
 
 ### Added
