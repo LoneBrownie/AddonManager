@@ -25,6 +25,42 @@ import * as theme from "./theme";
 
 type Page = "addons" | "browse" | "servers" | "settings";
 
+/**
+ * Carry the result of an update check across a reload of the list.
+ *
+ * `list_addons` reports what is installed and nothing about what is upstream —
+ * an update check lives in this state and nowhere else. So every reload used
+ * to blank out the "update available" badges, and the only way to get them
+ * back was to check again. Opening an addon's page was enough to do it: coming
+ * back to the window refreshes the servers, which used to take the list with
+ * it.
+ *
+ * A row keeps its answer only while the answer is still about the version it
+ * was made about — same installed version, same channel. Anything else moved
+ * underneath the check, so the row goes back to saying it does not know.
+ */
+function withPriorChecks(previous: Addon[], rows: Addon[]): Addon[] {
+  const before = new Map(previous.map((row) => [row.addonId, row]));
+  return rows.map((row) => {
+    const prior = before.get(row.addonId);
+    if (
+      !prior ||
+      prior.updateStatus === "unknown" ||
+      prior.installedVersion !== row.installedVersion ||
+      prior.channel !== row.channel
+    ) {
+      return row;
+    }
+    return {
+      ...row,
+      latestVersion: prior.latestVersion,
+      updateStatus: prior.updateStatus,
+      // Pinning is decided by the engine and can have changed since the check.
+      needsUpdate: !row.pinned && prior.needsUpdate,
+    };
+  });
+}
+
 export default function App() {
   const [servers, setServers] = useState<Server[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -60,7 +96,12 @@ export default function App() {
   // not the one that was current when the message arrived — so "Updated 3
   // addons" was unanswerable the moment you changed folders. `notify` stays for
   // the messages that are genuinely about no server at all.
-  const say = useMemo(() => notifyFor(selected?.name), [notifyFor, selected]);
+  // Keyed on the name rather than the server: `refreshServers` hands back a
+  // fresh object every time it runs, and depending on that object rebuilt
+  // `say`, and with it `refreshAddons`, on every window focus — which reloaded
+  // the list and blanked out the update check nobody had asked to redo.
+  const serverName = selected?.name;
+  const say = useMemo(() => notifyFor(serverName), [notifyFor, serverName]);
 
   // Opening the panel *is* reading them, so any toasts go with it — leaving
   // them up would show the same messages twice, one stack over the other.
@@ -181,7 +222,8 @@ export default function App() {
       return;
     }
     try {
-      setAddons(await api.listAddons(selectedId));
+      const rows = await api.listAddons(selectedId);
+      setAddons((current) => withPriorChecks(current, rows));
     } catch (error) {
       say("error", api.errorMessage(error));
     }
