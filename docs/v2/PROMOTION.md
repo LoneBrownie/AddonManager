@@ -6,8 +6,8 @@
 - **`v1-archive` is gone.** It held the final V1 code — it was the original
   `main`, renamed rather than force-pushed over — and has since been deleted.
   V1's release assets hang off tags rather than branches, so they are untouched,
-  and the `v1.4.0` tag still names V1's source. The one commit the branch
-  carried beyond that tag was not tagged first; see *Housekeeping*.
+  and V1 stays downloadable from its releases. That is the record that matters;
+  the branch tip was not preserved and does not need to be.
 
 Because `main` is the default branch, `raw.githubusercontent.com/.../HEAD/...`
 resolves to it, which is how the app reaches the curated lists. That URL names
@@ -179,19 +179,10 @@ on `main`. Nothing in the code needed editing: `ci.yml` already triggered on
 
 - [ ] Revoke the `BlobKey` repository secret. The workflow that used it is gone,
       and a live storage key with nothing pointing at it is worth removing.
-- [ ] Tag V1's tip, if it is still wanted. This was never done, and
-      `v1-archive` has since been deleted. The `v1.4.0` tag is one commit
-      behind where the branch ended, so nothing now names the exact archived
-      state — the tip was `9f8e12d`, a README edit on top of `v1.4.0`. V1's
-      source and its release assets are unaffected; only that one commit is
-      unreferenced. To recover it, restore the branch from GitHub's *Branches*
-      page (deleted branches are restorable for a limited window), then:
-
-      ```sh
-      git fetch origin
-      git tag v1-final 9f8e12d
-      git push origin v1-final
-      ```
+- [x] Tag V1's tip — **decided against.** `v1-archive` was deleted without
+      tagging its tip, so the one commit it carried past `v1.4.0` (a README
+      edit) is not referenced by anything. That is deliberate: V1 remains
+      downloadable from its releases, which is all that is needed of it.
 
 ---
 
