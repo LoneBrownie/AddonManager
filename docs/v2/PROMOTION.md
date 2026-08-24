@@ -2,16 +2,16 @@
 
 ## Where things stand
 
-- **`v1-archive`** holds the final V1 code. It was `main`, renamed rather than
-  force-pushed over, so V1's history is intact and its release assets — which
-  hang off tags, not branches — are untouched.
-- **`dev`** is the default branch and holds V2.
-- **`dev` has not been renamed to `main`,** and does not need to be in order to
-  ship a beta. That rename is a tidying-up step for 2.0.0 proper; see below.
+- **`main`** is the default branch and holds V2. The rename in §5 has been done.
+- **`v1-archive` is gone.** It held the final V1 code — it was the original
+  `main`, renamed rather than force-pushed over — and has since been deleted.
+  V1's release assets hang off tags rather than branches, so they are untouched,
+  and the `v1.4.0` tag still names V1's source. The one commit the branch
+  carried beyond that tag was not tagged first; see *Housekeeping*.
 
-Because `dev` is the default branch, `raw.githubusercontent.com/.../HEAD/...`
+Because `main` is the default branch, `raw.githubusercontent.com/.../HEAD/...`
 resolves to it, which is how the app reaches the curated lists. That URL names
-no branch, so the eventual rename costs nothing.
+no branch, so neither the rename nor the deletion cost anything.
 
 ---
 
@@ -63,8 +63,9 @@ For the next beta, bump the three versions to `-beta.2`, commit, and tag again.
 ### Why a pre-release rather than a normal one
 
 GitHub keeps pre-releases out of `releases/latest`. That is the behaviour we
-want: the README still sends people who are not ready for V2 to *Latest
-release*, and that has to stay V1's installer until V2 is actually stable.
+wanted while betas were shipping: the README sent people who were not ready for
+V2 to *Latest release*, and that had to stay V1's installer until V2 was
+actually stable. *Latest release* now points at V2.
 
 It does not cost us the updater. That reads a fixed `updater` tag rather than
 `releases/latest`, so betas are perfectly visible to it — see §3.
@@ -138,7 +139,7 @@ release that is neither a draft nor a *pre-release*, so that URL can never
 resolve to a beta — and it is a property of the repository, not of the client,
 so a beta install cannot ask it for pre-release content either. Publishing betas
 as normal releases would fix the URL and break something worse: `releases/latest`
-is the link the README gives V1 users.
+is the link the README gives for downloads.
 
 A direct `releases/download/<tag>/` URL serves pre-release assets happily, so the
 release workflow copies each build's `latest.json` onto a permanent `updater`
@@ -170,28 +171,25 @@ not be surprised if `apt` calls the stable release a downgrade.
 
 ### 5. Rename `dev` to `main`
 
-Optional, and purely cosmetic now that `dev` is already the default branch. If
-you want the conventional name back:
-
-1. Rename `dev` → `main` in *Settings → Branches*.
-2. Confirm `main` is still the default afterwards.
-3. Nothing in the code needs editing. `ci.yml` already triggers on `[main, dev]`,
-   and the curated-list URL uses `HEAD` rather than a branch name.
-
-Decide afterwards whether to create a fresh `dev` to work on or commit to `main`
-directly, rather than drifting into one.
+**Done.** `main` is the default branch, and no `dev` branch remains — work lands
+on `main`. Nothing in the code needed editing: `ci.yml` already triggered on
+`[main, dev]`, and the curated-list URL uses `HEAD` rather than a branch name.
 
 ### 6. Housekeeping
 
 - [ ] Revoke the `BlobKey` repository secret. The workflow that used it is gone,
       and a live storage key with nothing pointing at it is worth removing.
-- [ ] Consider tagging V1's tip. The `v1.4.0` tag is one commit behind
-      `v1-archive`, so it does not name the exact archived state, and a tag is
-      harder to delete by accident than a branch.
+- [ ] Tag V1's tip, if it is still wanted. This was never done, and
+      `v1-archive` has since been deleted. The `v1.4.0` tag is one commit
+      behind where the branch ended, so nothing now names the exact archived
+      state — the tip was `9f8e12d`, a README edit on top of `v1.4.0`. V1's
+      source and its release assets are unaffected; only that one commit is
+      unreferenced. To recover it, restore the branch from GitHub's *Branches*
+      page (deleted branches are restorable for a limited window), then:
 
       ```sh
       git fetch origin
-      git tag v1-final origin/v1-archive
+      git tag v1-final 9f8e12d
       git push origin v1-final
       ```
 
@@ -204,7 +202,7 @@ be complete.
 
 - The `v2/` subdirectory has been flattened to the repository root.
 - V1's source, build files and workflows are removed from this branch. They
-  remain on `v1-archive` and in its releases.
+  remain at the `v1.4.0` tag and in V1's releases.
 - CI (`.github/workflows/ci.yml`) runs on `main` and `dev`, on Windows and
   Linux, and builds the engine, the frontend and the Tauri shell.
 - The release workflow publishes rather than drafting, and derives
@@ -223,5 +221,6 @@ be complete.
   are not bundled into the app as a stale copy.
 - The app identifier is `com.lonebrownie.browniesaddonmanager.v2`, distinct from
   V1's, so both can be installed at once.
-- The README describes V2 as a beta with real download instructions, and points
-  people who want V1 at `v1-archive` and at *Latest release*.
+- The README describes V2 with real download instructions. Its V1 sections are
+  gone; *Moving over from V1* is all that remains, and it no longer points at
+  `v1-archive` or at a V1 download.

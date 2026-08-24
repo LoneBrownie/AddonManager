@@ -17,15 +17,6 @@ across as many game folders as you run.**
 
 ---
 
-> [!NOTE]
-> **V2 is here.** It is a rewrite, and it installs alongside V1 rather than over
-> it — see [Moving over from V1](#moving-over-from-v1). Backing up your
-> `Interface/AddOns` folder before pointing any addon manager at it remains a
-> good habit. If you would rather stay where you are,
-> [V1 is still there](#using-v1).
-
----
-
 ## What it does
 
 ### Several servers, side by side
@@ -160,7 +151,7 @@ Administrator.
 > [!IMPORTANT]
 > **V2 installs alongside V1, not over the top.** It is a separate application
 > with its own settings, so V1 keeps working and nothing is changed or migrated
-> automatically. If you dislike V2, carry on using V1.
+> automatically.
 
 Bringing your addons across takes about a minute:
 
@@ -190,25 +181,9 @@ tagged `unmanaged`, with a **Manage** button that asks for its repository URL.
 
 ---
 
-## Using V1
-
-V1 still works, and its final Windows installer is on the
-[v1.4.0 release](https://github.com/LoneBrownie/AddonManager/releases/tag/v1.4.0).
-*Latest release* now points at V2, so use that tag rather than a `/latest` link.
-
-Its source is on the
-[`v1-archive`](https://github.com/LoneBrownie/AddonManager/tree/v1-archive)
-branch. It is finished rather than maintained: it will keep working, but fixes
-go into V2.
-
-Its known issue stands: if your WoW directory is under Program Files, you need
-to run it as Administrator. V2 does not have this requirement.
-
----
-
 ## Building it yourself
 
-V2 is a Rust core with a React and TypeScript interface, packaged with Tauri.
+The app is a Rust core with a React and TypeScript interface, packaged with Tauri.
 
 ```sh
 npm install
