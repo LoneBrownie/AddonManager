@@ -11,6 +11,42 @@ A section is its entries and nothing else: no summary paragraph above them, no
 count of the betas that led here. Somebody reading this wants to know what
 changed, and a preamble is a thing to scroll past to find out.
 
+## 2.2.0-beta.1 — 2026-08-25
+
+### Added
+- **An addon can be moved onto a different repository**, from *Source…* in the
+  row's menu. Private-server addons fork constantly, and following a fork used
+  to mean removing the addon and adding it again from the new URL — two actions,
+  with a stretch in between where the folder was gone from the game directory.
+  Now it is one: paste the new repository, pick what it should track, and the
+  files are replaced in place. If anything goes wrong the addon is left exactly
+  as it was, rather than half-moved.
+
+  It changes **only the server you are looking at**. The same addon can sit in
+  two game folders following two different forks, and switching one says nothing
+  about the other.
+
+  Two things deliberately do not carry over. **What the addon tracks** is chosen
+  again for the new repository, because a fork may number its releases
+  differently or cut none at all — picking wrong is answered by the usual "no
+  published releases" message, with the dialog still open to correct it. And
+  **a pin is cleared**, because a pin holds one particular version and the
+  switch replaces it; you are told before you commit, and the addon goes back to
+  being checked for updates.
+
+### Changed
+- **A row's actions now sit behind one button.** Pin, Source, Open page and
+  Remove moved into a menu on the right of each row, leaving the one action that
+  matters — Update, Switch, Reinstall — out where it was. Five buttons wrapped
+  onto a second line on any window that was not wide, which with the activity
+  panel open was every window. It also takes *Remove* out from immediately
+  beside *Open page*, which was a poor place for the one action that deletes
+  something.
+- **The *Use source* button is gone**, and what it did is the *Track* setting
+  inside *Source…*. It read as "use a different source repository" often enough
+  to be worth retiring, and the repository and what it tracks are two halves of
+  the same question, so they are now asked in the same place.
+
 ## 2.1.1 — 2026-08-21
 
 ### Fixed

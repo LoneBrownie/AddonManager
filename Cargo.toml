@@ -3,7 +3,7 @@ resolver = "2"
 members = ["core", "net", "src-tauri"]
 
 [workspace.package]
-version = "2.1.1"
+version = "2.2.0-beta.1"
 edition = "2021"
 # The highest MSRV any dependency declares, not a preference. zip 8 asks for
 # 1.88, and several of the Tauri tree's crates (darling, plist, time,

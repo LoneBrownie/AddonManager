@@ -10,6 +10,7 @@ pub mod addons;
 pub mod catalog;
 pub mod import;
 pub mod servers;
+pub mod source;
 pub mod update;
 
 use serde::Serialize;
@@ -48,6 +49,8 @@ impl From<bam_core::error::Error> for CommandError {
             }
             E::NoAddonFolders => ("noAddonFolders", None),
             E::UnknownServer(_) => ("unknownServer", None),
+            E::NotInstalled { .. } => ("notInstalled", None),
+            E::AlreadyInstalled { .. } => ("alreadyInstalled", None),
             _ => ("unexpected", None),
         };
 
@@ -84,6 +87,9 @@ fn friendly_message(error: &bam_core::error::Error) -> String {
              token in Settings raises the limit from 60 requests an hour to 5,000."
                 .to_string()
         }
+        E::AlreadyInstalled { .. } => "That repository is already installed to this server as a \
+             separate addon. Remove one of them if you want a single row for it."
+            .to_string(),
         E::NoAddonFolders => {
             "That archive does not contain a WoW addon — no folder with a .toc file was found."
                 .to_string()

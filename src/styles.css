@@ -461,6 +461,52 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
 }
 .row-actions { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
+/* The row's secondary actions, behind one button.
+   Five buttons on a row wrapped to a second line on any window that was not
+   wide — with the activity panel open, always. The primary action stays out
+   here; everything else lives in the menu, which also takes Remove out from
+   beside Open page. */
+.row-menu { position: relative; display: flex; }
+.menu {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  z-index: 40;
+  min-width: 176px;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 9px;
+  box-shadow: var(--shadow);
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+}
+.menu button {
+  width: 100%;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  color: var(--ink-2);
+  font-size: 13px;
+  text-align: left;
+}
+.menu button:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+.menu button:disabled { color: var(--ink-3); opacity: 0.55; cursor: not-allowed; }
+/* Deletes something, and is the last item, so it gets a rule above it as well
+   as the colour — a separator is harder to miss than a hue. */
+.menu button.danger {
+  color: color-mix(in srgb, var(--bad) 72%, var(--ink-2));
+  border-top: 1px solid var(--rule);
+  border-radius: 0 0 6px 6px;
+  margin-top: 4px;
+  padding-top: 9px;
+}
+.menu button.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bad) 12%, var(--surface));
+  color: color-mix(in srgb, var(--bad) 45%, var(--ink));
+}
+
 /* A heading inside a list, separating what this app manages from what it
    merely found. */
 .list-divider {

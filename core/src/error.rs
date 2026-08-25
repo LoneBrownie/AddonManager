@@ -38,6 +38,16 @@ pub enum Error {
     #[error("folder {folder:?} is already owned by addon {owner:?}")]
     ManagedCollision { folder: String, owner: String },
 
+    // ---- changing an addon's source ----
+    /// Asked to act on an addon this server does not have.
+    #[error("{addon_id:?} is not installed to {server_id:?}")]
+    NotInstalled { addon_id: String, server_id: String },
+
+    /// Asked to move an addon onto a repository this server already has a row
+    /// for. Allowing it would collapse two installations into one.
+    #[error("{addon_id:?} is already installed to this server")]
+    AlreadyInstalled { addon_id: String },
+
     // ---- sources ----
     #[error("unsupported repository URL: {0}")]
     UnsupportedRepoUrl(String),

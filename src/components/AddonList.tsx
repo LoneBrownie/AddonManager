@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Addon, FoundAddon, Server } from "../api";
 
 type Sort = "name" | "updates" | "version";
@@ -103,7 +103,7 @@ export function AddonList({
   onUpdate,
   onRemove,
   onTogglePin,
-  onToggleChannel,
+  onEditSource,
   onOpen,
   onAdd,
   onRecheck,
@@ -116,7 +116,7 @@ export function AddonList({
   onUpdate: (addonId: string) => void;
   onRemove: (addon: Addon) => void;
   onTogglePin: (addon: Addon) => void;
-  onToggleChannel: (addon: Addon) => void;
+  onEditSource: (addon: Addon) => void;
   onOpen: (url: string) => void;
   onAdd: () => void;
   onRecheck: () => void;
@@ -250,7 +250,7 @@ export function AddonList({
               onUpdate={() => onUpdate(addon.addonId)}
               onRemove={() => onRemove(addon)}
               onTogglePin={() => onTogglePin(addon)}
-              onToggleChannel={() => onToggleChannel(addon)}
+              onEditSource={() => onEditSource(addon)}
               onOpen={() => onOpen(addon.sourceUrl)}
               blocked={installBlockedBecause(server)}
               offline={unreachable(server)}
@@ -319,13 +319,88 @@ export function AddonList({
   );
 }
 
+interface MenuItem {
+  label: string;
+  onSelect: () => void;
+  disabled?: boolean;
+  danger?: boolean;
+  title?: string | undefined;
+}
+
+/**
+ * The row's secondary actions, behind one button.
+ *
+ * Five buttons on a row wrapped to a second line as soon as the window was
+ * anything but wide — with the activity panel open it always did. Collapsing
+ * them also moves *Remove* out from beside *Open page*, which is a poor place
+ * for the one action that deletes something.
+ *
+ * Dismissal is the same as the server switcher's: a click outside, or Escape.
+ */
+function RowMenu({ label, items }: { label: string; items: MenuItem[] }) {
+  const [open, setOpen] = useState(false);
+  const container = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocument = (event: MouseEvent) => {
+      if (!container.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocument);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocument);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="row-menu" ref={container}>
+      <button
+        type="button"
+        className="btn small"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={label}
+        onClick={() => setOpen((value) => !value)}
+      >
+        ···
+      </button>
+
+      {open ? (
+        <div className="menu" role="menu">
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              className={item.danger ? "danger" : undefined}
+              disabled={item.disabled}
+              title={item.title}
+              onClick={() => {
+                setOpen(false);
+                item.onSelect();
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function AddonRow({
   addon,
   busy,
   onUpdate,
   onRemove,
   onTogglePin,
-  onToggleChannel,
+  onEditSource,
   onOpen,
   blocked,
   offline,
@@ -335,7 +410,7 @@ function AddonRow({
   onUpdate: () => void;
   onRemove: () => void;
   onTogglePin: () => void;
-  onToggleChannel: () => void;
+  onEditSource: () => void;
   onOpen: () => void;
   blocked: string | null;
   offline: boolean;
@@ -417,45 +492,38 @@ function AddonRow({
                 : "Switch"}
           </button>
         ) : null}
-        <button
-          type="button"
-          className="btn small"
-          onClick={onTogglePin}
-          disabled={busy || offline}
-          title={
-            blocked && offline
-              ? blocked
-              : addon.pinned
-              ? "Resume checking this addon for updates"
-                : "Keep this version and stop checking for updates"
-          }
-        >
-          {addon.pinned ? "Unpin" : "Pin"}
-        </button>
-        <button
-          type="button"
-          className="btn small"
-          onClick={onToggleChannel}
-          disabled={busy || offline}
-          title={
-            (offline ? blocked : null) ??
-            "Switch between tagged releases and the latest source build"
-          }
-        >
-          {addon.channel === "release" ? "Use source" : "Use releases"}
-        </button>
-        <button type="button" className="btn small" onClick={onOpen} disabled={busy}>
-          Open page
-        </button>
-        <button
-          type="button"
-          className="btn small danger"
-          onClick={onRemove}
-          disabled={busy || offline}
-          title={offline ? (blocked ?? undefined) : undefined}
-        >
-          Remove
-        </button>
+        <RowMenu
+          label={`More actions for ${addon.name}`}
+          items={[
+            {
+              label: addon.pinned ? "Unpin" : "Pin",
+              onSelect: onTogglePin,
+              disabled: busy || offline,
+              title:
+                blocked && offline
+                  ? blocked
+                  : addon.pinned
+                    ? "Resume checking this addon for updates"
+                    : "Keep this version and stop checking for updates",
+            },
+            {
+              label: "Source…",
+              onSelect: onEditSource,
+              disabled: busy || offline,
+              title:
+                (offline ? blocked : null) ??
+                "Change which repository this comes from, and what it tracks",
+            },
+            { label: "Open page", onSelect: onOpen, disabled: busy },
+            {
+              label: "Remove",
+              onSelect: onRemove,
+              disabled: busy || offline,
+              danger: true,
+              title: offline ? (blocked ?? undefined) : undefined,
+            },
+          ]}
+        />
       </div>
     </div>
   );

@@ -10,7 +10,12 @@ import {
 } from "./components/AddonList";
 import { AppUpdate, UpdateChannel } from "./components/AppUpdate";
 import { ServerSwitcher } from "./components/ServerSwitcher";
-import { AddAddonDialog, AddServerDialog, ConfirmDialog } from "./components/dialogs";
+import {
+  AddAddonDialog,
+  AddServerDialog,
+  ConfirmDialog,
+  SourceDialog,
+} from "./components/dialogs";
 import { ManageServers } from "./components/ManageServers";
 import {
   AdoptDialog,
@@ -71,6 +76,7 @@ export default function App() {
   const [showAddServer, setShowAddServer] = useState(false);
   const [showAddAddon, setShowAddAddon] = useState(false);
   const [confirming, setConfirming] = useState<Addon | null>(null);
+  const [editingSource, setEditingSource] = useState<Addon | null>(null);
   const [transfer, setTransfer] = useState<"import" | "export" | null>(null);
   const [unmet, setUnmet] = useState<api.Unmet[]>([]);
   const [unmanaged, setUnmanaged] = useState<api.FoundAddon[]>([]);
@@ -369,10 +375,22 @@ export default function App() {
     }
   }
 
-  async function handleToggleChannel(addon: Addon) {
+  /**
+   * Save the Source dialog.
+   *
+   * Two different intentions come through one form, so they are told apart
+   * here: a new repository replaces the files and moves the record, while the
+   * same repository on a different channel changes only what the next update
+   * fetches. Sending a track change through the switch would reinstall an addon
+   * nobody asked to reinstall.
+   *
+   * Errors are thrown rather than reported, so the dialog shows them against
+   * the fields that caused them and stays open to be corrected.
+   */
+  async function handleSaveSource(addon: Addon, url: string, channel: api.Channel) {
     if (!selectedId) return;
-    const channel = addon.channel === "release" ? "source" : "release";
-    try {
+
+    if (url === addon.sourceUrl) {
       // The command returns the updated row, so whether a switch is now
       // pending comes from the engine rather than being guessed at here.
       const updated = await api.setAddonChannel(selectedId, addon.addonId, channel);
@@ -383,6 +401,7 @@ export default function App() {
             : row,
         ),
       );
+      setEditingSource(null);
       const tracks = channel === "source" ? "source builds" : "tagged releases";
       say(
         "info",
@@ -390,9 +409,22 @@ export default function App() {
           ? `${addon.name} now tracks ${tracks}. Press Switch on its row to fetch it.`
           : `${addon.name} now tracks ${tracks}, which is what is already installed.`,
       );
-    } catch (error) {
-      say("error", api.errorMessage(error));
+      return;
     }
+
+    const wasPinned = addon.pinned;
+    const updated = await api.changeAddonSource(selectedId, addon.addonId, url, channel);
+    setEditingSource(null);
+    // The row's identity changes with its source, so it is replaced rather
+    // than merged: nothing from the old repository's check still applies.
+    setAddons((current) =>
+      current.map((row) => (row.addonId === addon.addonId ? updated : row)),
+    );
+    say(
+      "success",
+      `${updated.name} now comes from ${url}, at ${updated.installedVersion}`,
+      wasPinned ? ["The pin was cleared — it held a version from the old repository."] : [],
+    );
   }
 
   async function handleInstall(
@@ -597,7 +629,7 @@ export default function App() {
                       .catch(() => setDependents([]));
                   }}
                   onTogglePin={handleTogglePin}
-                  onToggleChannel={handleToggleChannel}
+                  onEditSource={setEditingSource}
                   onRecheck={() => void refreshServers()}
                   unmanaged={unmanaged}
                   onAdopt={setAdopting}
@@ -698,6 +730,14 @@ export default function App() {
           currentServerId={selectedId}
           onClose={() => setShowAddAddon(false)}
           onInstall={handleInstall}
+        />
+      ) : null}
+
+      {editingSource ? (
+        <SourceDialog
+          addon={editingSource}
+          onClose={() => setEditingSource(null)}
+          onSave={(url, channel) => handleSaveSource(editingSource, url, channel)}
         />
       ) : null}
 

@@ -118,6 +118,7 @@ pub fn run() {
             commands::addons::cancel_update_check,
             commands::addons::removal_impact,
             commands::addons::unmet_dependencies,
+            commands::source::change_addon_source,
             // catalogue, sharing, settings
             commands::catalog::get_catalog,
             commands::catalog::resolve_catalog_install,

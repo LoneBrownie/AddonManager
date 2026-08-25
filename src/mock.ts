@@ -479,6 +479,54 @@ export async function mockInvoke<T>(
       return { ...found } as T;
     }
 
+    case "change_addon_source": {
+      const rows = (serverId && addons[serverId]) || [];
+      const found = rows.find((a) => a.addonId === args?.["addonId"]);
+      if (!found) throw { kind: "notInstalled", message: "not installed", folder: null };
+
+      const url = String(args?.["url"] ?? "");
+      const repo = pathOf(url);
+      const nextId = `github:${repo}`;
+      if (gone.has(repo)) {
+        throw {
+          kind: "notFound",
+          message: `${repo} could not be found — the repository may have been deleted, renamed or made private`,
+          folder: null,
+        };
+      }
+      if (nextId !== found.addonId && rows.some((a) => a.addonId === nextId)) {
+        throw {
+          kind: "alreadyInstalled",
+          message:
+            "That repository is already installed to this server as a separate addon. Remove one of them if you want a single row for it.",
+          folder: null,
+        };
+      }
+      const channel = args?.["channel"] as Addon["channel"];
+      if (channel === "release" && noReleases.has(repo)) {
+        throw {
+          kind: "noResolvableRef",
+          message: `no release or source archive could be resolved for ${repo} — ${repo} has no published releases — switch this addon to the source channel`,
+          folder: null,
+        };
+      }
+
+      // As the engine does: the row moves to the new id, the pin goes with the
+      // version it was holding, and the version comes from the new repository.
+      found.addonId = nextId;
+      found.name = nameFrom(url);
+      found.sourceUrl = url;
+      found.channel = channel;
+      found.channelPending = false;
+      found.pinned = false;
+      found.installedVersion = channel === "source" ? "main@8f21c04" : "v2.0.0";
+      found.versionUnknown = false;
+      found.latestVersion = null;
+      found.updateStatus = "upToDate";
+      found.needsUpdate = false;
+      return { ...found } as T;
+    }
+
     case "copy_addon_set": {
       const from = String(args?.["fromServerId"]);
       const to = String(args?.["toServerId"]);

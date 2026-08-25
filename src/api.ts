@@ -292,6 +292,21 @@ export const setAddonChannel = (
   channel: Channel,
 ) => call<Addon>("set_addon_channel", { serverId, addonId, channel });
 
+/**
+ * Move an installed addon onto a different repository, on this server only.
+ *
+ * `channel` is passed rather than carried over: a fork may number its releases
+ * differently or cut none at all, so the old setting says nothing about the new
+ * repository. Any pin on the row is cleared — a pin holds a version, and this
+ * replaces the version.
+ */
+export const changeAddonSource = (
+  serverId: string,
+  addonId: string,
+  url: string,
+  channel: Channel,
+) => call<Addon>("change_addon_source", { serverId, addonId, url, channel });
+
 // --- catalogue, sharing, settings ------------------------------------------
 
 export const getCatalog = (serverId: string | null) =>

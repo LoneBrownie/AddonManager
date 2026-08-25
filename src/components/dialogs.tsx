@@ -4,6 +4,8 @@ import {
   inspectFolder,
   listGameVersions,
   pickFolder,
+  type Addon,
+  type Channel,
   type FolderVerdict,
   type GameVersion,
   type GameVersionOption,
@@ -259,6 +261,130 @@ export function AddAddonDialog({
             </label>
           ))}
         </div>
+      </div>
+    </Dialog>
+  );
+}
+
+/**
+ * Where one addon comes from, and what it tracks.
+ *
+ * Both fields answer the same question, which is why they share a dialog: the
+ * repository and the channel are each half of "where does this come from", and
+ * splitting them across a dialog and a row button is what made *Use source*
+ * read as "use a different source repository".
+ *
+ * Nothing is looked up while this is open. Choosing releases against a fork
+ * that cuts none fails on save, and that refusal already reads "has no
+ * published releases — switch this addon to the source channel", so a request
+ * per keystroke would buy a worse version of an answer the user gets anyway.
+ */
+export function SourceDialog({
+  addon,
+  onClose,
+  onSave,
+}: {
+  addon: Addon;
+  onClose: () => void;
+  onSave: (url: string, channel: Channel) => Promise<void>;
+}) {
+  const [url, setUrl] = useState(addon.sourceUrl);
+  const [channel, setChannel] = useState<Channel>(addon.channel);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const trimmed = url.trim();
+  // A different repository is a different addon: the files are replaced and the
+  // record moves. Changing only the track leaves both alone.
+  const moving = trimmed.length > 0 && trimmed !== addon.sourceUrl;
+  const changed = moving || channel !== addon.channel;
+
+  async function submit() {
+    setBusy(true);
+    setError(null);
+    try {
+      await onSave(trimmed, channel);
+    } catch (thrown) {
+      setError(errorMessage(thrown));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog
+      title="Source"
+      description={`Where ${addon.name} comes from, and what it tracks.`}
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn" onClick={onClose} disabled={busy}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn primary"
+            onClick={submit}
+            disabled={busy || !changed}
+          >
+            {busy ? "Working…" : moving ? "Switch source" : "Save"}
+          </button>
+        </>
+      }
+    >
+      {error ? <div className="banner bad">{error}</div> : null}
+
+      {/* Only when there is a pin to lose, so the red means something when it
+          does appear. */}
+      {moving && addon.pinned ? (
+        <div className="banner bad">
+          <strong>
+            {addon.name} is pinned to {addon.installedVersion}.
+          </strong>{" "}
+          Switching source clears the pin — that version exists only in the old
+          repository — and this addon goes back to being checked for updates.
+        </div>
+      ) : null}
+
+      {moving ? (
+        <div className="banner">
+          Replaces {addon.folders.join(", ")} with a build from the new
+          repository, and points future updates there. Nothing else on this
+          server is touched.
+        </div>
+      ) : null}
+
+      <div className="field">
+        <label htmlFor="source-url">Repository</label>
+        <input
+          id="source-url"
+          className="input"
+          value={url}
+          placeholder="https://github.com/owner/addon"
+          onChange={(event) => setUrl(event.target.value)}
+        />
+        <span className="hint">
+          Paste a different repository to move this addon onto a fork. Only this
+          server changes.
+        </span>
+      </div>
+
+      <div className="field">
+        <label htmlFor="source-channel">Track</label>
+        <select
+          id="source-channel"
+          className="select"
+          value={channel}
+          onChange={(event) => setChannel(event.target.value as Channel)}
+        >
+          <option value="release">Tagged releases (recommended)</option>
+          <option value="source">Latest source build</option>
+        </select>
+        <span className="hint">
+          {moving
+            ? "Pick what the new repository should track — the old one's setting does not carry over. If it cuts no releases, choose source builds."
+            : "Source builds suit addons that never cut releases."}
+        </span>
       </div>
     </Dialog>
   );

@@ -20,6 +20,7 @@
 //! * [`store`] — atomic persistence.
 //! * [`sources`] — resolving GitHub and GitLab.
 //! * [`plan`] — what an install would do, decided before anything is written.
+//! * [`retarget`] — moving an installed addon onto a different repository.
 //! * [`install`] — install and remove orchestration.
 //! * [`updates`] — asking the forges whether something newer exists.
 //! * [`deps`] — dependency checks and catalogue install ordering.
@@ -56,6 +57,7 @@ pub mod list;
 pub mod model;
 pub mod paths;
 pub mod plan;
+pub mod retarget;
 pub mod servers;
 pub mod sources;
 pub mod store;
