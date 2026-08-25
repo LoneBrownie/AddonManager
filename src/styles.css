@@ -465,7 +465,7 @@ textarea.input { min-height: 132px; resize: vertical; font-family: var(--mono); 
    Five buttons on a row wrapped to a second line on any window that was not
    wide — with the activity panel open, always. The primary action stays out
    here; everything else lives in the menu, which also takes Remove out from
-   beside Open page. */
+   beside Open repo. */
 .row-menu { position: relative; display: flex; }
 .menu {
   position: absolute;

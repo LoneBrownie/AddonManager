@@ -332,7 +332,7 @@ interface MenuItem {
  *
  * Five buttons on a row wrapped to a second line as soon as the window was
  * anything but wide — with the activity panel open it always did. Collapsing
- * them also moves *Remove* out from beside *Open page*, which is a poor place
+ * them also moves *Remove* out from beside *Open repo*, which is a poor place
  * for the one action that deletes something.
  *
  * Dismissal is the same as the server switcher's: a click outside, or Escape.
@@ -514,7 +514,7 @@ function AddonRow({
                 (offline ? blocked : null) ??
                 "Change which repository this comes from, and what it tracks",
             },
-            { label: "Open page", onSelect: onOpen, disabled: busy },
+            { label: "Open repo", onSelect: onOpen, disabled: busy },
             {
               label: "Remove",
               onSelect: onRemove,
