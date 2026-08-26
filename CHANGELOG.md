@@ -11,6 +11,19 @@ A section is its entries and nothing else: no summary paragraph above them, no
 count of the betas that led here. Somebody reading this wants to know what
 changed, and a preamble is a thing to scroll past to find out.
 
+## 2.2.0 — 2026-08-26
+
+### Added
+- **An addon can be moved onto a different repository**, from *Source…* on its
+  row, rather than removing it and adding it back from the new URL. Only the
+  server you are looking at changes. You choose what the new repository should
+  track, and any pin is cleared — both belonged to the old one.
+
+### Changed
+- **A row's actions are behind one button**, leaving the one that matters out
+  where it was. *Use source* is gone with them: what it did is the *Track*
+  setting in *Source…*. *Open page* is now *Open repo*.
+
 ## 2.2.0-beta.1 — 2026-08-25
 
 ### Added
