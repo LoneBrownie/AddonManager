@@ -15,13 +15,19 @@ no branch, so neither the rename nor the deletion cost anything.
 
 ---
 
-## Shipping a beta
+## Shipping a release
+
+Betas and stable releases ship the same way. The tag is the whole difference: a
+hyphen in it — `v2.2.0-beta.1` — publishes a pre-release, and one without —
+`v2.2.0` — publishes a normal release that becomes `releases/latest`, which is
+where the README's download link and version badge point.
 
 > **Prerequisite:** the `TAURI_SIGNING_PRIVATE_KEY` secret must exist — see
 > §2 below. Updater artifacts are switched on, so the release workflow refuses
-> to start without it. That is the only manual setup a beta needs.
+> to start without it. It exists; this is worth re-reading only after a key
+> rotation.
 
-1. **Bump the three version strings together.** They are the beta's identity —
+1. **Bump the three version strings together.** They are the build's identity —
    the release name, the installer filenames and the string in
    **Settings → Copy diagnostics** all come from them.
 
@@ -31,7 +37,13 @@ no branch, so neither the rename nor the deletion cost anything.
    | `package.json` | `version` |
    | `src-tauri/tauri.conf.json` | `version` |
 
-   `node scripts/check-bundle-config.mjs --tag v2.0.0-beta.4` confirms it, and
+   Both lockfiles carry the version too, so they move with them:
+   `cargo metadata --locked` rewrites `Cargo.lock` and fails if it could not,
+   and `npm install --package-lock-only` does `package-lock.json`. Nothing
+   checks these, and a lockfile left behind is invisible until somebody reads
+   it.
+
+   `node scripts/check-bundle-config.mjs --tag v2.2.0` confirms the three, and
    both CI and the release workflow run the same check, so a mismatch fails in
    seconds rather than after a full build.
 
@@ -41,22 +53,35 @@ no branch, so neither the rename nor the deletion cost anything.
    both CI and the release refuse a version with no section, so this is not
    optional and not something to reconstruct from memory later.
 
-3. **Tag and push.**
+   A stable release gets a section of its own rather than a renamed beta one.
+   Write it for the previous *stable* version — that is where nearly everybody
+   is coming from, and it is what the window after the restart shows them. The
+   beta sections stay below it as a record of what those builds were.
 
-   ```sh
-   git tag v2.0.0-beta.1
-   git push origin v2.0.0-beta.1
-   ```
+3. **Trigger the release.** Two routes, one workflow.
 
-   The tag has to match the version, because the release is named from the
-   version and found by the tag.
+   - **Tag and push.**
 
-4. **The workflow does the rest.** `.github/workflows/release.yml` builds on
-   Windows and Linux, runs the engine's tests as a gate, publishes a
-   **pre-release** — not a draft — and then Cosign-signs the assets.
+     ```sh
+     git tag v2.2.0
+     git push origin v2.2.0
+     ```
 
-   `workflow_dispatch` with a `tag` input does the same thing for a tag that
-   already exists.
+   - **Run it by hand** — *Actions → Release → Run workflow*, with the tag as
+     the `tag` input. The tag does not have to exist first; publishing the
+     release creates it. But the checkout follows the **branch the run is
+     dispatched from**, not the tag input, so dispatch from the branch carrying
+     the version bump — otherwise the build is of the wrong code under the
+     right name.
+
+   Either way the tag has to match the declared version, because the release is
+   named from the version and found by the tag. The gates job checks that
+   before anything is compiled.
+
+4. **The workflow does the rest.** `.github/workflows/release.yml` runs the
+   gates, builds on Windows and Linux, runs the engine's tests as a gate,
+   publishes the release — not a draft — Cosign-signs the assets and deploys
+   the updater manifests to Pages.
 
 For the next beta, bump the three versions to `-beta.2`, commit, and tag again.
 
@@ -67,12 +92,12 @@ wanted while betas were shipping: the README sent people who were not ready for
 V2 to *Latest release*, and that had to stay V1's installer until V2 was
 actually stable. *Latest release* now points at V2.
 
-It does not cost us the updater. That reads a fixed `updater` tag rather than
-`releases/latest`, so betas are perfectly visible to it — see §3.
+It does not cost us the updater. That reads a manifest on Pages rather than
+`releases/latest`, so a pre-release is perfectly visible to it — see §3.
 
 ---
 
-## Before 2.0.0 proper
+## Before a stable release
 
 ### 1. Validate against a real client
 
@@ -91,7 +116,8 @@ The one thing no test here can substitute for. On a real machine:
       its per-raid modules exercise the same multi-folder path.
 
 This is what the beta is *for*, so it can be done with real users rather than
-alone.
+alone. The boxes are left unticked on purpose: this is run again for each
+stable release, not once.
 
 ### 2. Generate the updater signing key
 
@@ -110,7 +136,7 @@ npx @tauri-apps/cli signer generate -w "$env:USERPROFILE\.tauri\bam.key"
 ```
 
 - [x] Put the **public** half in `src-tauri/tauri.conf.json` → `plugins.updater.pubkey`.
-- [ ] Put the **private** half in the `TAURI_SIGNING_PRIVATE_KEY` repository secret.
+- [x] Put the **private** half in the `TAURI_SIGNING_PRIVATE_KEY` repository secret.
 - [ ] If you set a password, add `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` too.
 
 **The two halves have to be from the same keypair, and nothing enforces it.**
@@ -133,41 +159,74 @@ build every installer before refusing to finish.
 Done, but worth understanding, because the obvious configuration silently never
 updates anything.
 
-**The manifest lives at a fixed `updater` tag**, not at
-`releases/latest/download/latest.json`. GitHub defines "latest" as the newest
-release that is neither a draft nor a *pre-release*, so that URL can never
-resolve to a beta — and it is a property of the repository, not of the client,
-so a beta install cannot ask it for pre-release content either. Publishing betas
-as normal releases would fix the URL and break something worse: `releases/latest`
-is the link the README gives for downloads.
+**The manifests are two files on GitHub Pages**, deployed by the release
+workflow:
 
-A direct `releases/download/<tag>/` URL serves pre-release assets happily, so the
-release workflow copies each build's `latest.json` onto a permanent `updater`
-release. That release is itself marked as a pre-release, so it never becomes
-anyone's "latest". Nothing needs changing when 2.0.0 ships.
+| Channel | URL |
+|---|---|
+| Stable | `https://lonebrownie.github.io/AddonManager/latest.json` |
+| Beta | `https://lonebrownie.github.io/AddonManager/beta.json` |
 
-**Checking is manual**, from *Settings → Check for updates*. This app writes into
-a game directory, and someone mid-session does not want it restarting itself, so
-there is no check on startup and nothing downloads until asked.
+The updater reads one fixed URL, so each channel needs an address that never
+moves, and `releases/latest/download/latest.json` cannot be one of them. GitHub
+defines "latest" as the newest release that is neither a draft nor a
+*pre-release*, so that URL can never resolve to a beta — and it is a property of
+the repository, not of the client, so a beta install cannot ask it for
+pre-release content either. Holding each manifest in a release of its own would
+work, at the price of two permanent entries on the releases page that are not
+downloads. Pages costs neither: deployed from a workflow artifact, the files
+exist as a deployment rather than as a branch or a release.
 
-Only the AppImage self-updates on Linux; `.deb` and `.rpm` are owned by the
-package manager.
+**The beta channel carries stable releases too.** Every tag writes `beta.json`;
+only a stable tag writes `latest.json`, and a pre-release carries the current
+stable manifest forward rather than disturbing it. That is what ends a beta
+opt-in rather than stranding it: somebody on `2.2.0-beta.1` is offered `2.2.0`
+when it ships and lands back on stable.
 
-### 4. Put the `.rpm` back
+**Which of the two a build reads is decided in Rust**, in
+`src-tauri/src/commands/update.rs`, from the stored channel preference. The
+updater plugin's JavaScript API has no way to name an endpoint, so the URL in
+`tauri.conf.json` would otherwise be the only one a build could ever read.
 
-Dropped for the beta, from both `bundle.targets` in
-`src-tauri/tauri.conf.json` and the Linux `args` in the release workflow.
+**There was an `updater` release** holding a single manifest at a fixed tag,
+which is how this worked up to 2.0.1. Every build from 2.1.0 on reads Pages;
+that release, and the workflow blocks that kept feeding it, are gone.
 
-RPM forbids a hyphen in its `Version` field, and Tauri's bundler writes the
-config version there verbatim, so `2.0.0-beta.1` produces a package whose NEVRA
-cannot be parsed. Confirmed by reading `VERSION` out of a real bundle's header,
-not inferred. Once the version is plain `2.0.0` the problem disappears.
+**Checking is one look on opening, and then on request.** The app says once,
+when it opens, if a new version is out, and says nothing at all if that check
+fails — being offline is not news. Everything after that is *Settings → Check
+for updates*: this app writes into a game directory and someone mid-session does
+not want it restarting itself, so nothing downloads until it is asked for.
 
-The `.deb` has a milder version of the same wart and is shipped anyway: Debian
-reads `2.0.0-beta.1` as upstream `2.0.0` with revision `beta.1`, which sorts
-*newer* than a future plain `2.0.0`. `dpkg -i` installs over it regardless, and
-the `.deb` is not self-updating anyway, so it does not bite in practice — but do
-not be surprised if `apt` calls the stable release a downgrade.
+Linux self-updates as the AppImage, which is the only Linux package built — see
+§4.
+
+### 4. Linux is the AppImage and nothing else
+
+Not a to-do — a decision, recorded because it once read like a temporary one.
+`.deb` and `.rpm` are gone from both `bundle.targets` in
+`src-tauri/tauri.conf.json` and the Linux `args` in the release workflow, and
+they stay gone.
+
+**Why they stay gone.** The updater picks its download by searching the manifest
+for `linux-x86_64-<installer>` and falling back to `linux-x86_64`, which names
+the AppImage. A `.deb` installation was therefore offered an update, downloaded
+an AppImage and handed it to `install_deb`. A package whose update button cannot
+work is worse than one package fewer.
+`scripts/check-bundle-config.mjs` fails the build if either target reappears in
+the workflow — the workflow rather than the config, because `--bundles` on the
+command line overrides `bundle.targets`.
+
+**Why they went in the first place**, which no longer applies and is not a
+reason to bring them back: RPM forbids a hyphen in its `Version` field and
+Tauri's bundler writes the config version there verbatim, so `2.0.0-beta.1`
+produced a package whose NEVRA could not be parsed — confirmed by reading
+`VERSION` out of a real bundle's header, not inferred. A plain version fixes
+that and changes nothing above.
+
+The `.deb` had a milder version of the same wart: Debian reads `2.0.0-beta.1` as
+upstream `2.0.0` with revision `beta.1`, which sorts *newer* than a later plain
+`2.0.0`.
 
 ### 5. Rename `dev` to `main`
 
@@ -200,9 +259,10 @@ be complete.
   pre-release status from the tag — reading the `workflow_dispatch` input first,
   since `github.ref_name` is a *branch* on a hand-triggered run.
 - `scripts/check-bundle-config.mjs` runs in CI and again at the top of a release.
-  It catches a tag that disagrees with the declared version, a straight
-  apostrophe in `productName` (which breaks NSIS and nothing else), and an rpm
-  target while the version is a prerelease.
+  It catches the three declared versions disagreeing, a tag that disagrees
+  with them, a straight apostrophe in `productName` (which breaks NSIS and
+  nothing else), a `deb` or `rpm` target in the release workflow, and a version
+  with no changelog section.
 - The product name uses a typographic apostrophe. A straight one broke the
   Windows installer for exactly one beta.
 - The curated lists are served from `HEAD`, so they survive branch renames. The
