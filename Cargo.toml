@@ -5,7 +5,7 @@ members = ["core", "net", "src-tauri"]
 [workspace.package]
 version = "2.2.0"
 edition = "2021"
-# The highest MSRV any dependency declares, not a preference. zip 8 asks for
+# The highest MSRV any dependency declares, not a preference. zip 9 asks for
 # 1.88, and several of the Tauri tree's crates (darling, plist, time,
 # serde_with) already did before it. Nothing in CI checks this — the runners
 # use stable — so it is a claim to keep honest by hand when a bump lands.
