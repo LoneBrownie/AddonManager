@@ -70,7 +70,9 @@ pub fn extract<R: Read + Seek>(reader: R, dest: &Path, limits: Limits) -> Result
 
     for index in 0..archive.len() {
         let entry = archive.by_index(index)?;
-        let raw_name = entry.name().to_string();
+        // zip 9 decodes names fallibly. Propagate errors during validation,
+        // before any writes, and run the same path checks on the decoded name.
+        let raw_name = entry.name()?.into_owned();
 
         // Symlinks can point anywhere; an addon has no legitimate use for one.
         if let Some(mode) = entry.unix_mode() {
@@ -364,6 +366,54 @@ mod tests {
     }
 
     #[test]
+    fn extracts_unicode_entry_names() {
+        let bytes = zip_with(&[("Addon/é.lua", b"-- code\n"), ("Addon/Addon.toc", b"x")]);
+        let (tmp, result) = extract_to_temp(bytes);
+        assert!(result.is_ok(), "valid Unicode names must remain supported");
+        assert!(tmp.path().join("Addon/é.lua").is_file());
+    }
+
+    #[test]
+    fn a_cp437_entry_still_gets_path_validation_before_any_writes() {
+        let mut bytes = zip_with(&[("Addon/Addon.toc", b"x"), ("../x.lua", b"x")]);
+        // CP437 decoding returns an owned name in zip 9, unlike ASCII/UTF-8.
+        // Change x to é in both headers; the traversal must still be rejected.
+        for index in 0..bytes.len().saturating_sub(46) {
+            let name = match bytes.get(index..index + 4) {
+                Some(b"PK\x03\x04") => index + 30,
+                Some(b"PK\x01\x02") => index + 46,
+                _ => continue,
+            };
+            if bytes.get(name..name + 8) == Some(b"../x.lua".as_slice()) {
+                bytes[name + 3] = 0x82;
+            }
+        }
+        let (tmp, result) = extract_to_temp(bytes);
+        assert!(
+            matches!(result, Err(Error::UnsafePath { .. })),
+            "got {result:?}"
+        );
+        assert!(entries_in(tmp.path()).is_empty());
+    }
+
+    #[test]
+    fn a_symlink_rejects_before_any_writes() {
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        let options = SimpleFileOptions::default();
+        writer.start_file("Addon/Addon.toc", options).unwrap();
+        writer.write_all(b"x").unwrap();
+        writer
+            .add_symlink("Addon/link", "../../outside", options)
+            .unwrap();
+        let (tmp, result) = extract_to_temp(writer.finish().unwrap().into_inner());
+        assert!(
+            matches!(result, Err(Error::UnsafePath { .. })),
+            "got {result:?}"
+        );
+        assert!(entries_in(tmp.path()).is_empty());
+    }
+
+    #[test]
     fn finds_several_addon_folders_in_one_archive() {
         let bytes = zip_with(&[
             ("WeakAuras/WeakAuras.toc", b"## Interface: 30300\n"),
@@ -623,8 +673,13 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap_or_else(|e| panic!("{e}"));
         let result = extract(Cursor::new(bytes), tmp.path(), Limits::default());
 
+        // zip 9 can detect this in its reader before our bounded-copy check,
+        // returning InvalidData. Both paths must reject and cap the disk write.
+        let rejected = matches!(result, Err(Error::ArchiveRejected(_)))
+            || matches!(&result, Err(Error::Io { source, .. })
+                if source.kind() == std::io::ErrorKind::InvalidData);
         assert!(
-            matches!(result, Err(Error::ArchiveRejected(_))),
+            rejected,
             "an entry longer than it claims must be rejected, got {result:?}"
         );
         let written = std::fs::metadata(tmp.path().join("A/big.bin"))
