@@ -10,6 +10,7 @@ pub mod changelog;
 pub mod commands;
 pub mod dto;
 pub mod state;
+mod window_state;
 
 use std::path::PathBuf;
 
@@ -54,6 +55,7 @@ fn init_logging(dir: &std::path::Path) -> Option<tracing_appender::non_blocking:
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(window_state::init())
         // Desktop only: the updater plugin has no mobile target, and mobile
         // is not something this app builds for.
         .plugin(tauri_plugin_updater::Builder::new().build())

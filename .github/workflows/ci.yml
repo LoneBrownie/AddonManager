@@ -99,6 +99,9 @@ jobs:
       - name: Build the Tauri shell
         run: cargo build -p bam-app
 
+      - name: Test the Tauri shell
+        run: cargo test -p bam-app --lib
+
   # Formatting, lints, module size, bundle config, licence — defined once and
   # called by Release too, so the pipeline that ships cannot pass on code this
   # one rejects.

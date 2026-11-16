@@ -11,6 +11,13 @@ A section is its entries and nothing else: no summary paragraph above them, no
 count of the betas that led here. Somebody reading this wants to know what
 changed, and a preamble is a thing to scroll past to find out.
 
+## Unreleased
+
+### Fixed
+- **Your chosen window size survives closing and reopening the app**, including
+  maximized windows. Restored dimensions fit the current screen, and invalid
+  saved state falls back to the default size.
+
 ## 2.2.0 — 2026-08-26
 
 ### Added
